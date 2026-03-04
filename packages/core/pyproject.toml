@@ -1,0 +1,32 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "deepslate-core"
+version = "0.1.0"
+description = "Shared core library for Deepslate SDK integrations"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "aiohttp>=3.10.0",
+    "protobuf>=5.26.0",
+]
+keywords = ["voice", "ai", "realtime", "audio", "deepslate"]
+classifiers = [
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Topic :: Multimedia :: Sound/Audio",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3 :: Only",
+]
+
+[project.urls]
+Documentation = "https://docs.deepslate.eu/"
+Website = "https://deepslate.eu/"
+Source = "https://github.com/deepslate-labs/deepslate-sdks"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/deepslate_core"]

@@ -1,0 +1,594 @@
+syntax = "proto3";
+
+import "google/protobuf/struct.proto";
+
+package eu.deepslate.realtime.speeq;
+
+/*
+ * Enumeration of supported audio sample formats.
+ */
+enum SampleFormat {
+  // 8-bit unsigned integer samples.
+  UNSIGNED_8_BIT = 0;
+
+  // 16-bit signed integer samples.
+  SIGNED_16_BIT = 1;
+
+  // 32-bit signed integer samples.
+  SIGNED_32_BIT = 2;
+
+  // 32-bit floating point samples (0.0 to 1.0).
+  FLOAT_32_BIT = 3;
+
+  // 64-bit floating point samples (0.0 to 1.0).
+  FLOAT_64_BIT = 4;
+}
+
+/*
+ * Definition of a tool that can be used by the model during inference.
+ */
+message ToolDefinition {
+  // Name of the tool.
+  //
+  // This is what the model will use to refer to the tool when requesting its use.
+  string name = 1;
+
+  // Description of the tool's purpose and functionality.
+  //
+  // When not present, this will either be omitted or an empty string
+  // depending on the inference engine's capabilities.
+  optional string description = 2;
+
+  // Parameters schema for the tool.
+  //
+  // This needs to be a valid JSON Schema object. Most inference engines will requires
+  // the top level value to be of type "object".
+  google.protobuf.Struct parameters = 3;
+}
+
+/*
+ * Request message to update the tool definitions.
+ *
+ * This always completely replaces the existing tool definitions
+ * with the provided ones, as in, it does not merge with existing definitions.
+ *
+ * An empty list of tool definitions will clear all existing tool definitions.
+ */
+message UpdateToolDefinitionsRequest {
+  // List of tool definitions to use from now on.
+  repeated ToolDefinition tool_definitions = 1;
+}
+
+/*
+ * Request message to call a tool.
+ *
+ * Depending on the inference engine, you may get multiple requests to call tools
+ * before getting a final response.
+ *
+ * Every request **must** be responded to with a corresponding ToolCallResponse, even
+ * if tool execution fails or is not possible for some reason.
+ */
+message ToolCallRequest {
+  // Identifier of the tool to call.
+  //
+  // This does **not** identify the tool, but the request to call a specific tool.
+  string id = 1;
+
+  // Name of the tool to call.
+  string name = 2;
+
+  // Parameters to pass to the tool.
+  google.protobuf.Struct parameters = 3;
+}
+
+/*
+ * Response message for a tool call.
+ */
+message ToolCallResponse {
+  // Identifier of the tool call request this response corresponds to.
+  string id = 1;
+
+  // Result of the tool call.
+  //
+  // This _can_ be JSON, but it doesn't have to be. As long as the model is able to
+  // understand the result, any format is acceptable.
+  string result = 2;
+}
+
+/*
+ * Duration message representing a span of time.
+ */
+message Duration {
+  // Whole seconds of the duration.
+  uint64 seconds = 1;
+
+  // Nanoseconds component of the duration.
+  uint32 nanos = 2;
+}
+
+/*
+ * Configuration for an audio line (input or output depending on context).
+ *
+ * The service always assumes that audio is raw PCM with 16-bit samples.
+ */
+message AudioLineConfiguration {
+  // Sample rate in Hz.
+  uint32 sample_rate = 1;
+
+  // Number of audio channels.
+  uint32 channel_count = 2;
+
+  // Sample format.
+  SampleFormat sample_format = 3;
+}
+
+message VadConfiguration {
+  // Minimum confidence required to consider audio as speech (0.0 to 1.0).
+  float confidence_threshold = 1;
+
+  // Minimum volume level to consider audio as speech (0.0 to 1.0).
+  float min_volume = 2;
+
+  // Duration of speech to detect start of speech.
+  Duration start_duration = 3;
+
+  // Duration of silence to detect end of speech.
+  Duration stop_duration = 4;
+
+  // Duration of audio to buffer before speech detection.
+  // This allows capturing audio from before speech starts.
+  //
+  // Recommended duration is 1 second.
+  Duration backbuffer_duration = 5;
+}
+
+/*
+ * Configuration for inference engine.
+ */
+message InferenceConfiguration {
+  // System prompt to guide the model's behavior.
+  string system_prompt = 1;
+}
+
+/*
+ * Configuration for ElevenLabs TTS provider.
+ */
+message ElevenLabsTtsConfiguration {
+  // ElevenLabs API key for this session
+  string api_key = 1;
+
+  // Voice ID to use (e.g., "21m00Tcm4TlvDq8ikWAM" for Rachel)
+  string voice_id = 2;
+
+  // Model ID (e.g., "eleven_turbo_v2"). If not set, uses default.
+  optional string model_id = 3;
+
+  // Optional voice settings for fine-tuning TTS output.
+  optional ElevenLabsVoiceSettings voice_settings = 4;
+
+  // ElevenLabs service location to use for this session.
+  ElevenLabsLocation location = 5;
+}
+
+/*
+ * Configuration for the ElevenLabs voice.
+ */
+message ElevenLabsVoiceSettings {
+  // Stability for the voice
+  double stability = 1;
+
+  // Similarity boost for the voice
+  double similarity_boost = 2;
+
+  // Style setting for v2 models
+  double style = 3;
+
+  // Whether to apply speaker boost
+  bool use_speaker_boost = 4;
+
+  // Speed setting for the voice
+  double speed = 5;
+}
+
+/*
+ * Enumeration of ElevenLabs TTS service locations.
+ *
+ * See here: https://elevenlabs.io/docs/overview/administration/data-residency
+ */
+enum ElevenLabsLocation {
+  // United States
+  //
+  // This is the default location and the one that is accessed via https://elevenlabs.io/.
+  US = 0;
+
+  // European Union
+  //
+  // Requires enterprise access to ElevenLabs.
+  EU = 1;
+
+  // India
+  //
+  // Requires enterprise access to ElevenLabs.
+  INDIA = 2;
+}
+
+/*
+ * Configuration for hosted TTS provider (voice cloning).
+ *
+ * The model is loaded once globally at server startup and shared across
+ * all sessions. Model path and device are server-level configuration.
+ */
+message HostedVoiceRef {
+  string voice_id = 1;
+}
+
+message HostedTtsConfiguration {
+  oneof voice {
+    HostedVoiceRef voice_ref = 1;
+  }
+}
+
+/*
+ * Configuration for text-to-speech output.
+ *
+ * If not specified, raw text fragments are sent to the client.
+ */
+message TtsConfiguration {
+  oneof provider {
+    ElevenLabsTtsConfiguration eleven_labs = 1;
+    HostedTtsConfiguration hosted = 2;
+  }
+}
+
+/*
+ * First message sent to initialize a session.
+ *
+ * This message must always be the first message sent from the client to the service
+ */
+message InitializeSessionRequest {
+  // Configuration for the input audio line.
+  AudioLineConfiguration input_audio_line = 1;
+
+  // Configuration for the output audio line.
+  AudioLineConfiguration output_audio_line = 2;
+
+  // VAD configuration for speech detection.
+  VadConfiguration vad_configuration = 3;
+
+  // Inference engine configuration.
+  InferenceConfiguration inference_configuration = 4;
+
+  // TTS configuration. If not specified, raw text fragments are sent to the client.
+  optional TtsConfiguration tts_configuration = 5;
+}
+
+/*
+ * Request to reconfigure an ongoing session.
+ *
+ * This may be useful to change audio input settings on the fly.
+ * Note that corvidae does not guarantee that this happens in a
+ * seamless manner, there may be glitches or dropped audio.
+ */
+message ReconfigureSessionRequest {
+  optional AudioLineConfiguration input_audio_line = 1;
+
+  optional InferenceConfiguration inference_configuration = 2;
+}
+
+/*
+ * Enumeration for inference trigger modes.
+ */
+enum InferenceTriggerMode {
+  // Don't trigger inference automatically.
+  NO_TRIGGER = 0;
+
+  // Queue inference to happen as soon as current inference is
+  // done (or immediately if no inference is ongoing).
+  QUEUE = 1;
+
+  // Interrupt current inference and start new inference immediately.
+  IMMEDIATE = 2;
+}
+
+/*
+ * Audio data wrapper.
+ */
+message AudioData {
+  // Raw audio data bytes. Must confirm to the AudioLineConfiguration for the respective line.
+  bytes data = 1;
+}
+
+/*
+ * Text data wrapper.
+ */
+message TextData {
+  // Raw text data.
+  string data = 1;
+}
+
+message UserInput {
+  // Packet identifier for tracking purposes.
+  //
+  // Corvidae doesn't care too much about this value, but it will use it to
+  // refer to specific packets in responses or events. The client is free
+  // to choose any numbering scheme, including non-sequential or random values.
+  uint64 packet_id = 1;
+
+  // Inference trigger mode for this input.
+  InferenceTriggerMode mode = 2;
+
+  oneof input {
+    // Audio data input.
+    AudioData audio_data = 3;
+
+    // Text data input.
+    TextData text_data = 4;
+  }
+}
+
+/*
+ * Message to trigger inference processing manually and right now.
+ *
+ * This instructs the inference engine to take the current input and
+ * process it immediately, instead of waiting for natural pauses or
+ * end-of-input signals.
+ *
+ * Words of caution: This is useful for generating a greeting or similar
+ * immediate response, but model behavior may be unpredictable if used
+ * directly after a model response. Corvidae will do its best to patch
+ * things together, but there are no guarantees. Use for generating a
+ * greeting is the primary intended use case and fully supported, other
+ * use cases may or may not work as expected.
+ */
+message TriggerInference {
+  // Optional extra instructions to guide the inference.
+  //
+  // This can be used to provide context or specific directives
+  // to the model for this inference trigger.
+  optional string extra_instructions = 1;
+}
+
+/*
+ * Request to export the chat history
+ */
+message ExportChatHistoryRequest {}
+
+/*
+ * Message sent from the client to the service.
+ */
+message ServiceBoundMessage {
+  oneof payload {
+    InitializeSessionRequest initialize_session_request = 1;
+    ReconfigureSessionRequest reconfigure_session_request = 2;
+    UserInput user_input = 3;
+    UpdateToolDefinitionsRequest update_tool_definitions_request = 4;
+    ToolCallResponse tool_call_response = 5;
+    TriggerInference trigger_inference = 6;
+    ExportChatHistoryRequest export_chat_history_request = 7;
+  }
+}
+
+/*
+ * A fragment of text from the model, streamed as tokens arrive.
+ */
+message ModelTextFragment {
+  // The text content of this fragment.
+  string text = 1;
+}
+
+/*
+ * An audio chunk from the model (TTS output).
+ */
+message ModelAudioChunk {
+  // The audio data
+  AudioData audio = 1;
+
+  // Optional: text that was spoken (alignment data from TTS provider)
+  optional string transcript = 2;
+}
+
+/*
+ * Exported chat history.
+ */
+message ChatHistory {
+  repeated ChatMessage messages = 1;
+}
+
+/*
+ * Role of a chat message.
+ */
+enum ChatMessageRole {
+  /*
+   * System message (usually the system prompt).
+   */
+  SYSTEM = 0;
+
+  /*
+   * User message.
+   */
+  USER = 1;
+
+  /*
+   * Assistant message.
+   */
+  ASSISTANT = 2;
+}
+
+/*
+ * Delivery status of a chat message.
+ */
+enum ChatDeliveryStatus {
+  // Turn is still being generated.
+  DELIVERY_IN_PROGRESS = 0;
+
+  // All content was delivered to the client.
+  DELIVERY_COMPLETE = 1;
+
+  // User interrupted. Content reflects what was actually delivered.
+  DELIVERY_INTERRUPTED = 2;
+}
+
+/*
+ * Message in the chat history.
+ */
+message ChatMessage {
+  /*
+   * The role of the entity that this message is attributed to.
+   */
+  ChatMessageRole role = 1;
+
+  /*
+   * Ordered content of this message.
+   *
+   * For assistant messages with TTS, text entries include the synthesized audio.
+   * Content blocks are ordered as produced — tool calls are interleaved with
+   * text at the positions they were emitted by the model.
+   */
+  repeated ChatMessageContent content = 2;
+
+  /*
+   * Delivery status of this message.
+   */
+  ChatDeliveryStatus delivery_status = 3;
+}
+
+/*
+ * A single content block within a chat message.
+ */
+message ChatMessageContent {
+  oneof content {
+    // Text content, optionally with TTS-synthesized audio.
+    ChatTextContent text_content = 1;
+
+    // User input or model-output audio (not TTS-synthesized).
+    ChatAudioData input_audio = 2;
+
+    // Internal model reasoning / chain-of-thought.
+    string thoughts = 3;
+
+    // Tool call requested by the model.
+    ToolCallRequest tool_call = 4;
+
+    // Tool execution result.
+    ToolCallResponse tool_result = 5;
+
+    // Model instructions (e.g. directives injected via trigger_inference)
+    string instructions = 6;
+  }
+}
+
+/*
+ * Text content with optional TTS-synthesized audio.
+ *
+ * When TTS is active, each synthesized sentence becomes a ChatTextContent
+ * entry with both text and tts_audio populated. Text without TTS audio
+ * (e.g., when TTS is not configured) has tts_audio absent.
+ */
+message ChatTextContent {
+  // The text content.
+  string text = 1;
+
+  // TTS-synthesized audio for this text, if available.
+  optional ChatAudioData tts_audio = 2;
+}
+
+/*
+ * Self-describing audio data (audio bytes + format metadata).
+ *
+ * Composes existing AudioData and AudioLineConfiguration types so
+ * consumers can decode the audio without out-of-band format knowledge.
+ *
+ * Please be careful when using this data and actually look at the format
+ * if you reconfigure the audio pipeline, as then it is possible for it
+ * to change mid conversation.
+ */
+message ChatAudioData {
+  // Raw audio bytes.
+  AudioData audio = 1;
+
+  // Audio format (sample rate, channels, sample format).
+  AudioLineConfiguration format = 2;
+}
+
+/*
+ * Notification to clear the playback buffer.
+ *
+ * This is sent when the user starts speaking, regardless of whether
+ * there is ongoing TTS playback or not. In other words, the event is
+ * sent pro-actively to ensure that any ongoing playback is stopped.
+ *
+ * This might be sent multiple times if the user interrupts multiple times.
+ */
+message PlaybackClearBuffer {}
+
+/*
+ * Notification that the model has begun its response.
+ */
+message ResponseBegin {}
+
+/*
+ * Notification that the model has finished its response.
+ */
+message ResponseEnd {}
+
+/*
+ * Error category for client-facing error notifications.
+ *
+ * These are broad categories that help clients understand the nature of the error.
+ */
+enum SessionErrorCategory {
+  // Unknown or unclassified error.
+  ERROR_UNKNOWN = 0;
+
+  // Session lifecycle errors (not initialized, already initialized).
+  ERROR_SESSION = 1;
+
+  // Configuration errors (invalid audio format, missing required fields).
+  ERROR_CONFIGURATION = 2;
+
+  // Protocol errors (malformed packets, unexpected message types).
+  ERROR_PROTOCOL = 3;
+
+  // Inference/AI processing errors (model unavailable, processing failed, timeout).
+  ERROR_INFERENCE = 4;
+
+  // Audio pipeline errors (codec failure, VAD errors).
+  ERROR_AUDIO = 5;
+
+  // TTS synthesis errors.
+  ERROR_TTS = 6;
+
+  // Internal service errors (catch-all for server-side issues).
+  ERROR_INTERNAL = 7;
+}
+
+/*
+ * Error notification sent to the client.
+ *
+ * This message is sent before the connection is closed to provide useful
+ * context for debugging without exposing server internals.
+ */
+message SessionErrorNotification {
+  // The error category for programmatic handling.
+  SessionErrorCategory category = 1;
+
+  // Human-readable message suitable for logging or display.
+  string message = 2;
+
+  // Optional trace ID for correlating with server logs.
+  // Clients can provide this when reporting issues for easier debugging.
+  optional string trace_id = 3;
+}
+
+message ClientBoundMessage {
+  oneof payload {
+    ToolCallRequest tool_call_request = 1;
+    ModelTextFragment model_text_fragment = 2;
+    ModelAudioChunk model_audio_chunk = 3;
+    PlaybackClearBuffer playback_clear_buffer = 4;
+    ResponseBegin response_begin = 5;
+    ResponseEnd response_end = 6;
+    ChatHistory chat_history = 7;
+    SessionErrorNotification error = 8;
+  }
+}
