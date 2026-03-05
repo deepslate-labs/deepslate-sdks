@@ -24,7 +24,7 @@ from dotenv import load_dotenv
 from livekit import agents
 from livekit.agents import Agent, AgentServer, AgentSession, RunContext, function_tool, room_io
 
-from deepslate_livekit import ElevenLabsTtsConfig, RealtimeModel
+from deepslate.livekit import ElevenLabsTtsConfig, RealtimeModel
 
 # Load .env from the examples directory, then allow .env.local to override
 # (useful for keeping secrets out of version control).

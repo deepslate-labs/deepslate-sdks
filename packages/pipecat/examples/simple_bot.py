@@ -32,7 +32,7 @@ from pipecat.pipeline.task import PipelineParams, PipelineTask
 from pipecat.services.llm_service import FunctionCallParams
 from pipecat.transports.services.daily import DailyParams, DailyTransport
 
-from deepslate_pipecat import DeepslateOptions, DeepslateRealtimeLLMService, ElevenLabsTtsConfig
+from deepslate.pipecat import DeepslateOptions, DeepslateRealtimeLLMService, ElevenLabsTtsConfig
 
 load_dotenv(override=True)
 

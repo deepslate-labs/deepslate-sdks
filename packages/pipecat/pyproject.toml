@@ -31,7 +31,7 @@ Website = "https://deepslate.eu/"
 Source = "https://github.com/deepslate-labs/deepslate-sdks"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/deepslate_pipecat"]
+packages = ["src/deepslate/pipecat"]
 
 [tool.uv.sources]
 deepslate-core = { workspace = true }

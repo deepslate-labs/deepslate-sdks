@@ -5,7 +5,7 @@ try:
 except importlib.metadata.PackageNotFoundError:
     __version__ = "unknown"
 
-from deepslate_core.options import (
+from deepslate.core.options import (
     DeepslateOptions,
     ElevenLabsLocation,
     ElevenLabsTtsConfig,

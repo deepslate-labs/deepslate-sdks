@@ -27,10 +27,10 @@ from pipecat.frames.frames import (
 from pipecat.adapters.schemas.tools_schema import ToolsSchema
 from pipecat.services.llm_service import FunctionCallParams, LLMService
 
-from deepslate_core._utils import dict_to_struct, duration_from_ms, ELEVENLABS_LOCATION_MAP, struct_to_dict
-from deepslate_core.client import BaseDeepslateClient
-from deepslate_core.options import DeepslateOptions, ElevenLabsTtsConfig, VadConfig
-from deepslate_core.proto import realtime_pb2 as proto
+from deepslate.core._utils import dict_to_struct, duration_from_ms, ELEVENLABS_LOCATION_MAP, struct_to_dict
+from deepslate.core.client import BaseDeepslateClient
+from deepslate.core.options import DeepslateOptions, ElevenLabsTtsConfig, VadConfig
+from deepslate.core.proto import realtime_pb2 as proto
 
 
 class DeepslateRealtimeLLMService(LLMService):
