@@ -684,6 +684,8 @@ class DeepslateRealtimeSession(
             self._handle_response_begin()
         elif payload_type == "response_end":
             self._handle_response_end()
+        elif payload_type == "error":
+            self._handle_error_notification(msg.error)
         else:
             logger.debug(f"unhandled message type: {payload_type}")
 
@@ -769,3 +771,20 @@ class DeepslateRealtimeSession(
     def _handle_response_end(self) -> None:
         """Handle response end - close the current generation."""
         self._close_current_generation()
+
+    def _handle_error_notification(self, notification: proto.SessionErrorNotification) -> None:
+        """Handle a server-sent error notification before connection close."""
+        category_name = proto.SessionErrorCategory.Name(notification.category)
+        trace_id = notification.trace_id if notification.HasField("trace_id") else None
+        trace_suffix = f" (trace_id={trace_id})" if trace_id else ""
+        error_msg = f"[Deepslate] {category_name}: {notification.message}{trace_suffix}"
+        logger.error(error_msg)
+        self.emit(
+            "error",
+            llm.RealtimeModelError(
+                timestamp=time.time(),
+                label=self._realtime_model.label,
+                error=RuntimeError(error_msg),
+                recoverable=False,
+            ),
+        )
