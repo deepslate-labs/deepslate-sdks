@@ -85,7 +85,7 @@ class DeepslateRealtimeLLMService(LLMService):
 
         async def _on_fatal_error(e: Exception) -> None:
             error_msg = f"Connection failed: {e}"
-            await self.push_error(ErrorFrame(error_msg))
+            await self.push_frame(ErrorFrame(error_msg))
 
         await self._client.run_with_retry(
             self._run_session,
@@ -456,3 +456,12 @@ class DeepslateRealtimeLLMService(LLMService):
             req = msg.tool_call_request
             args_dict = struct_to_dict(req.parameters) if req.HasField("parameters") else {}
             asyncio.create_task(self._dispatch_function_call(req.id, req.name, args_dict))
+
+        elif payload_type == "error":
+            notification = msg.error
+            category_name = proto.SessionErrorCategory.Name(notification.category)
+            trace_id = notification.trace_id if notification.HasField("trace_id") else None
+            trace_suffix = f" (trace_id={trace_id})" if trace_id else ""
+            error_msg = f"[Deepslate] {category_name}: {notification.message}{trace_suffix}"
+            logger.error(error_msg)
+            await self.push_frame(ErrorFrame(error_msg))
