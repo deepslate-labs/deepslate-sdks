@@ -474,6 +474,8 @@ class DeepslateRealtimeSession(
             )
             if el_config.model_id:
                 eleven_labs_config.model_id = el_config.model_id
+            if el_config.voice_settings is not None:
+                eleven_labs_config.voice_settings.CopyFrom(el_config.voice_settings.to_proto())
             tts_config = proto.TtsConfiguration(eleven_labs=eleven_labs_config)
 
         init_request = proto.InitializeSessionRequest(

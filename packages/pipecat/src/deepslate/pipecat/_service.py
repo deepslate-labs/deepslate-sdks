@@ -365,6 +365,8 @@ class DeepslateRealtimeLLMService(LLMService):
             )
             if self._tts_config.model_id:
                 el_config.model_id = self._tts_config.model_id
+            if self._tts_config.voice_settings is not None:
+                el_config.voice_settings.CopyFrom(self._tts_config.voice_settings.to_proto())
             tts_config = proto.TtsConfiguration(eleven_labs=el_config)
 
         init_request = proto.InitializeSessionRequest(

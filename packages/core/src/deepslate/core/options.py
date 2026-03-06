@@ -109,6 +109,37 @@ class ElevenLabsLocation(Enum):
 
 
 @dataclass
+class ElevenLabsVoiceSettingsConfig:
+    """ElevenLabs voice settings for fine-grained TTS control."""
+
+    stability: Optional[float] = None
+    """Voice stability (0.0 to 1.0). Lower values add expressiveness."""
+
+    similarity_boost: Optional[float] = None
+    """Voice clarity and similarity boost (0.0 to 1.0)."""
+
+    style: Optional[float] = None
+    """Style exaggeration (0.0 to 1.0). Not available for all models."""
+
+    use_speaker_boost: Optional[bool] = None
+    """Boost similarity to the original speaker."""
+
+    speed: Optional[float] = None
+    """Speaking speed multiplier."""
+
+    def to_proto(self):
+        """Convert to a ``proto.ElevenLabsVoiceSettings`` protobuf message.
+
+        Iterates dataclass fields dynamically, so new fields are picked up
+        automatically without changes to the plugin layer.
+        """
+        from deepslate.core.proto import realtime_pb2 as proto
+
+        kwargs = {k: v for k, v in vars(self).items() if v is not None}
+        return proto.ElevenLabsVoiceSettings(**kwargs)
+
+
+@dataclass
 class ElevenLabsTtsConfig:
     """ElevenLabs TTS configuration for Deepslate-hosted TTS.
 
@@ -127,6 +158,9 @@ class ElevenLabsTtsConfig:
 
     location: ElevenLabsLocation = ElevenLabsLocation.US
     """ElevenLabs API endpoint region. Defaults to US."""
+
+    voice_settings: Optional[ElevenLabsVoiceSettingsConfig] = None
+    """Optional fine-grained voice settings (stability, similarity boost, etc.)."""
 
     @classmethod
     def from_env(
