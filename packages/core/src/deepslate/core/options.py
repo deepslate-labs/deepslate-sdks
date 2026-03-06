@@ -128,14 +128,21 @@ class ElevenLabsVoiceSettingsConfig:
     """Speaking speed multiplier."""
 
     def to_proto(self):
-        """Convert to a ``proto.ElevenLabsVoiceSettings`` protobuf message.
-
-        Iterates dataclass fields dynamically, so new fields are picked up
-        automatically without changes to the plugin layer.
-        """
+        """Convert to a ``proto.ElevenLabsVoiceSettings`` protobuf message."""
         from deepslate.core.proto import realtime_pb2 as proto
 
-        kwargs = {k: v for k, v in vars(self).items() if v is not None}
+        kwargs = {}
+        if self.stability is not None:
+            kwargs["stability"] = self.stability
+        if self.similarity_boost is not None:
+            kwargs["similarity_boost"] = self.similarity_boost
+        if self.style is not None:
+            kwargs["style"] = self.style
+        if self.use_speaker_boost is not None:
+            kwargs["use_speaker_boost"] = self.use_speaker_boost
+        if self.speed is not None:
+            kwargs["speed"] = self.speed
+
         return proto.ElevenLabsVoiceSettings(**kwargs)
 
 
