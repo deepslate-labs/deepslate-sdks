@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+from typing import Optional
 from urllib.parse import urlparse
 
 from google.protobuf import json_format
 from google.protobuf.struct_pb2 import Struct
 
-from .options import ElevenLabsLocation
+from .options import ElevenLabsLocation, ElevenLabsTtsConfig, VadConfig
 from .proto import realtime_pb2 as proto
 
 
@@ -60,3 +61,51 @@ ELEVENLABS_LOCATION_MAP: dict[ElevenLabsLocation, proto.ElevenLabsLocation] = {
     ElevenLabsLocation.EU: proto.ElevenLabsLocation.EU,
     ElevenLabsLocation.INDIA: proto.ElevenLabsLocation.INDIA,
 }
+
+
+def build_initialize_request(
+    sample_rate: int,
+    num_channels: int,
+    vad_config: VadConfig,
+    system_prompt: str,
+    tts_config: Optional[ElevenLabsTtsConfig] = None,
+) -> proto.InitializeSessionRequest:
+    """Build a proto.InitializeSessionRequest from core configuration objects.
+
+    Shared by deepslate-pipecat and deepslate-livekit to avoid duplicating
+    the protobuf construction logic in each plugin.
+    """
+    tts_proto = None
+    if tts_config is not None:
+        el_config = proto.ElevenLabsTtsConfiguration(
+            api_key=tts_config.api_key,
+            voice_id=tts_config.voice_id,
+            location=ELEVENLABS_LOCATION_MAP[tts_config.location],
+        )
+        if tts_config.model_id:
+            el_config.model_id = tts_config.model_id
+        if tts_config.voice_settings is not None:
+            el_config.voice_settings.CopyFrom(tts_config.voice_settings.to_proto())
+        tts_proto = proto.TtsConfiguration(eleven_labs=el_config)
+
+    audio_line = proto.AudioLineConfiguration(
+        sample_rate=sample_rate,
+        channel_count=num_channels,
+        sample_format=proto.SampleFormat.SIGNED_16_BIT,
+    )
+
+    return proto.InitializeSessionRequest(
+        input_audio_line=audio_line,
+        output_audio_line=audio_line,
+        vad_configuration=proto.VadConfiguration(
+            confidence_threshold=vad_config.confidence_threshold,
+            min_volume=vad_config.min_volume,
+            start_duration=duration_from_ms(vad_config.start_duration_ms),
+            stop_duration=duration_from_ms(vad_config.stop_duration_ms),
+            backbuffer_duration=duration_from_ms(vad_config.backbuffer_duration_ms),
+        ),
+        inference_configuration=proto.InferenceConfiguration(
+            system_prompt=system_prompt,
+        ),
+        tts_configuration=tts_proto,
+    )
