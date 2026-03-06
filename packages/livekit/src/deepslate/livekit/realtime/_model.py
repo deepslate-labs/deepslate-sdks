@@ -33,7 +33,7 @@ try:
 except importlib.metadata.PackageNotFoundError:
     __version__ = "unknown"
 
-from deepslate.core._utils import dict_to_struct, duration_from_ms, ELEVENLABS_LOCATION_MAP, struct_to_dict
+from deepslate.core._utils import build_initialize_request, dict_to_struct, struct_to_dict
 from deepslate.core.client import BaseDeepslateClient
 from deepslate.core.options import DeepslateOptions, ElevenLabsTtsConfig, VadConfig
 from deepslate.core.proto import realtime_pb2 as proto
@@ -464,40 +464,12 @@ class DeepslateRealtimeSession(
             logger.error("cannot initialize session: audio format not detected")
             return
 
-        tts_config = None
-        if self._realtime_model._tts_config is not None:
-            el_config = self._realtime_model._tts_config
-            eleven_labs_config = proto.ElevenLabsTtsConfiguration(
-                api_key=el_config.api_key,
-                voice_id=el_config.voice_id,
-                location=ELEVENLABS_LOCATION_MAP[el_config.location],
-            )
-            if el_config.model_id:
-                eleven_labs_config.model_id = el_config.model_id
-            tts_config = proto.TtsConfiguration(eleven_labs=eleven_labs_config)
-
-        init_request = proto.InitializeSessionRequest(
-            input_audio_line=proto.AudioLineConfiguration(
-                sample_rate=self._detected_sample_rate,
-                channel_count=self._detected_num_channels,
-                sample_format=proto.SampleFormat.SIGNED_16_BIT,
-            ),
-            output_audio_line=proto.AudioLineConfiguration(
-                sample_rate=self._detected_sample_rate,
-                channel_count=self._detected_num_channels,
-                sample_format=proto.SampleFormat.SIGNED_16_BIT,
-            ),
-            vad_configuration=proto.VadConfiguration(
-                confidence_threshold=self._vad_config.confidence_threshold,
-                min_volume=self._vad_config.min_volume,
-                start_duration=duration_from_ms(self._vad_config.start_duration_ms),
-                stop_duration=duration_from_ms(self._vad_config.stop_duration_ms),
-                backbuffer_duration=duration_from_ms(self._vad_config.backbuffer_duration_ms),
-            ),
-            inference_configuration=proto.InferenceConfiguration(
-                system_prompt=self._opts.system_prompt,
-            ),
-            tts_configuration=tts_config,
+        init_request = build_initialize_request(
+            sample_rate=self._detected_sample_rate,
+            num_channels=self._detected_num_channels,
+            vad_config=self._vad_config,
+            system_prompt=self._opts.system_prompt,
+            tts_config=self._realtime_model._tts_config,
         )
 
         msg = proto.ServiceBoundMessage(initialize_session_request=init_request)

@@ -10,6 +10,7 @@ from .options import (
     DeepslateOptions,
     ElevenLabsLocation,
     ElevenLabsTtsConfig,
+    ElevenLabsVoiceSettingsConfig,
     VadConfig,
 )
 
@@ -19,5 +20,6 @@ __all__ = [
     "DeepslateOptions",
     "ElevenLabsLocation",
     "ElevenLabsTtsConfig",
+    "ElevenLabsVoiceSettingsConfig",
     "VadConfig",
 ]
