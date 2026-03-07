@@ -361,6 +361,16 @@ class DeepslateRealtimeSession(
         msg = proto.ServiceBoundMessage(user_input=user_input)
         self._send_message(msg)
 
+    def speak_direct(self, text: str, include_in_history: bool = True) -> None:
+        """Bypass the LLM and speak text directly via TTS, canceling active inference."""
+        self._ensure_session_initialized()
+        direct_speech = proto.DirectSpeech(
+            text=text,
+            include_in_history=include_in_history,
+        )
+        msg = proto.ServiceBoundMessage(direct_speech=direct_speech)
+        self._send_message(msg)
+
     def generate_reply(
         self, *, instructions: NotGivenOr[str] = NOT_GIVEN
     ) -> asyncio.Future[GenerationCreatedEvent]:

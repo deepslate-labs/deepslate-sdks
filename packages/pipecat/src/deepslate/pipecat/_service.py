@@ -31,6 +31,7 @@ from deepslate.core._utils import build_initialize_request, dict_to_struct, stru
 from deepslate.core.client import BaseDeepslateClient
 from deepslate.core.options import DeepslateOptions, ElevenLabsTtsConfig, VadConfig
 from deepslate.core.proto import realtime_pb2 as proto
+from .frames import DeepslateDirectSpeechFrame
 
 
 class DeepslateRealtimeLLMService(LLMService):
@@ -169,6 +170,9 @@ class DeepslateRealtimeLLMService(LLMService):
         elif isinstance(frame, LLMUpdateSettingsFrame):
             await self._handle_update_settings(frame)
 
+        elif isinstance(frame, DeepslateDirectSpeechFrame):
+            await self._handle_direct_speech(frame)
+
         else:
             await self.push_frame(frame, direction)
 
@@ -248,6 +252,23 @@ class DeepslateRealtimeLLMService(LLMService):
 
         if frame.run_llm and self._session_initialized and self._ws:
             await self._send_msg(proto.ServiceBoundMessage(trigger_inference=proto.TriggerInference()))
+
+    async def _handle_direct_speech(self, frame: DeepslateDirectSpeechFrame):
+        """Send a DirectSpeech message to bypass the LLM and speak text via TTS."""
+        if not self._ws:
+            return
+
+        if not self._session_initialized:
+            self._detected_sample_rate = 16000
+            self._detected_num_channels = 1
+            await self._send_initialize_session()
+            self._session_initialized = True
+
+        direct_speech = proto.DirectSpeech(
+            text=frame.text,
+            include_in_history=frame.include_in_history,
+        )
+        await self._send_msg(proto.ServiceBoundMessage(direct_speech=direct_speech))
 
     async def _handle_update_settings(self, frame: LLMUpdateSettingsFrame):
         """Apply runtime setting changes. Currently handles system_prompt."""
