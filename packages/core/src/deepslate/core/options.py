@@ -25,6 +25,9 @@ class DeepslateOptions:
     system_prompt: str = "You are a helpful assistant."
     """System prompt dictating the behavior of the model."""
 
+    temperature: float = 1.0
+    """Sampling temperature for the model (0.0 to 2.0). Higher values produce more random output."""
+
     ws_url: Optional[str] = None
     """Optional direct WebSocket URL (bypasses standard auth URL construction)."""
 

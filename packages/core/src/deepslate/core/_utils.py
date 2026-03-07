@@ -69,6 +69,7 @@ def build_initialize_request(
     vad_config: VadConfig,
     system_prompt: str,
     tts_config: Optional[ElevenLabsTtsConfig] = None,
+    temperature: float = 1.0,
 ) -> proto.InitializeSessionRequest:
     """Build a proto.InitializeSessionRequest from core configuration objects.
 
@@ -106,6 +107,7 @@ def build_initialize_request(
         ),
         inference_configuration=proto.InferenceConfiguration(
             system_prompt=system_prompt,
+            temperature=temperature,
         ),
         tts_configuration=tts_proto,
     )

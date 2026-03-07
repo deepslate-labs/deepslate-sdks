@@ -250,21 +250,25 @@ class DeepslateRealtimeLLMService(LLMService):
             await self._send_msg(proto.ServiceBoundMessage(trigger_inference=proto.TriggerInference()))
 
     async def _handle_update_settings(self, frame: LLMUpdateSettingsFrame):
-        """Apply runtime setting changes. Currently handles system_prompt."""
-        new_prompt = frame.settings.get("system_prompt")
-        if new_prompt is None:
-            return
-        self._opts.system_prompt = new_prompt
-        if self._session_initialized:
-            await self._sync_system_prompt()
+        """Apply runtime setting changes. Handles system_prompt and temperature."""
+        updated = False
+        if (new_prompt := frame.settings.get("system_prompt")) is not None:
+            self._opts.system_prompt = new_prompt
+            updated = True
+        if (new_temp := frame.settings.get("temperature")) is not None:
+            self._opts.temperature = new_temp
+            updated = True
+        if updated and self._session_initialized:
+            await self._sync_inference_settings()
 
-    async def _sync_system_prompt(self):
-        """Send the current system prompt to the server via ReconfigureSessionRequest."""
+    async def _sync_inference_settings(self):
+        """Send current inference settings to the server via ReconfigureSessionRequest."""
         if not self._ws:
             return
         reconfig = proto.ReconfigureSessionRequest(
             inference_configuration=proto.InferenceConfiguration(
                 system_prompt=self._opts.system_prompt,
+                temperature=self._opts.temperature,
             )
         )
         await self._send_msg(proto.ServiceBoundMessage(reconfigure_session_request=reconfig))
@@ -362,6 +366,7 @@ class DeepslateRealtimeLLMService(LLMService):
             vad_config=self._vad_config,
             system_prompt=self._opts.system_prompt,
             tts_config=self._tts_config,
+            temperature=self._opts.temperature,
         )
 
         msg = proto.ServiceBoundMessage(initialize_session_request=init_request)
