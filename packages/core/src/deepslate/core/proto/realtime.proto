@@ -148,6 +148,12 @@ message VadConfiguration {
 message InferenceConfiguration {
   // System prompt to guide the model's behavior.
   string system_prompt = 1;
+
+  // Temperature setting for the model.
+  //
+  // This controls the randomness of the model's output. Higher values
+  // produce more random output, while lower values produce more deterministic output.
+  double temperature = 2;
 }
 
 /*
@@ -260,6 +266,13 @@ message InitializeSessionRequest {
 
   // TTS configuration. If not specified, raw text fragments are sent to the client.
   optional TtsConfiguration tts_configuration = 5;
+
+  // Whether the client supports playback position reporting.
+  //
+  // When true, the client will send PlaybackPositionReport messages
+  // with precise playback position data. When false (default), the
+  // server uses elapsed-time estimation for context truncation.
+  bool supports_playback_reporting = 6;
 }
 
 /*
@@ -351,7 +364,72 @@ message TriggerInference {
 /*
  * Request to export the chat history
  */
-message ExportChatHistoryRequest {}
+message ExportChatHistoryRequest {
+  // When true, wait for all in-flight async operations (e.g. transcriptions)
+  // to complete before responding with the chat history.
+  bool await_pending = 1;
+}
+
+/*
+ * Client-reported playback position.
+ *
+ * Sent by clients that support playback reporting to provide
+ * precise information about how many audio bytes have been played.
+ * This enables accurate context truncation on user interrupt.
+ *
+ * Only sent when the client declares `supports_playback_reporting = true`
+ * in the InitializeSessionRequest.
+ */
+message PlaybackPositionReport {
+  // Number of audio bytes played by the client.
+  uint64 bytes_played = 1;
+}
+
+/*
+ * Direct speech directive.
+ *
+ * Instructs the service to speak the given text directly via TTS,
+ * bypassing the LLM. Behaves like a user interruption: any active
+ * inference is cancelled and buffered audio is cleared before the
+ * new text is spoken.
+ */
+message DirectSpeech {
+  // Text to speak.
+  string text = 1;
+
+  // Whether this spoken text should be included as an assistant message
+  // in the chat history or not. When false, the text is spoken,
+  // but the LLM doesn't know that it was spoken. The message will be marked
+  // as ephemeral in the chat history.
+  bool include_in_history = 2;
+}
+
+/*
+ * Conversation query request.
+ *
+ * Prompts the LLM with the conversation history and a custom instruction,
+ * returning a complete text result. The query runs on a separate inference
+ * context and does not modify the main conversation.
+ *
+ * At least one of prompt or instructions should be provided.
+ */
+message ConversationQuery {
+  // Replaces the system prompt for this one-shot inference call.
+  // If absent, uses the session's current system prompt.
+  optional string prompt = 1;
+
+  // Appended as instructions after the conversation turns.
+  // If absent, no extra instructions are appended.
+  optional string instructions = 2;
+}
+
+/*
+ * Result of a conversation query.
+ */
+message ConversationQueryResult {
+  // The LLM's complete response text.
+  string text = 1;
+}
 
 /*
  * Message sent from the client to the service.
@@ -365,6 +443,9 @@ message ServiceBoundMessage {
     ToolCallResponse tool_call_response = 5;
     TriggerInference trigger_inference = 6;
     ExportChatHistoryRequest export_chat_history_request = 7;
+    PlaybackPositionReport playback_position_report = 8;
+    DirectSpeech direct_speech = 9;
+    ConversationQuery conversation_query = 10;
   }
 }
 
@@ -450,6 +531,14 @@ message ChatMessage {
    * Delivery status of this message.
    */
   ChatDeliveryStatus delivery_status = 3;
+
+  /*
+   * Whether this message is ephemeral.
+   *
+   * Ephemeral messages were spoken to the user but are
+   * not part of the LLM's context.
+   */
+  bool ephemeral = 4;
 }
 
 /*
@@ -508,6 +597,10 @@ message ChatAudioData {
 
   // Audio format (sample rate, channels, sample format).
   AudioLineConfiguration format = 2;
+
+  // Transcription of the audio content (when available).
+  // Populated asynchronously for user audio turns.
+  string transcription = 3;
 }
 
 /*
@@ -580,6 +673,24 @@ message SessionErrorNotification {
   optional string trace_id = 3;
 }
 
+/*
+ * Notification that a user audio turn has been transcribed.
+ *
+ * Sent asynchronously after the transcription worker processes a user
+ * audio turn. The turn_id identifies which conversation turn this
+ * transcription belongs to.
+ */
+message UserTranscriptionResult {
+  // Turn ID this transcription belongs to.
+  uint32 turn_id = 1;
+
+  // Transcribed text.
+  string text = 2;
+
+  // Detected language (ISO 639-1 code, e.g. "en").
+  string language = 3;
+}
+
 message ClientBoundMessage {
   oneof payload {
     ToolCallRequest tool_call_request = 1;
@@ -590,5 +701,7 @@ message ClientBoundMessage {
     ResponseEnd response_end = 6;
     ChatHistory chat_history = 7;
     SessionErrorNotification error = 8;
+    UserTranscriptionResult user_transcription_result = 9;
+    ConversationQueryResult conversation_query_result = 10;
   }
 }
