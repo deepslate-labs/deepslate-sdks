@@ -13,6 +13,7 @@ from deepslate.core.options import (
 )
 
 from ._service import DeepslateRealtimeLLMService
+from .frames import DeepslateExportChatHistoryFrame, DeepslateChatHistoryFrame
 
 # Backward-compatible alias — legacy code that imported DeepslateVadConfig continues to work.
 DeepslateVadConfig = VadConfig
@@ -24,4 +25,6 @@ __all__ = [
     "ElevenLabsLocation",
     "ElevenLabsTtsConfig",
     "DeepslateRealtimeLLMService",
+    "DeepslateExportChatHistoryFrame",
+    "DeepslateChatHistoryFrame",
 ]

@@ -63,6 +63,85 @@ ELEVENLABS_LOCATION_MAP: dict[ElevenLabsLocation, proto.ElevenLabsLocation] = {
 }
 
 
+def parse_chat_history(chat_history) -> list:
+    """Convert a proto ChatHistory into a list of plain Python dicts.
+
+    Explicitly maps the ``ephemeral`` flag on each message and the
+    ``transcription`` field on any ``ChatAudioData`` blocks so that
+    callers receive clean, serializable data without needing to touch
+    generated protobuf classes directly.
+
+    Each entry has the shape::
+
+        {
+            "role": "user" | "assistant" | "system",
+            "delivery_status": "DELIVERY_COMPLETE" | ...,
+            "ephemeral": bool,
+            "content": [
+                {"type": "text", "text": str, "tts_audio": {"transcription": str} | None},
+                {"type": "input_audio", "transcription": str},
+                {"type": "tool_call", "id": str, "name": str, "parameters": dict},
+                {"type": "tool_result", "id": str, "result": str},
+                {"type": "thoughts", "text": str},
+                {"type": "instructions", "text": str},
+            ],
+        }
+    """
+    messages = []
+    for msg in chat_history.messages:
+        content_blocks = []
+        for block in msg.content:
+            kind = block.WhichOneof("content")
+
+            if kind == "text_content":
+                tc = block.text_content
+                tts_audio = None
+                if tc.HasField("tts_audio"):
+                    tts_audio = {"transcription": tc.tts_audio.transcription}
+                content_blocks.append({
+                    "type": "text",
+                    "text": tc.text,
+                    "tts_audio": tts_audio,
+                })
+
+            elif kind == "input_audio":
+                content_blocks.append({
+                    "type": "input_audio",
+                    "transcription": block.input_audio.transcription,
+                })
+
+            elif kind == "tool_call":
+                tc = block.tool_call
+                content_blocks.append({
+                    "type": "tool_call",
+                    "id": tc.id,
+                    "name": tc.name,
+                    "parameters": struct_to_dict(tc.parameters) if tc.HasField("parameters") else {},
+                })
+
+            elif kind == "tool_result":
+                tr = block.tool_result
+                content_blocks.append({
+                    "type": "tool_result",
+                    "id": tr.id,
+                    "result": tr.result,
+                })
+
+            elif kind == "thoughts":
+                content_blocks.append({"type": "thoughts", "text": block.thoughts})
+
+            elif kind == "instructions":
+                content_blocks.append({"type": "instructions", "text": block.instructions})
+
+        messages.append({
+            "role": proto.ChatMessageRole.Name(msg.role).lower(),
+            "delivery_status": proto.ChatDeliveryStatus.Name(msg.delivery_status),
+            "ephemeral": msg.ephemeral,
+            "content": content_blocks,
+        })
+    return messages
+
+
 def build_initialize_request(
     sample_rate: int,
     num_channels: int,

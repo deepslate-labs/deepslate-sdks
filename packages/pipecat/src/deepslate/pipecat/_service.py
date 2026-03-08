@@ -27,10 +27,11 @@ from pipecat.frames.frames import (
 from pipecat.adapters.schemas.tools_schema import ToolsSchema
 from pipecat.services.llm_service import FunctionCallParams, LLMService
 
-from deepslate.core._utils import build_initialize_request, dict_to_struct, struct_to_dict
+from deepslate.core._utils import build_initialize_request, dict_to_struct, parse_chat_history, struct_to_dict
 from deepslate.core.client import BaseDeepslateClient
 from deepslate.core.options import DeepslateOptions, ElevenLabsTtsConfig, VadConfig
 from deepslate.core.proto import realtime_pb2 as proto
+from .frames import DeepslateExportChatHistoryFrame, DeepslateChatHistoryFrame
 
 
 class DeepslateRealtimeLLMService(LLMService):
@@ -169,6 +170,9 @@ class DeepslateRealtimeLLMService(LLMService):
         elif isinstance(frame, LLMUpdateSettingsFrame):
             await self._handle_update_settings(frame)
 
+        elif isinstance(frame, DeepslateExportChatHistoryFrame):
+            await self._handle_export_chat_history(frame)
+
         else:
             await self.push_frame(frame, direction)
 
@@ -248,6 +252,13 @@ class DeepslateRealtimeLLMService(LLMService):
 
         if frame.run_llm and self._session_initialized and self._ws:
             await self._send_msg(proto.ServiceBoundMessage(trigger_inference=proto.TriggerInference()))
+
+    async def _handle_export_chat_history(self, frame: DeepslateExportChatHistoryFrame):
+        """Send an ExportChatHistoryRequest to the Deepslate backend."""
+        if not self._ws:
+            return
+        req = proto.ExportChatHistoryRequest(await_pending=frame.await_pending)
+        await self._send_msg(proto.ServiceBoundMessage(export_chat_history_request=req))
 
     async def _handle_update_settings(self, frame: LLMUpdateSettingsFrame):
         """Apply runtime setting changes. Currently handles system_prompt."""
@@ -429,6 +440,10 @@ class DeepslateRealtimeLLMService(LLMService):
             req = msg.tool_call_request
             args_dict = struct_to_dict(req.parameters) if req.HasField("parameters") else {}
             asyncio.create_task(self._dispatch_function_call(req.id, req.name, args_dict))
+
+        elif payload_type == "chat_history":
+            messages = parse_chat_history(msg.chat_history)
+            await self.push_frame(DeepslateChatHistoryFrame(messages=messages))
 
         elif payload_type == "error":
             notification = msg.error
