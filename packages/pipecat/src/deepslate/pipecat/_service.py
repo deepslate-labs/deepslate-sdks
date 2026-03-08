@@ -32,6 +32,8 @@ from deepslate.core.client import BaseDeepslateClient
 from deepslate.core.options import DeepslateOptions, ElevenLabsTtsConfig, VadConfig
 from deepslate.core.proto import realtime_pb2 as proto
 
+from .frames import DeepslateTranscriptionFrame
+
 
 class DeepslateRealtimeLLMService(LLMService):
     """Pipecat service for Deepslate's end-to-end Speech-to-Speech Realtime API."""
@@ -420,7 +422,14 @@ class DeepslateRealtimeLLMService(LLMService):
             await self.push_frame(frame)
 
             if transcript:
-                await self.push_frame(LLMTextFrame(transcript))
+                await self.push_frame(DeepslateTranscriptionFrame(text=transcript, role="model"))
+
+        elif payload_type == "user_transcription_result":
+            result = msg.user_transcription_result
+            language = result.language or None
+            await self.push_frame(
+                DeepslateTranscriptionFrame(text=result.text, role="user", language=language)
+            )
 
         elif payload_type == "playback_clear_buffer":
             await self.push_frame(InterruptionFrame())
