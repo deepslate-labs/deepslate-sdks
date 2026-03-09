@@ -31,7 +31,7 @@ from deepslate.core._utils import build_initialize_request, dict_to_struct, pars
 from deepslate.core.client import BaseDeepslateClient
 from deepslate.core.options import DeepslateOptions, ElevenLabsTtsConfig, VadConfig
 from deepslate.core.proto import realtime_pb2 as proto
-from .frames import DeepslateExportChatHistoryFrame, DeepslateChatHistoryFrame
+from .frames import DeepslateExportChatHistoryFrame, DeepslateChatHistoryFrame, DeepslateDirectSpeechFrame
 
 
 class DeepslateRealtimeLLMService(LLMService):
@@ -173,6 +173,9 @@ class DeepslateRealtimeLLMService(LLMService):
         elif isinstance(frame, DeepslateExportChatHistoryFrame):
             await self._handle_export_chat_history(frame)
 
+        elif isinstance(frame, DeepslateDirectSpeechFrame):
+            await self._handle_direct_speech(frame)
+
         else:
             await self.push_frame(frame, direction)
 
@@ -260,22 +263,43 @@ class DeepslateRealtimeLLMService(LLMService):
         req = proto.ExportChatHistoryRequest(await_pending=frame.await_pending)
         await self._send_msg(proto.ServiceBoundMessage(export_chat_history_request=req))
 
-    async def _handle_update_settings(self, frame: LLMUpdateSettingsFrame):
-        """Apply runtime setting changes. Currently handles system_prompt."""
-        new_prompt = frame.settings.get("system_prompt")
-        if new_prompt is None:
+    async def _handle_direct_speech(self, frame: DeepslateDirectSpeechFrame):
+        """Send a DirectSpeech message to bypass the LLM and speak text via TTS."""
+        if not self._ws:
             return
-        self._opts.system_prompt = new_prompt
-        if self._session_initialized:
-            await self._sync_system_prompt()
 
-    async def _sync_system_prompt(self):
-        """Send the current system prompt to the server via ReconfigureSessionRequest."""
+        if not self._session_initialized:
+            self._detected_sample_rate = 16000
+            self._detected_num_channels = 1
+            await self._send_initialize_session()
+            self._session_initialized = True
+
+        direct_speech = proto.DirectSpeech(
+            text=frame.text,
+            include_in_history=frame.include_in_history,
+        )
+        await self._send_msg(proto.ServiceBoundMessage(direct_speech=direct_speech))
+
+    async def _handle_update_settings(self, frame: LLMUpdateSettingsFrame):
+        """Apply runtime setting changes. Handles system_prompt and temperature."""
+        updated = False
+        if (new_prompt := frame.settings.get("system_prompt")) is not None:
+            self._opts.system_prompt = new_prompt
+            updated = True
+        if (new_temp := frame.settings.get("temperature")) is not None:
+            self._opts.temperature = new_temp
+            updated = True
+        if updated and self._session_initialized:
+            await self._sync_inference_settings()
+
+    async def _sync_inference_settings(self):
+        """Send current inference settings to the server via ReconfigureSessionRequest."""
         if not self._ws:
             return
         reconfig = proto.ReconfigureSessionRequest(
             inference_configuration=proto.InferenceConfiguration(
                 system_prompt=self._opts.system_prompt,
+                temperature=self._opts.temperature,
             )
         )
         await self._send_msg(proto.ServiceBoundMessage(reconfigure_session_request=reconfig))
@@ -373,6 +397,7 @@ class DeepslateRealtimeLLMService(LLMService):
             vad_config=self._vad_config,
             system_prompt=self._opts.system_prompt,
             tts_config=self._tts_config,
+            temperature=self._opts.temperature,
         )
 
         msg = proto.ServiceBoundMessage(initialize_session_request=init_request)

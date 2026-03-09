@@ -72,6 +72,7 @@ class RealtimeModel(llm.RealtimeModel):
         api_key: str | None = None,
         base_url: str = DEEPSLATE_BASE_URL,
         system_prompt: str = "You are a helpful assistant.",
+        temperature: float = 1.0,
         generate_reply_timeout: float = 30.0,
         # VAD configuration
         vad_confidence_threshold: float = 0.5,
@@ -93,6 +94,7 @@ class RealtimeModel(llm.RealtimeModel):
             api_key: Deepslate API key. Falls back to DEEPSLATE_API_KEY env var.
             base_url: Base URL for Deepslate API.
             system_prompt: System prompt for the model.
+            temperature: Sampling temperature (0.0 to 2.0). Higher values produce more random output.
             generate_reply_timeout: Timeout in seconds for generate_reply (0 = no timeout).
             vad_confidence_threshold: VAD confidence threshold (0.0 to 1.0).
             vad_min_volume: VAD minimum volume threshold (0.0 to 1.0).
@@ -150,6 +152,7 @@ class RealtimeModel(llm.RealtimeModel):
             api_key=deepslate_api_key,
             base_url=base_url,
             system_prompt=system_prompt,
+            temperature=temperature,
             ws_url=ws_url,
             generate_reply_timeout=generate_reply_timeout,
         )
@@ -180,10 +183,18 @@ class RealtimeModel(llm.RealtimeModel):
         self,
         *,
         system_prompt: NotGivenOr[str] = NOT_GIVEN,
+        temperature: NotGivenOr[float] = NOT_GIVEN,
     ) -> None:
-        """Update model options."""
+        """Update model options.
+
+        Note: Changes take effect on the next session initialization (e.g., after reconnect).
+        Mid-session reconfiguration via ReconfigureSessionRequest is not yet implemented for
+        the LiveKit plugin. See TODO in DeepslateRealtimeSession._queue_initialize_session.
+        """
         if utils.is_given(system_prompt):
             self._opts.system_prompt = system_prompt
+        if utils.is_given(temperature):
+            self._opts.temperature = temperature
 
     async def aclose(self) -> None:
         await self._client.aclose()
@@ -361,6 +372,16 @@ class DeepslateRealtimeSession(
         msg = proto.ServiceBoundMessage(user_input=user_input)
         self._send_message(msg)
 
+    def speak_direct(self, text: str, include_in_history: bool = True) -> None:
+        """Bypass the LLM and speak text directly via TTS, canceling active inference."""
+        self._ensure_session_initialized()
+        direct_speech = proto.DirectSpeech(
+            text=text,
+            include_in_history=include_in_history,
+        )
+        msg = proto.ServiceBoundMessage(direct_speech=direct_speech)
+        self._send_message(msg)
+
     def export_chat_history(self, await_pending: bool = False) -> None:
         """Request the server to export the current chat history.
 
@@ -476,12 +497,15 @@ class DeepslateRealtimeSession(
             logger.error("cannot initialize session: audio format not detected")
             return
 
+        # TODO: mid-session temperature/system_prompt changes are not propagated via
+        # ReconfigureSessionRequest. They only take effect on the next session init.
         init_request = build_initialize_request(
             sample_rate=self._detected_sample_rate,
             num_channels=self._detected_num_channels,
             vad_config=self._vad_config,
             system_prompt=self._opts.system_prompt,
             tts_config=self._realtime_model._tts_config,
+            temperature=self._opts.temperature,
         )
 
         msg = proto.ServiceBoundMessage(initialize_session_request=init_request)
