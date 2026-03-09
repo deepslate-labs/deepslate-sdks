@@ -1,14 +1,8 @@
 from dataclasses import dataclass, field
-from typing import Any, TypedDict
 
 from pipecat.frames.frames import Frame
 
-
-class ChatMessageDict(TypedDict):
-    role: str
-    delivery_status: str
-    ephemeral: bool
-    content: list[dict[str, Any]]
+from deepslate.core import ChatMessageDict
 
 
 @dataclass
