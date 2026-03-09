@@ -382,6 +382,18 @@ class DeepslateRealtimeSession(
         msg = proto.ServiceBoundMessage(direct_speech=direct_speech)
         self._send_message(msg)
 
+    def export_chat_history(self, await_pending: bool = False) -> None:
+        """Request the server to export the current chat history.
+
+        The server will respond with a ``chat_history`` message, which is
+        emitted as a ``chat_history_exported`` event carrying the raw
+        ``proto.ChatHistory`` object (including ``ephemeral`` flags and
+        ``transcription`` fields on audio blocks).
+        """
+        req = proto.ExportChatHistoryRequest(await_pending=await_pending)
+        msg = proto.ServiceBoundMessage(export_chat_history_request=req)
+        self._send_message(msg)
+
     def generate_reply(
         self, *, instructions: NotGivenOr[str] = NOT_GIVEN
     ) -> asyncio.Future[GenerationCreatedEvent]:
@@ -680,6 +692,8 @@ class DeepslateRealtimeSession(
             self._handle_response_begin()
         elif payload_type == "response_end":
             self._handle_response_end()
+        elif payload_type == "chat_history":
+            self.emit("chat_history_exported", msg.chat_history)
         elif payload_type == "error":
             self._handle_error_notification(msg.error)
         else:
