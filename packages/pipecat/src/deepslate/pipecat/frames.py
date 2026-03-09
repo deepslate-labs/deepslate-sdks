@@ -1,6 +1,14 @@
 from dataclasses import dataclass, field
+from typing import Any, TypedDict
 
 from pipecat.frames.frames import Frame
+
+
+class ChatMessageDict(TypedDict):
+    role: str
+    delivery_status: str
+    ephemeral: bool
+    content: list[dict[str, Any]]
 
 
 @dataclass
@@ -69,4 +77,4 @@ class DeepslateChatHistoryFrame(Frame):
         messages: Ordered list of parsed chat message dicts.
     """
 
-    messages: list = field(default_factory=list)
+    messages: list[ChatMessageDict] = field(default_factory=list)

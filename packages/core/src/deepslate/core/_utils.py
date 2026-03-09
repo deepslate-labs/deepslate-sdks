@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Optional
 from urllib.parse import urlparse
 
 from google.protobuf import json_format
@@ -63,7 +63,7 @@ ELEVENLABS_LOCATION_MAP: dict[ElevenLabsLocation, proto.ElevenLabsLocation] = {
 }
 
 
-def parse_chat_history(chat_history) -> list:
+def parse_chat_history(chat_history) -> list[dict[str, Any]]:
     """Convert a proto ChatHistory into a list of plain Python dicts.
 
     Explicitly maps the ``ephemeral`` flag on each message and the
@@ -97,7 +97,10 @@ def parse_chat_history(chat_history) -> list:
                 tc = block.text_content
                 tts_audio = None
                 if tc.HasField("tts_audio"):
-                    tts_audio = {"transcription": tc.tts_audio.transcription}
+                    tts_audio = {
+                        "audio": tc.tts_audio.audio.data,
+                        "transcription": tc.tts_audio.transcription,
+                    }
                 content_blocks.append({
                     "type": "text",
                     "text": tc.text,
@@ -107,6 +110,7 @@ def parse_chat_history(chat_history) -> list:
             elif kind == "input_audio":
                 content_blocks.append({
                     "type": "input_audio",
+                    "audio": block.input_audio.audio.data,
                     "transcription": block.input_audio.transcription,
                 })
 
