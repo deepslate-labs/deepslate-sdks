@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Optional
 
-from pipecat.frames.frames import Frame
+from pipecat.frames.frames import Frame, TranscriptionFrame
 
 from deepslate.core import ChatMessageDict
 
@@ -92,15 +92,21 @@ class DeepslateDirectSpeechFrame(Frame):
     include_in_history: bool = True
 
 @dataclass
-class DeepslateTranscriptionFrame(Frame):
-    """Carries a speech transcription produced by Deepslate.
+class DeepslateUserTranscriptionFrame(TranscriptionFrame):
+    """User STT transcription produced by Deepslate.
+
+    Inherits ``text``, ``user_id``, ``timestamp``, and ``language`` from
+    Pipecat's :class:`~pipecat.frames.frames.TranscriptionFrame` so that
+    standard Pipecat consumers can ``isinstance``-check against the base class.
+    """
+
+
+@dataclass
+class DeepslateModelTranscriptionFrame(Frame):
+    """TTS word-alignment transcription for model audio produced by Deepslate.
 
     Attributes:
-        text:     The transcribed text.
-        role:     ``"user"`` for STT results, ``"model"`` for TTS word-alignment.
-        language: ISO 639-1 language code (e.g. ``"en"``), if provided by the server.
+        text: The transcribed text aligned to the model's TTS output.
     """
 
     text: str
-    role: str
-    language: Optional[str] = None

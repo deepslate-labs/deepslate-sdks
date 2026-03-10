@@ -1,5 +1,6 @@
 import asyncio
 import json
+import time
 from typing import Any, List, Optional
 
 import aiohttp
@@ -31,9 +32,13 @@ from deepslate.core._utils import build_initialize_request, dict_to_struct, pars
 from deepslate.core.client import BaseDeepslateClient
 from deepslate.core.options import DeepslateOptions, ElevenLabsTtsConfig, VadConfig
 from deepslate.core.proto import realtime_pb2 as proto
-from .frames import DeepslateExportChatHistoryFrame, DeepslateChatHistoryFrame, DeepslateDirectSpeechFrame
-
-from .frames import DeepslateTranscriptionFrame
+from .frames import (
+    DeepslateExportChatHistoryFrame,
+    DeepslateChatHistoryFrame,
+    DeepslateDirectSpeechFrame,
+    DeepslateUserTranscriptionFrame,
+    DeepslateModelTranscriptionFrame,
+)
 
 
 class DeepslateRealtimeLLMService(LLMService):
@@ -458,13 +463,18 @@ class DeepslateRealtimeLLMService(LLMService):
             await self.push_frame(frame)
 
             if transcript:
-                await self.push_frame(DeepslateTranscriptionFrame(text=transcript, role="model"))
+                await self.push_frame(DeepslateModelTranscriptionFrame(text=transcript))
 
         elif payload_type == "user_transcription_result":
             result = msg.user_transcription_result
             language = result.language or None
             await self.push_frame(
-                DeepslateTranscriptionFrame(text=result.text, role="user", language=language)
+                DeepslateUserTranscriptionFrame(
+                    text=result.text,
+                    user_id="user",
+                    timestamp=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                    language=language,
+                )
             )
 
         elif payload_type == "playback_clear_buffer":
