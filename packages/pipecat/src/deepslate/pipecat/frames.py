@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
+from typing import Optional
 
-from pipecat.frames.frames import Frame
+from pipecat.frames.frames import Frame, TranscriptionFrame
 
 from deepslate.core import ChatMessageDict
 
@@ -89,3 +90,15 @@ class DeepslateDirectSpeechFrame(Frame):
 
     text: str
     include_in_history: bool = True
+
+@dataclass
+class DeepslateUserTranscriptionFrame(TranscriptionFrame):
+    """User STT transcription produced by Deepslate."""
+
+
+@dataclass
+class DeepslateModelTranscriptionFrame(Frame):
+    """TTS word-alignment transcription for model audio produced by Deepslate."""
+
+    text: str
+    """The transcribed text aligned to the model's TTS output."""

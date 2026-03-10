@@ -201,7 +201,14 @@ class RealtimeModel(llm.RealtimeModel):
 
 
 class DeepslateRealtimeSession(
-    llm.RealtimeSession[Literal["deepslate_server_event_received", "deepslate_client_event_sent"]]
+    llm.RealtimeSession[
+        Literal[
+            "deepslate_server_event_received",
+            "deepslate_client_event_sent",
+            "user_transcription",
+            "audio_transcript",
+        ]
+    ]
 ):
     """A session for the Deepslate Realtime API.
 
@@ -694,6 +701,8 @@ class DeepslateRealtimeSession(
             self._handle_response_end()
         elif payload_type == "chat_history":
             self.emit("chat_history_exported", msg.chat_history)
+        elif payload_type == "user_transcription_result":
+            self.emit("user_transcription", msg.user_transcription_result)
         elif payload_type == "error":
             self._handle_error_notification(msg.error)
         else:
@@ -741,8 +750,8 @@ class DeepslateRealtimeSession(
             self._current_generation.first_token_timestamp = time.time()
 
         if chunk.transcript:
-            self._current_generation.text_ch.send_nowait(chunk.transcript)
             self._current_generation.audio_transcript += chunk.transcript
+            self.emit("audio_transcript", chunk.transcript)
 
     def _handle_tool_call_request(self, request: proto.ToolCallRequest) -> None:
         """Handle tool call requests from model."""
