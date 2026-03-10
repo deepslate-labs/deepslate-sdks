@@ -8,6 +8,16 @@ from google.protobuf.struct_pb2 import Struct
 
 from .options import ElevenLabsLocation, ElevenLabsTtsConfig, VadConfig
 from .proto import realtime_pb2 as proto
+from ._types import (
+    ChatMessageDict,
+    InputAudioContentDict,
+    InstructionsContentDict,
+    TextContentDict,
+    ThoughtsContentDict,
+    ToolCallContentDict,
+    ToolResultContentDict,
+    TtsAudioDict,
+)
 
 
 def duration_from_ms(ms: int) -> proto.Duration:
@@ -63,12 +73,96 @@ ELEVENLABS_LOCATION_MAP: dict[ElevenLabsLocation, proto.ElevenLabsLocation] = {
 }
 
 
+def parse_chat_history(chat_history) -> list[ChatMessageDict]:
+    """Convert a proto ChatHistory into a list of plain Python dicts.
+
+    Explicitly maps the ``ephemeral`` flag on each message and the
+    ``transcription`` field on any ``ChatAudioData`` blocks so that
+    callers receive clean, serializable data without needing to touch
+    generated protobuf classes directly.
+
+    Each entry has the shape::
+
+        {
+            "role": "user" | "assistant" | "system",
+            "delivery_status": "DELIVERY_COMPLETE" | ...,
+            "ephemeral": bool,
+            "content": [
+                {"type": "text", "text": str, "tts_audio": {"transcription": str} | None},
+                {"type": "input_audio", "transcription": str},
+                {"type": "tool_call", "id": str, "name": str, "parameters": dict},
+                {"type": "tool_result", "id": str, "result": str},
+                {"type": "thoughts", "text": str},
+                {"type": "instructions", "text": str},
+            ],
+        }
+    """
+    messages = []
+    for msg in chat_history.messages:
+        content_blocks = []
+        for block in msg.content:
+            kind = block.WhichOneof("content")
+
+            if kind == "text_content":
+                tc = block.text_content
+                tts_audio: TtsAudioDict | None = None
+                if tc.HasField("tts_audio"):
+                    tts_audio = TtsAudioDict(
+                        audio=tc.tts_audio.audio.data,
+                        transcription=tc.tts_audio.transcription,
+                    )
+                content_blocks.append(TextContentDict(
+                    type="text",
+                    text=tc.text,
+                    tts_audio=tts_audio,
+                ))
+
+            elif kind == "input_audio":
+                content_blocks.append(InputAudioContentDict(
+                    type="input_audio",
+                    audio=block.input_audio.audio.data,
+                    transcription=block.input_audio.transcription,
+                ))
+
+            elif kind == "tool_call":
+                tc = block.tool_call
+                content_blocks.append(ToolCallContentDict(
+                    type="tool_call",
+                    id=tc.id,
+                    name=tc.name,
+                    parameters=struct_to_dict(tc.parameters) if tc.HasField("parameters") else {},
+                ))
+
+            elif kind == "tool_result":
+                tr = block.tool_result
+                content_blocks.append(ToolResultContentDict(
+                    type="tool_result",
+                    id=tr.id,
+                    result=tr.result,
+                ))
+
+            elif kind == "thoughts":
+                content_blocks.append(ThoughtsContentDict(type="thoughts", text=block.thoughts))
+
+            elif kind == "instructions":
+                content_blocks.append(InstructionsContentDict(type="instructions", text=block.instructions))
+
+        messages.append(ChatMessageDict(
+            role=proto.ChatMessageRole.Name(msg.role).lower(),
+            delivery_status=proto.ChatDeliveryStatus.Name(msg.delivery_status),
+            ephemeral=msg.ephemeral,
+            content=content_blocks,
+        ))
+    return messages
+
+
 def build_initialize_request(
     sample_rate: int,
     num_channels: int,
     vad_config: VadConfig,
     system_prompt: str,
     tts_config: Optional[ElevenLabsTtsConfig] = None,
+    temperature: float = 1.0,
 ) -> proto.InitializeSessionRequest:
     """Build a proto.InitializeSessionRequest from core configuration objects.
 
@@ -106,6 +200,7 @@ def build_initialize_request(
         ),
         inference_configuration=proto.InferenceConfiguration(
             system_prompt=system_prompt,
+            temperature=temperature,
         ),
         tts_configuration=tts_proto,
     )
