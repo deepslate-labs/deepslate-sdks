@@ -93,20 +93,12 @@ class DeepslateDirectSpeechFrame(Frame):
 
 @dataclass
 class DeepslateUserTranscriptionFrame(TranscriptionFrame):
-    """User STT transcription produced by Deepslate.
-
-    Inherits ``text``, ``user_id``, ``timestamp``, and ``language`` from
-    Pipecat's :class:`~pipecat.frames.frames.TranscriptionFrame` so that
-    standard Pipecat consumers can ``isinstance``-check against the base class.
-    """
+    """User STT transcription produced by Deepslate."""
 
 
 @dataclass
 class DeepslateModelTranscriptionFrame(Frame):
-    """TTS word-alignment transcription for model audio produced by Deepslate.
-
-    Attributes:
-        text: The transcribed text aligned to the model's TTS output.
-    """
+    """TTS word-alignment transcription for model audio produced by Deepslate."""
 
     text: str
+    """The transcribed text aligned to the model's TTS output."""
