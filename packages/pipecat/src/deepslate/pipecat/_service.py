@@ -38,6 +38,8 @@ from .frames import (
     DeepslateDirectSpeechFrame,
     DeepslateUserTranscriptionFrame,
     DeepslateModelTranscriptionFrame,
+    DeepslateConversationQueryFrame,
+    DeepslateConversationQueryResultFrame,
 )
 
 
@@ -183,6 +185,9 @@ class DeepslateRealtimeLLMService(LLMService):
         elif isinstance(frame, DeepslateDirectSpeechFrame):
             await self._handle_direct_speech(frame)
 
+        elif isinstance(frame, DeepslateConversationQueryFrame):
+            await self._handle_conversation_query(frame)
+
         else:
             await self.push_frame(frame, direction)
 
@@ -208,11 +213,7 @@ class DeepslateRealtimeLLMService(LLMService):
         if not self._ws:
             return
 
-        if not self._session_initialized:
-            self._detected_sample_rate = 16000
-            self._detected_num_channels = 1
-            await self._send_initialize_session()
-            self._session_initialized = True
+        await self._ensure_session_initialized()
 
         system_parts: List[str] = []
 
@@ -270,16 +271,26 @@ class DeepslateRealtimeLLMService(LLMService):
         req = proto.ExportChatHistoryRequest(await_pending=frame.await_pending)
         await self._send_msg(proto.ServiceBoundMessage(export_chat_history_request=req))
 
+    async def _handle_conversation_query(self, frame: DeepslateConversationQueryFrame):
+        """Send a ConversationQuery to run a side-channel inference against the conversation."""
+        if not self._ws:
+            return
+
+        await self._ensure_session_initialized()
+
+        query = proto.ConversationQuery()
+        if frame.prompt is not None:
+            query.prompt = frame.prompt
+        if frame.instructions is not None:
+            query.instructions = frame.instructions
+        await self._send_msg(proto.ServiceBoundMessage(conversation_query=query))
+
     async def _handle_direct_speech(self, frame: DeepslateDirectSpeechFrame):
         """Send a DirectSpeech message to bypass the LLM and speak text via TTS."""
         if not self._ws:
             return
 
-        if not self._session_initialized:
-            self._detected_sample_rate = 16000
-            self._detected_num_channels = 1
-            await self._send_initialize_session()
-            self._session_initialized = True
+        await self._ensure_session_initialized()
 
         direct_speech = proto.DirectSpeech(
             text=frame.text,
@@ -316,13 +327,9 @@ class DeepslateRealtimeLLMService(LLMService):
         if not self._ws:
             return
 
-        if not self._session_initialized:
-            self._detected_sample_rate = frame.sample_rate
-            self._detected_num_channels = frame.num_channels
-            await self._send_initialize_session()
-            self._session_initialized = True
+        await self._ensure_session_initialized(frame.sample_rate, frame.num_channels)
 
-        elif (frame.sample_rate != self._detected_sample_rate or
+        if (frame.sample_rate != self._detected_sample_rate or
               frame.num_channels != self._detected_num_channels):
             self._detected_sample_rate = frame.sample_rate
             self._detected_num_channels = frame.num_channels
@@ -349,11 +356,7 @@ class DeepslateRealtimeLLMService(LLMService):
         if not self._ws:
             return
 
-        if not self._session_initialized:
-            self._detected_sample_rate = 16000
-            self._detected_num_channels = 1
-            await self._send_initialize_session()
-            self._session_initialized = True
+        await self._ensure_session_initialized()
 
         self._packet_id_counter += 1
         user_input = proto.UserInput(
@@ -395,6 +398,15 @@ class DeepslateRealtimeLLMService(LLMService):
         result_str = frame.result if isinstance(frame.result, str) else json.dumps(frame.result)
         response = proto.ToolCallResponse(id=frame.tool_call_id, result=result_str)
         await self._send_msg(proto.ServiceBoundMessage(tool_call_response=response))
+
+    async def _ensure_session_initialized(self, sample_rate: int = 16000, num_channels: int = 1):
+        """Initialize the session if it hasn't been already."""
+        if self._session_initialized:
+            return
+        self._detected_sample_rate = sample_rate
+        self._detected_num_channels = num_channels
+        await self._send_initialize_session()
+        self._session_initialized = True
 
     async def _send_initialize_session(self):
         """Constructs and sends the initialize payload based on config."""
@@ -484,6 +496,10 @@ class DeepslateRealtimeLLMService(LLMService):
             req = msg.tool_call_request
             args_dict = struct_to_dict(req.parameters) if req.HasField("parameters") else {}
             asyncio.create_task(self._dispatch_function_call(req.id, req.name, args_dict))
+
+        elif payload_type == "conversation_query_result":
+            text = msg.conversation_query_result.text
+            await self.push_frame(DeepslateConversationQueryResultFrame(text=text))
 
         elif payload_type == "chat_history":
             messages = parse_chat_history(msg.chat_history)

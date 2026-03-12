@@ -247,6 +247,9 @@ class DeepslateRealtimeSession(
         self._response_created_futures: dict[str, asyncio.Future[GenerationCreatedEvent]] = {}
         self._pending_user_generation: bool = False
 
+        # Conversation query tracking
+        self._pending_queries: asyncio.Queue[asyncio.Future[str]] = asyncio.Queue()
+
         # Main task
         self._main_atask = asyncio.create_task(
             self._main_task(), name="DeepslateRealtimeSession._main_task"
@@ -388,6 +391,31 @@ class DeepslateRealtimeSession(
         )
         msg = proto.ServiceBoundMessage(direct_speech=direct_speech)
         self._send_message(msg)
+
+    def query_conversation(
+        self,
+        prompt: str | None = None,
+        instructions: str | None = None,
+    ) -> asyncio.Future[str]:
+        """Run a one-shot side-channel inference query against the current conversation.
+
+        The query runs independently of the main voice conversation and does not
+        affect the conversation history.  The returned future resolves to the
+        LLM's complete text reply once the server responds.
+        """
+        self._ensure_session_initialized()
+
+        fut: asyncio.Future[str] = asyncio.get_event_loop().create_future()
+        self._pending_queries.put_nowait(fut)
+
+        query = proto.ConversationQuery()
+        if prompt is not None:
+            query.prompt = prompt
+        if instructions is not None:
+            query.instructions = instructions
+        self._send_message(proto.ServiceBoundMessage(conversation_query=query))
+
+        return fut
 
     def export_chat_history(self, await_pending: bool = False) -> None:
         """Request the server to export the current chat history.
@@ -699,6 +727,13 @@ class DeepslateRealtimeSession(
             self._handle_response_begin()
         elif payload_type == "response_end":
             self._handle_response_end()
+        elif payload_type == "conversation_query_result":
+            if not self._pending_queries.empty():
+                fut = self._pending_queries.get_nowait()
+                if not fut.done():
+                    fut.set_result(msg.conversation_query_result.text)
+            else:
+                logger.warning("received conversation_query_result with no pending query future")
         elif payload_type == "chat_history":
             self.emit("chat_history_exported", msg.chat_history)
         elif payload_type == "user_transcription_result":
