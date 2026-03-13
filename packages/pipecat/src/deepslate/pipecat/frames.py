@@ -8,14 +8,10 @@ from deepslate.core import ChatMessageDict
 
 @dataclass
 class DeepslateExportChatHistoryFrame(Frame):
-    """Triggers a chat history export request to the Deepslate backend.
-
-    Attributes:
-        await_pending: When True, the server waits for all in-flight async
-            operations (e.g. transcriptions) to complete before responding.
-    """
+    """Triggers a chat history export request to the Deepslate backend."""
 
     await_pending: bool = False
+    """When True, the server waits for all in-flight async operations (e.g. transcriptions) to complete before responding."""
 
 
 @dataclass
@@ -102,3 +98,21 @@ class DeepslateModelTranscriptionFrame(Frame):
 
     text: str
     """The transcribed text aligned to the model's TTS output."""
+
+@dataclass
+class DeepslateConversationQueryFrame(Frame):
+    """Triggers a one-shot side-channel inference query to the Deepslate backend."""
+
+    prompt: Optional[str] = None
+    """Optional system prompt override for this query."""
+
+    instructions: Optional[str] = None
+    """Optional extra instructions appended to the conversation turns."""
+
+
+@dataclass
+class DeepslateConversationQueryResultFrame(Frame):
+    """Carries the result of a side-channel conversation query pushed down the pipeline."""
+
+    text: str = ""
+    """The LLM's complete text reply to the conversation query."""

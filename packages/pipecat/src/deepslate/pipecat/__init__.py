@@ -19,6 +19,8 @@ from .frames import (
     DeepslateDirectSpeechFrame,
     DeepslateUserTranscriptionFrame,
     DeepslateModelTranscriptionFrame,
+    DeepslateConversationQueryFrame,
+    DeepslateConversationQueryResultFrame,
 )
 
 # Backward-compatible alias — legacy code that imported DeepslateVadConfig continues to work.
@@ -36,4 +38,6 @@ __all__ = [
     "DeepslateExportChatHistoryFrame",
     "DeepslateChatHistoryFrame",
     "DeepslateDirectSpeechFrame",
+    "DeepslateConversationQueryFrame",
+    "DeepslateConversationQueryResultFrame",
 ]
