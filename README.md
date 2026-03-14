@@ -18,7 +18,7 @@ This monorepo contains three published packages:
 |---|---|---|
 | [`deepslate-livekit`](packages/livekit/README.md) | `pip install deepslate-livekit` | `RealtimeModel` plugin for [LiveKit Agents](https://github.com/livekit/agents) |
 | [`deepslate-pipecat`](packages/pipecat/README.md) | `pip install deepslate-pipecat` | `LLMService` plugin for [Pipecat](https://github.com/pipecat-ai/pipecat) |
-| [`deepslate-core`](packages/core/README.md) | `pip install deepslate-core` | Shared models, base client, and protobuf definitions (internal) |
+| [`deepslate-core`](packages/core/README.md) | `pip install deepslate-core` | Shared transport, `DeepslateSession`, and protobuf definitions — install directly to build custom integrations |
 
 ### Repository Structure
 

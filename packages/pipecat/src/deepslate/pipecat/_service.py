@@ -1,9 +1,7 @@
 import asyncio
-import json
 import time
 from typing import Any, List, Optional
 
-import aiohttp
 from loguru import logger
 
 from pipecat.frames.frames import (
@@ -28,10 +26,13 @@ from pipecat.frames.frames import (
 from pipecat.adapters.schemas.tools_schema import ToolsSchema
 from pipecat.services.llm_service import FunctionCallParams, LLMService
 
-from deepslate.core._utils import build_initialize_request, dict_to_struct, parse_chat_history, struct_to_dict
-from deepslate.core.client import BaseDeepslateClient
-from deepslate.core.options import DeepslateOptions, ElevenLabsTtsConfig, VadConfig
-from deepslate.core.proto import realtime_pb2 as proto
+from deepslate.core import (
+    DeepslateOptions,
+    DeepslateSession,
+    ElevenLabsTtsConfig,
+    InferenceTriggerMode,
+    VadConfig,
+)
 from .frames import (
     DeepslateExportChatHistoryFrame,
     DeepslateChatHistoryFrame,
@@ -58,108 +59,66 @@ class DeepslateRealtimeLLMService(LLMService):
         self._vad_config = vad_config or VadConfig()
         self._tts_config = tts_config
 
-        self._ws: Optional[aiohttp.ClientWebSocketResponse] = None
-        self._client: Optional[BaseDeepslateClient] = None
-
-        self._receive_task: Optional[asyncio.Task] = None
-        self._main_task: Optional[asyncio.Task] = None
-        self._session_initialized = False
-        self._should_stop = False
+        self._session: Optional[DeepslateSession] = None
         self._tools: List[dict] = []
 
-        self._detected_sample_rate: Optional[int] = None
-        self._detected_num_channels: Optional[int] = None
-        self._packet_id_counter: int = 0
-
     async def start(self, frame: StartFrame):
-        """Starts the Pipecat service and initializes the WebSocket connection."""
+        """Starts the Pipecat service and opens the Deepslate connection."""
         await super().start(frame)
-        self._client = BaseDeepslateClient(self._opts, user_agent="PipecatDeepslate/1.0")
-        self._should_stop = False
-        self._main_task = asyncio.create_task(self._main_event_loop())
+        self._session = DeepslateSession.create(
+            self._opts,
+            vad_config=self._vad_config,
+            tts_config=self._tts_config,
+            user_agent="PipecatDeepslate/1.0",
+            on_text_fragment=self._on_text_fragment,
+            on_audio_chunk=self._on_audio_chunk,
+            on_tool_call=self._on_tool_call,
+            on_error=self._on_error,
+            on_response_begin=self._on_response_begin,
+            on_response_end=self._on_response_end,
+            on_user_transcription=self._on_user_transcription,
+            on_interruption=self._on_interruption,
+            on_chat_history=self._on_chat_history,
+            on_conversation_query_result=self._on_conversation_query_result,
+            on_fatal_error=self._on_fatal_error,
+        )
+        await self._session.start()
 
     async def stop(self, frame: EndFrame):
         """Stops the Pipecat service."""
-        self._should_stop = True
         await self._disconnect()
         await super().stop(frame)
 
     async def cancel(self, frame: CancelFrame):
         """Cancels the Pipecat service immediately."""
-        self._should_stop = True
         await self._disconnect()
         await super().cancel(frame)
 
-    async def _main_event_loop(self):
-        """Main event loop with reconnection support."""
-
-        async def _on_fatal_error(e: Exception) -> None:
-            error_msg = f"Connection failed: {e}"
-            await self.push_frame(ErrorFrame(error_msg))
-
-        await self._client.run_with_retry(
-            self._run_session,
-            should_continue=lambda: not self._should_stop,
-            on_fatal_error=_on_fatal_error,
-        )
-        logger.info("Main event loop terminated")
-
-    async def _run_session(self, ws: aiohttp.ClientWebSocketResponse) -> None:
-        """Run one WebSocket session until it closes."""
-        self._ws = ws
-        logger.info("Successfully connected to Deepslate Realtime API.")
-        self._receive_task = asyncio.create_task(self._receive_loop())
-        try:
-            await self._receive_task
-        finally:
-            self._ws = None
-            self._session_initialized = False
-            if not self._should_stop:
-                logger.info("WebSocket connection closed, attempting to reconnect...")
-
     async def _disconnect(self):
-        """Close tasks and connections cleanly."""
-        if self._receive_task and not self._receive_task.done():
-            self._receive_task.cancel()
-            try:
-                await self._receive_task
-            except asyncio.CancelledError:
-                pass
-
-        if self._main_task and not self._main_task.done():
-            self._main_task.cancel()
-            try:
-                await self._main_task
-            except asyncio.CancelledError:
-                pass
-
-        if self._ws and not self._ws.closed:
-            await self._ws.close()
-
-        if self._client is not None:
-            await self._client.aclose()
-            self._client = None
-
-        self._session_initialized = False
+        if self._session is not None:
+            await self._session.close()  # also closes the owned client
+            self._session = None
 
     async def process_frame(self, frame: Frame, direction: Any):
         """Handle incoming frames from the Pipecat pipeline."""
         await super().process_frame(frame, direction)
 
         if isinstance(frame, AudioRawFrame):
-            await self._handle_audio_input(frame)
+            if self._session is not None:
+                await self._session.send_audio(
+                    frame.audio, frame.sample_rate, frame.num_channels
+                )
 
         elif isinstance(frame, TextFrame):
-            await self._handle_text_input(frame.text)
+            if self._session is not None:
+                await self._session.send_text(frame.text)
 
         elif isinstance(frame, FunctionCallResultFrame):
-            await self._handle_function_result(frame)
+            if self._session is not None:
+                await self._session.send_tool_response(frame.tool_call_id, frame.result)
 
         elif isinstance(frame, LLMSetToolsFrame):
-            # Capture tool definitions and sync with server.
-            # In pipecat >=0.0.104, frame.tools may be a ToolsSchema object
-            # instead of a plain List[dict].  Normalise to List[dict] so that
-            # _sync_tools can iterate and call .get() on each entry.
+            # Normalise ToolsSchema (pipecat >=0.0.104) to list[dict].
             if isinstance(frame.tools, ToolsSchema):
                 self._tools = [
                     {"type": "function", "function": schema.to_default_dict()}
@@ -167,8 +126,8 @@ class DeepslateRealtimeLLMService(LLMService):
                 ]
             else:
                 self._tools = frame.tools
-            if self._session_initialized:
-                await self._sync_tools()
+            if self._session is not None:
+                await self._session.update_tools(self._tools)
 
         elif isinstance(frame, LLMMessagesAppendFrame):
             await self._handle_messages_append(frame)
@@ -180,40 +139,91 @@ class DeepslateRealtimeLLMService(LLMService):
             await self._handle_update_settings(frame)
 
         elif isinstance(frame, DeepslateExportChatHistoryFrame):
-            await self._handle_export_chat_history(frame)
+            if self._session is not None:
+                await self._session.export_chat_history(frame.await_pending)
 
         elif isinstance(frame, DeepslateDirectSpeechFrame):
-            await self._handle_direct_speech(frame)
+            if self._session is not None:
+                await self._session.send_direct_speech(frame.text, frame.include_in_history)
 
         elif isinstance(frame, DeepslateConversationQueryFrame):
-            await self._handle_conversation_query(frame)
+            if self._session is not None:
+                # Pipecat result frames don't require correlation by ID; pass
+                # an empty string — on_conversation_query_result ignores it.
+                await self._session.send_conversation_query(
+                    "", frame.prompt, frame.instructions
+                )
 
         else:
             await self.push_frame(frame, direction)
 
-    async def _sync_tools(self):
-        """Syncs tool definitions with the Deepslate server."""
-        if not self._ws or not self._tools:
-            return
+    async def _on_response_begin(self) -> None:
+        await self.push_frame(LLMFullResponseStartFrame())
 
-        tool_definitions = []
-        for tool in self._tools:
-            func = tool.get("function", {})
-            tool_definitions.append(proto.ToolDefinition(
-                name=func.get("name"),
-                description=func.get("description", ""),
-                parameters=dict_to_struct(func.get("parameters", {})),
-            ))
+    async def _on_response_end(self) -> None:
+        await self.push_frame(LLMFullResponseEndFrame())
 
-        update_request = proto.UpdateToolDefinitionsRequest(tool_definitions=tool_definitions)
-        await self._send_msg(proto.ServiceBoundMessage(update_tool_definitions_request=update_request))
+    async def _on_text_fragment(self, text: str) -> None:
+        await self.push_frame(LLMTextFrame(text))
+
+    async def _on_audio_chunk(
+        self,
+        pcm_bytes: bytes,
+        sample_rate: int,
+        num_channels: int,
+        transcript: Optional[str],
+    ) -> None:
+        await self.push_frame(
+            OutputAudioRawFrame(
+                audio=pcm_bytes,
+                sample_rate=sample_rate,
+                num_channels=num_channels,
+            )
+        )
+        if transcript:
+            await self.push_frame(DeepslateModelTranscriptionFrame(text=transcript))
+
+    async def _on_tool_call(
+        self, call_id: str, function_name: str, params: dict
+    ) -> None:
+        asyncio.create_task(
+            self._dispatch_function_call(call_id, function_name, params)
+        )
+
+    async def _on_error(
+        self, category: str, message: str, trace_id: Optional[str]
+    ) -> None:
+        trace_suffix = f" (trace_id={trace_id})" if trace_id else ""
+        await self.push_frame(
+            ErrorFrame(f"[Deepslate] {category}: {message}{trace_suffix}")
+        )
+
+    async def _on_user_transcription(self, text: str, language: Optional[str], turn_id: int = 0) -> None:
+        await self.push_frame(
+            DeepslateUserTranscriptionFrame(
+                text=text,
+                user_id="user",
+                timestamp=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                language=language,
+            )
+        )
+
+    async def _on_interruption(self) -> None:
+        await self.push_frame(InterruptionFrame())
+
+    async def _on_chat_history(self, messages) -> None:
+        await self.push_frame(DeepslateChatHistoryFrame(messages=messages))
+
+    async def _on_conversation_query_result(self, query_id: str, text: str) -> None:
+        await self.push_frame(DeepslateConversationQueryResultFrame(text=text))
+
+    async def _on_fatal_error(self, e: Exception) -> None:
+        await self.push_frame(ErrorFrame(f"Connection failed: {e}"))
 
     async def _handle_messages_append(self, frame: LLMMessagesAppendFrame):
-        """Handle LLMMessagesAppendFrame by injecting messages into the active session."""
-        if not self._ws:
+        """Inject messages into the active session."""
+        if self._session is None:
             return
-
-        await self._ensure_session_initialized()
 
         system_parts: List[str] = []
 
@@ -232,284 +242,73 @@ class DeepslateRealtimeLLMService(LLMService):
                 continue
 
             if role == "user":
-                self._packet_id_counter += 1
-                user_input = proto.UserInput(
-                    packet_id=self._packet_id_counter,
-                    mode=proto.InferenceTriggerMode.NO_TRIGGER,
-                    text_data=proto.TextData(data=content),
+                await self._session.send_text(
+                    content, trigger=InferenceTriggerMode.NO_TRIGGER
                 )
-                await self._send_msg(proto.ServiceBoundMessage(user_input=user_input))
-
             elif role == "system":
                 system_parts.append(content)
-
             else:
                 logger.warning(
                     f"LLMMessagesAppendFrame: role '{role}' cannot be injected into "
                     "Deepslate session — only 'user' and 'system' roles are supported."
                 )
 
-        if frame.run_llm and self._session_initialized and self._ws:
+        if frame.run_llm:
             extra = " ".join(system_parts) if system_parts else None
-            trigger = proto.TriggerInference()
-            if extra:
-                trigger.extra_instructions = extra
-            await self._send_msg(proto.ServiceBoundMessage(trigger_inference=trigger))
+            await self._session.trigger_inference(instructions=extra)
 
     async def _handle_messages_update(self, frame: LLMMessagesUpdateFrame):
-        """Handle LLMMessagesUpdateFrame by re-syncing tools and optionally triggering inference."""
-        if self._session_initialized:
-            await self._sync_tools()
-
-        if frame.run_llm and self._session_initialized and self._ws:
-            await self._send_msg(proto.ServiceBoundMessage(trigger_inference=proto.TriggerInference()))
-
-    async def _handle_export_chat_history(self, frame: DeepslateExportChatHistoryFrame):
-        """Send an ExportChatHistoryRequest to the Deepslate backend."""
-        if not self._ws:
+        """Re-sync tools and optionally trigger inference."""
+        if self._session is None:
             return
-        req = proto.ExportChatHistoryRequest(await_pending=frame.await_pending)
-        await self._send_msg(proto.ServiceBoundMessage(export_chat_history_request=req))
-
-    async def _handle_conversation_query(self, frame: DeepslateConversationQueryFrame):
-        """Send a ConversationQuery to run a side-channel inference against the conversation."""
-        if not self._ws:
-            return
-
-        await self._ensure_session_initialized()
-
-        query = proto.ConversationQuery()
-        if frame.prompt is not None:
-            query.prompt = frame.prompt
-        if frame.instructions is not None:
-            query.instructions = frame.instructions
-        await self._send_msg(proto.ServiceBoundMessage(conversation_query=query))
-
-    async def _handle_direct_speech(self, frame: DeepslateDirectSpeechFrame):
-        """Send a DirectSpeech message to bypass the LLM and speak text via TTS."""
-        if not self._ws:
-            return
-
-        await self._ensure_session_initialized()
-
-        direct_speech = proto.DirectSpeech(
-            text=frame.text,
-            include_in_history=frame.include_in_history,
-        )
-        await self._send_msg(proto.ServiceBoundMessage(direct_speech=direct_speech))
+        await self._session.update_tools(self._tools)
+        if frame.run_llm:
+            await self._session.trigger_inference()
 
     async def _handle_update_settings(self, frame: LLMUpdateSettingsFrame):
-        """Apply runtime setting changes. Handles system_prompt and temperature."""
-        updated = False
-        if (new_prompt := frame.settings.get("system_prompt")) is not None:
+        """Apply runtime changes to system_prompt and/or temperature."""
+        if self._session is None:
+            return
+        new_prompt = frame.settings.get("system_prompt")
+        new_temp = frame.settings.get("temperature")
+        if new_prompt is not None:
             self._opts.system_prompt = new_prompt
-            updated = True
-        if (new_temp := frame.settings.get("temperature")) is not None:
+        if new_temp is not None:
             self._opts.temperature = new_temp
-            updated = True
-        if updated and self._session_initialized:
-            await self._sync_inference_settings()
-
-    async def _sync_inference_settings(self):
-        """Send current inference settings to the server via ReconfigureSessionRequest."""
-        if not self._ws:
-            return
-        reconfig = proto.ReconfigureSessionRequest(
-            inference_configuration=proto.InferenceConfiguration(
-                system_prompt=self._opts.system_prompt,
-                temperature=self._opts.temperature,
+        if (
+            (new_prompt is not None or new_temp is not None)
+            and self._session.session_initialized
+        ):
+            await self._session.reconfigure(
+                system_prompt=new_prompt,
+                temperature=new_temp,
             )
-        )
-        await self._send_msg(proto.ServiceBoundMessage(reconfigure_session_request=reconfig))
 
-    async def _handle_audio_input(self, frame: AudioRawFrame):
-        """Forward PCM audio from Pipecat to Deepslate."""
-        if not self._ws:
-            return
-
-        await self._ensure_session_initialized(frame.sample_rate, frame.num_channels)
-
-        if (frame.sample_rate != self._detected_sample_rate or
-              frame.num_channels != self._detected_num_channels):
-            self._detected_sample_rate = frame.sample_rate
-            self._detected_num_channels = frame.num_channels
-
-            reconfig = proto.ReconfigureSessionRequest(
-                input_audio_line=proto.AudioLineConfiguration(
-                    sample_rate=frame.sample_rate,
-                    channel_count=frame.num_channels,
-                    sample_format=proto.SampleFormat.SIGNED_16_BIT,
-                )
-            )
-            await self._send_msg(proto.ServiceBoundMessage(reconfigure_session_request=reconfig))
-
-        self._packet_id_counter += 1
-        user_input = proto.UserInput(
-            packet_id=self._packet_id_counter,
-            mode=proto.InferenceTriggerMode.IMMEDIATE,
-            audio_data=proto.AudioData(data=frame.audio),
-        )
-        await self._send_msg(proto.ServiceBoundMessage(user_input=user_input))
-
-    async def _handle_text_input(self, text: str):
-        """Forward Text frames as trigger inputs."""
-        if not self._ws:
-            return
-
-        await self._ensure_session_initialized()
-
-        self._packet_id_counter += 1
-        user_input = proto.UserInput(
-            packet_id=self._packet_id_counter,
-            mode=proto.InferenceTriggerMode.IMMEDIATE,
-            text_data=proto.TextData(data=text),
-        )
-        await self._send_msg(proto.ServiceBoundMessage(user_input=user_input))
-
-    async def _dispatch_function_call(self, call_id: str, function_name: str, args: dict):
+    async def _dispatch_function_call(
+        self, call_id: str, function_name: str, args: dict
+    ):
         """Look up a registered function handler and execute it."""
         item = self._functions.get(function_name) or self._functions.get(None)
         if not item:
-            logger.warning(f"Received tool call for unregistered function: '{function_name}'")
+            logger.warning(
+                f"Received tool call for unregistered function: '{function_name}'"
+            )
             return
 
         async def result_callback(result, *, properties=None):
-            result_str = result if isinstance(result, str) else json.dumps(result)
-            response = proto.ToolCallResponse(id=call_id, result=result_str)
-            await self._send_msg(proto.ServiceBoundMessage(tool_call_response=response))
+            if self._session is not None:
+                await self._session.send_tool_response(call_id, result)
 
         try:
-            await item.handler(FunctionCallParams(
-                function_name=function_name,
-                tool_call_id=call_id,
-                arguments=args,
-                llm=self,
-                context=None,
-                result_callback=result_callback,
-            ))
-        except Exception as e:
-            logger.error(f"Error executing function '{function_name}': {e}")
-
-    async def _handle_function_result(self, frame: FunctionCallResultFrame):
-        """Forward function return values to Deepslate."""
-        if not self._ws:
-            return
-
-        result_str = frame.result if isinstance(frame.result, str) else json.dumps(frame.result)
-        response = proto.ToolCallResponse(id=frame.tool_call_id, result=result_str)
-        await self._send_msg(proto.ServiceBoundMessage(tool_call_response=response))
-
-    async def _ensure_session_initialized(self, sample_rate: int = 16000, num_channels: int = 1):
-        """Initialize the session if it hasn't been already."""
-        if self._session_initialized:
-            return
-        self._detected_sample_rate = sample_rate
-        self._detected_num_channels = num_channels
-        await self._send_initialize_session()
-        self._session_initialized = True
-
-    async def _send_initialize_session(self):
-        """Constructs and sends the initialize payload based on config."""
-        init_request = build_initialize_request(
-            sample_rate=self._detected_sample_rate,
-            num_channels=self._detected_num_channels,
-            vad_config=self._vad_config,
-            system_prompt=self._opts.system_prompt,
-            tts_config=self._tts_config,
-            temperature=self._opts.temperature,
-        )
-
-        msg = proto.ServiceBoundMessage(initialize_session_request=init_request)
-        await self._send_msg(msg)
-
-        if self._tools:
-            await self._sync_tools()
-
-    async def _send_msg(self, msg: proto.ServiceBoundMessage):
-        """Serialize and send a proto message over the websocket."""
-        if not self._ws or self._ws.closed:
-            logger.debug("Dropping outbound message: WebSocket is not open.")
-            return
-        try:
-            await self._ws.send_bytes(msg.SerializeToString())
-        except Exception as e:
-            logger.error(f"Error sending message to Deepslate: {e}")
-
-    async def _receive_loop(self):
-        """Long running task to receive and handle websocket messages from Deepslate."""
-        try:
-            async for msg in self._ws:
-                if msg.type == aiohttp.WSMsgType.BINARY:
-                    client_msg = proto.ClientBoundMessage()
-                    client_msg.ParseFromString(msg.data)
-                    await self._handle_server_message(client_msg)
-                elif msg.type in (aiohttp.WSMsgType.CLOSED, aiohttp.WSMsgType.ERROR):
-                    logger.warning(f"WebSocket closed or errored: {msg.data}")
-                    break
-        except Exception as e:
-            logger.error(f"WebSocket receive error: {e}")
-
-    async def _handle_server_message(self, msg: proto.ClientBoundMessage):
-        """Map server protobuf events to Pipecat Frames."""
-        payload_type = msg.WhichOneof("payload")
-
-        if payload_type == "response_begin":
-            await self.push_frame(LLMFullResponseStartFrame())
-
-        elif payload_type == "response_end":
-            await self.push_frame(LLMFullResponseEndFrame())
-
-        elif payload_type == "model_text_fragment":
-            text = msg.model_text_fragment.text
-            await self.push_frame(LLMTextFrame(text))
-
-        elif payload_type == "model_audio_chunk":
-            audio_bytes = msg.model_audio_chunk.audio.data
-            transcript = msg.model_audio_chunk.transcript
-
-            frame = OutputAudioRawFrame(
-                audio=audio_bytes,
-                sample_rate=self._detected_sample_rate or 16000,
-                num_channels=self._detected_num_channels or 1,
-            )
-            await self.push_frame(frame)
-
-            if transcript:
-                await self.push_frame(DeepslateModelTranscriptionFrame(text=transcript))
-
-        elif payload_type == "user_transcription_result":
-            result = msg.user_transcription_result
-            language = result.language or None
-            await self.push_frame(
-                DeepslateUserTranscriptionFrame(
-                    text=result.text,
-                    user_id="user",
-                    timestamp=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                    language=language,
+            await item.handler(
+                FunctionCallParams(
+                    function_name=function_name,
+                    tool_call_id=call_id,
+                    arguments=args,
+                    llm=self,
+                    context=None,
+                    result_callback=result_callback,
                 )
             )
-
-        elif payload_type == "playback_clear_buffer":
-            await self.push_frame(InterruptionFrame())
-
-        elif payload_type == "tool_call_request":
-            req = msg.tool_call_request
-            args_dict = struct_to_dict(req.parameters) if req.HasField("parameters") else {}
-            asyncio.create_task(self._dispatch_function_call(req.id, req.name, args_dict))
-
-        elif payload_type == "conversation_query_result":
-            text = msg.conversation_query_result.text
-            await self.push_frame(DeepslateConversationQueryResultFrame(text=text))
-
-        elif payload_type == "chat_history":
-            messages = parse_chat_history(msg.chat_history)
-            await self.push_frame(DeepslateChatHistoryFrame(messages=messages))
-
-        elif payload_type == "error":
-            notification = msg.error
-            category_name = proto.SessionErrorCategory.Name(notification.category)
-            trace_id = notification.trace_id if notification.HasField("trace_id") else None
-            trace_suffix = f" (trace_id={trace_id})" if trace_id else ""
-            error_msg = f"[Deepslate] {category_name}: {notification.message}{trace_suffix}"
-            logger.error(error_msg)
-            await self.push_frame(ErrorFrame(error_msg))
+        except Exception as e:
+            logger.error(f"Error executing function '{function_name}': {e}")

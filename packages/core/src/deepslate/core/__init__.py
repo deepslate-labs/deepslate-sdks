@@ -6,6 +6,21 @@ except importlib.metadata.PackageNotFoundError:
     __version__ = "unknown"
 
 from .client import BaseDeepslateClient
+from .proto.realtime_pb2 import InferenceTriggerMode
+from .session import (
+    DeepslateSession,
+    OnAudioChunk,
+    OnChatHistory,
+    OnConversationQueryResult,
+    OnError,
+    OnFatalError,
+    OnInterruption,
+    OnResponseBegin,
+    OnResponseEnd,
+    OnTextFragment,
+    OnToolCall,
+    OnUserTranscription,
+)
 from .options import (
     DeepslateOptions,
     ElevenLabsLocation,
@@ -28,6 +43,19 @@ from ._types import (
 __all__ = [
     "__version__",
     "BaseDeepslateClient",
+    "DeepslateSession",
+    "InferenceTriggerMode",
+    "OnAudioChunk",
+    "OnChatHistory",
+    "OnConversationQueryResult",
+    "OnError",
+    "OnFatalError",
+    "OnInterruption",
+    "OnResponseBegin",
+    "OnResponseEnd",
+    "OnTextFragment",
+    "OnToolCall",
+    "OnUserTranscription",
     "ChatMessageDict",
     "ContentBlockDict",
     "DeepslateOptions",
