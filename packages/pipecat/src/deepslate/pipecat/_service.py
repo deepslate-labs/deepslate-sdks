@@ -82,7 +82,7 @@ class DeepslateRealtimeLLMService(LLMService):
             on_conversation_query_result=self._on_conversation_query_result,
             on_fatal_error=self._on_fatal_error,
         )
-        await self._session.start()
+        self._session.start()
 
     async def stop(self, frame: EndFrame):
         """Stops the Pipecat service."""

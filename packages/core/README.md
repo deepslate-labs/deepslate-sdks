@@ -146,7 +146,7 @@ async def main():
         on_response_end=lambda: print("--- response end ---\n"),
     )
 
-    await session.start()
+    session.start()
 
     # Initialize for text-only interaction (audio sessions initialize automatically)
     await session.initialize(sample_rate=24000, channels=1)

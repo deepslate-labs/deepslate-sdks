@@ -114,7 +114,7 @@ class DeepslateSession:
         """Channel count negotiated during initialization, or ``None``"""
         return self._channels
 
-    async def start(self) -> None:
+    def start(self) -> None:
         """Spawn the background task that drives ``client.run_with_retry()``.
 
         Idempotent — calling more than once is a no-op.

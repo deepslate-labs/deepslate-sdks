@@ -259,7 +259,7 @@ class DeepslateRealtimeSession(
             on_conversation_query_result=self._on_conversation_query_result,
             on_fatal_error=self._on_fatal_error,
         )
-        asyncio.ensure_future(self._session.start())
+        self._session.start()
 
     @property
     def chat_ctx(self) -> llm.ChatContext:
