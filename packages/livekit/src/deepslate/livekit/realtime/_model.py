@@ -349,24 +349,22 @@ class DeepslateRealtimeSession(
         await self._session.initialize()
         await self._session.send_direct_speech(text, include_in_history)
 
-    def query_conversation(
+    async def query_conversation(
         self,
         prompt: str | None = None,
         instructions: str | None = None,
-    ) -> asyncio.Future[str]:
+    ) -> str:
         """Run a one-shot side-channel inference against the current conversation.
 
-        Returns a ``Future`` that resolves to the model's complete text reply.
+        Returns the model's complete text reply.
         """
         query_id = utils.shortuuid("query_")
         fut: asyncio.Future[str] = asyncio.get_event_loop().create_future()
         self._pending_queries[query_id] = fut
 
-        asyncio.ensure_future(self._session.initialize())
-        asyncio.ensure_future(
-            self._session.send_conversation_query(query_id, prompt, instructions)
-        )
-        return fut
+        await self._session.initialize()
+        await self._session.send_conversation_query(query_id, prompt, instructions)
+        return await fut
 
     async def export_chat_history(self, await_pending: bool = False) -> None:
         """Request the server to export the current chat history.
