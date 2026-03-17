@@ -15,10 +15,10 @@ Deepslate provides unified voice AI infrastructure — combining speech-to-speec
 This monorepo contains three published packages:
 
 | Package | PyPI | Description |
-|---|---|---|
+|---|---|--|
 | [`deepslate-livekit`](packages/livekit/README.md) | `pip install deepslate-livekit` | `RealtimeModel` plugin for [LiveKit Agents](https://github.com/livekit/agents) |
 | [`deepslate-pipecat`](packages/pipecat/README.md) | `pip install deepslate-pipecat` | `LLMService` plugin for [Pipecat](https://github.com/pipecat-ai/pipecat) |
-| [`deepslate-core`](packages/core/README.md) | `pip install deepslate-core` | Shared transport, `DeepslateSession`, and protobuf definitions — install directly to build custom integrations |
+| [`deepslate-core`](packages/core/README.md) | `pip install deepslate-core` | Shared implementation for integrations, prefer using a higher level integration package |
 
 ### Repository Structure
 
