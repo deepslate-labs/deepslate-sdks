@@ -259,7 +259,7 @@ class DeepslateRealtimeSession(
             on_response_begin=self._on_response_begin,
             on_response_end=self._on_response_end,
             on_user_transcription=self._on_user_transcription,
-            on_interruption=self._on_interruption,
+            on_playback_buffer_clear=self._on_playback_buffer_clear,
             on_chat_history=self._on_chat_history,
             on_conversation_query_result=self._on_conversation_query_result,
             on_fatal_error=self._on_fatal_error,
@@ -544,7 +544,7 @@ class DeepslateRealtimeSession(
     async def _on_response_end(self) -> None:
         self._close_current_generation()
 
-    async def _on_interruption(self) -> None:
+    async def _on_playback_buffer_clear(self) -> None:
         if self._current_generation is not None:
             self.emit("input_speech_started", InputSpeechStartedEvent())
             self._close_current_generation()

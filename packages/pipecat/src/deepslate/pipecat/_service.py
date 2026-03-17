@@ -77,7 +77,7 @@ class DeepslateRealtimeLLMService(LLMService):
             on_response_begin=self._on_response_begin,
             on_response_end=self._on_response_end,
             on_user_transcription=self._on_user_transcription,
-            on_interruption=self._on_interruption,
+            on_playback_buffer_clear=self._on_playback_buffer_clear,
             on_chat_history=self._on_chat_history,
             on_conversation_query_result=self._on_conversation_query_result,
             on_fatal_error=self._on_fatal_error,
@@ -208,7 +208,7 @@ class DeepslateRealtimeLLMService(LLMService):
             )
         )
 
-    async def _on_interruption(self) -> None:
+    async def _on_playback_buffer_clear(self) -> None:
         await self.push_frame(InterruptionFrame())
 
     async def _on_chat_history(self, messages) -> None:

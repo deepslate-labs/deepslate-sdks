@@ -30,7 +30,7 @@ OnResponseEnd = Callable[[], Awaitable[None]]
 
 OnUserTranscription = Callable[[str, Optional[str], int], Awaitable[None]]
 
-OnInterruption = Callable[[], Awaitable[None]]
+OnPlaybackBufferClear = Callable[[], Awaitable[None]]
 
 OnChatHistory = Callable[[list[ChatMessageDict]], Awaitable[None]]
 
@@ -59,7 +59,7 @@ class DeepslateSession:
         on_response_begin: Optional[OnResponseBegin] = None,
         on_response_end: Optional[OnResponseEnd] = None,
         on_user_transcription: Optional[OnUserTranscription] = None,
-        on_interruption: Optional[OnInterruption] = None,
+        on_playback_buffer_clear: Optional[OnPlaybackBufferClear] = None,
         on_chat_history: Optional[OnChatHistory] = None,
         on_conversation_query_result: Optional[OnConversationQueryResult] = None,
         on_fatal_error: Optional[OnFatalError] = None,
@@ -80,7 +80,7 @@ class DeepslateSession:
         self.on_response_begin = on_response_begin
         self.on_response_end = on_response_end
         self.on_user_transcription = on_user_transcription
-        self.on_interruption = on_interruption
+        self.on_playback_buffer_clear = on_playback_buffer_clear
         self.on_chat_history = on_chat_history
         self.on_conversation_query_result = on_conversation_query_result
         self.on_fatal_error = on_fatal_error
@@ -157,7 +157,7 @@ class DeepslateSession:
         on_response_begin: Optional[OnResponseBegin] = None,
         on_response_end: Optional[OnResponseEnd] = None,
         on_user_transcription: Optional[OnUserTranscription] = None,
-        on_interruption: Optional[OnInterruption] = None,
+        on_playback_buffer_clear: Optional[OnPlaybackBufferClear] = None,
         on_chat_history: Optional[OnChatHistory] = None,
         on_conversation_query_result: Optional[OnConversationQueryResult] = None,
         on_fatal_error: Optional[OnFatalError] = None,
@@ -183,7 +183,7 @@ class DeepslateSession:
             on_response_begin=on_response_begin,
             on_response_end=on_response_end,
             on_user_transcription=on_user_transcription,
-            on_interruption=on_interruption,
+            on_playback_buffer_clear=on_playback_buffer_clear,
             on_chat_history=on_chat_history,
             on_conversation_query_result=on_conversation_query_result,
             on_fatal_error=on_fatal_error,
@@ -574,7 +574,7 @@ class DeepslateSession:
             )
 
         elif payload_type == "playback_clear_buffer":
-            await self._fire(self.on_interruption)
+            await self._fire(self.on_playback_buffer_clear)
 
         elif payload_type == "tool_call_request":
             req = msg.tool_call_request
