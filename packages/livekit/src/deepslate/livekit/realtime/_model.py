@@ -242,6 +242,10 @@ class DeepslateRealtimeSession(
         # Conversation query tracking: query_id → Future[str]
         self._pending_queries: dict[str, asyncio.Future[str]] = {}
 
+        # Tool state
+        self._tools_dicts: list[dict] = []
+        self._tool_choice: ToolChoice | None = None
+
         # Core session — owns the WebSocket lifecycle
         self._session = DeepslateSession(
             client=realtime_model._client,
@@ -315,13 +319,33 @@ class DeepslateRealtimeSession(
                     },
                 })
 
-        await self._session.update_tools(tools_dicts)
+        self._tools_dicts = tools_dicts
         self._tools = llm.ToolContext(tools)
+        await self._sync_tool_choice()
         logger.debug(f"updated tools: {[t.get('function', {}).get('name') for t in tools_dicts]}")
 
     def update_options(self, *, tool_choice: NotGivenOr[ToolChoice | None] = NOT_GIVEN) -> None:
-        """Dynamic tool_choice updates not supported."""
-        pass
+        """Apply a tool_choice constraint."""
+        if not utils.is_given(tool_choice):
+            logger.warning("Tool choice constraint not given")
+            return
+        self._tool_choice = tool_choice
+        asyncio.ensure_future(self._sync_tool_choice())
+
+    def _effective_tools_dicts(self) -> list[dict]:
+        """Return the tools list filtered by the current tool_choice."""
+        tc = self._tool_choice
+        if tc == "none":
+            return []
+        if isinstance(tc, dict):  # NamedToolChoice
+            name = tc.get("function", {}).get("name")
+            return [t for t in self._tools_dicts if t.get("function", {}).get("name") == name]
+        # "auto", "required", None → send all tools
+        return self._tools_dicts
+
+    async def _sync_tool_choice(self) -> None:
+        """Push the effective tool list (after applying tool_choice) to the server."""
+        await self._session.update_tools(self._effective_tools_dicts())
 
     async def push_audio(self, frame: rtc.AudioFrame) -> None:
         """Push an audio frame to Deepslate."""
