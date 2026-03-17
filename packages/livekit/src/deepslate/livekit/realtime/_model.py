@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from types import SimpleNamespace
 from typing import Any, Literal
 
+import aiohttp
 from livekit import rtc
 from livekit.agents import llm, utils, FunctionTool, NOT_GIVEN, NotGivenOr
 from livekit.agents.llm import (
@@ -86,7 +87,7 @@ class RealtimeModel(llm.RealtimeModel):
         vad_backbuffer_duration_ms: int = 1000,
         # TTS configuration
         tts_config: ElevenLabsTtsConfig | None = None,
-        http_session: Any = None,
+        http_session: aiohttp.ClientSession | None = None,
         # Internal use only - direct WebSocket URL (bypass standard auth)
         ws_url: str | None = None,
     ):
