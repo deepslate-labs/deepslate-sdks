@@ -322,33 +322,31 @@ class DeepslateRealtimeSession(
         """Dynamic tool_choice updates not supported."""
         pass
 
-    def push_audio(self, frame: rtc.AudioFrame) -> None:
+    async def push_audio(self, frame: rtc.AudioFrame) -> None:
         """Push an audio frame to Deepslate."""
-        asyncio.ensure_future(
-            self._session.send_audio(
-                frame.data.tobytes(),
-                frame.sample_rate,
-                frame.num_channels,
-            )
+        await self._session.send_audio(
+            frame.data.tobytes(),
+            frame.sample_rate,
+            frame.num_channels,
         )
 
     def push_video(self, frame: rtc.VideoFrame) -> None:
         """Video input is not supported by Deepslate."""
         logger.warning("Deepslate does not support video input")
 
-    def send_text(
+    async def send_text(
         self,
         text: str,
         mode: InferenceTriggerMode = InferenceTriggerMode.NO_TRIGGER,
     ) -> None:
         """Send text input to Deepslate."""
-        asyncio.ensure_future(self._session.initialize())
-        asyncio.ensure_future(self._session.send_text(text, trigger=mode))
+        await self._session.initialize()
+        await self._session.send_text(text, trigger=mode)
 
-    def speak_direct(self, text: str, include_in_history: bool = True) -> None:
+    async def speak_direct(self, text: str, include_in_history: bool = True) -> None:
         """Bypass the LLM and speak text directly via TTS."""
-        asyncio.ensure_future(self._session.initialize())
-        asyncio.ensure_future(self._session.send_direct_speech(text, include_in_history))
+        await self._session.initialize()
+        await self._session.send_direct_speech(text, include_in_history)
 
     def query_conversation(
         self,
@@ -369,12 +367,12 @@ class DeepslateRealtimeSession(
         )
         return fut
 
-    def export_chat_history(self, await_pending: bool = False) -> None:
+    async def export_chat_history(self, await_pending: bool = False) -> None:
         """Request the server to export the current chat history.
 
         The result is delivered via the ``chat_history_exported`` event.
         """
-        asyncio.ensure_future(self._session.export_chat_history(await_pending))
+        await self._session.export_chat_history(await_pending)
 
     def generate_reply(
         self, *, instructions: NotGivenOr[str] = NOT_GIVEN
