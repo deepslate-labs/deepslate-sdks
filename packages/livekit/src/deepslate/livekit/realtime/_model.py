@@ -38,9 +38,10 @@ from deepslate.core import (
     BaseDeepslateClient,
     DeepslateOptions,
     DeepslateSession,
+    DeepslateSessionListener,
     ElevenLabsTtsConfig,
     FunctionToolDict,
-    InferenceTriggerMode,
+    TriggerMode,
     VadConfig,
 )
 
@@ -214,7 +215,8 @@ class DeepslateRealtimeSession(
             "user_transcription",
             "audio_transcript",
         ]
-    ]
+    ],
+    DeepslateSessionListener,
 ):
     """A session for the Deepslate Realtime API.
 
@@ -253,17 +255,7 @@ class DeepslateRealtimeSession(
             options=realtime_model._opts,
             vad_config=realtime_model._vad_config,
             tts_config=realtime_model._tts_config,
-            on_text_fragment=self._on_text_fragment,
-            on_audio_chunk=self._on_audio_chunk,
-            on_tool_call=self._on_tool_call,
-            on_error=self._on_error,
-            on_response_begin=self._on_response_begin,
-            on_response_end=self._on_response_end,
-            on_user_transcription=self._on_user_transcription,
-            on_playback_buffer_clear=self._on_playback_buffer_clear,
-            on_chat_history=self._on_chat_history,
-            on_conversation_query_result=self._on_conversation_query_result,
-            on_fatal_error=self._on_fatal_error,
+            listener=self,
         )
         self._session.start()
 
@@ -363,7 +355,7 @@ class DeepslateRealtimeSession(
     async def send_text(
         self,
         text: str,
-        mode: InferenceTriggerMode = InferenceTriggerMode.NO_TRIGGER,
+        mode: TriggerMode = TriggerMode.NO_TRIGGER,
     ) -> None:
         """Send text input to Deepslate."""
         await self._session.initialize()
@@ -415,7 +407,7 @@ class DeepslateRealtimeSession(
                 asyncio.ensure_future(
                     self._session.send_text(
                         self._pending_user_text,
-                        trigger=InferenceTriggerMode.NO_TRIGGER,
+                        trigger=TriggerMode.NO_TRIGGER,
                     )
                 )
                 asyncio.ensure_future(
@@ -426,7 +418,7 @@ class DeepslateRealtimeSession(
                 asyncio.ensure_future(
                     self._session.send_text(
                         self._pending_user_text,
-                        trigger=InferenceTriggerMode.IMMEDIATE,
+                        trigger=TriggerMode.IMMEDIATE,
                     )
                 )
             self._pending_user_text = None
@@ -484,7 +476,7 @@ class DeepslateRealtimeSession(
                 self._current_generation.done_fut.set_result(None)
         await self._session.close()
 
-    async def _on_text_fragment(self, text: str) -> None:
+    async def on_text_fragment(self, text: str) -> None:
         if self._current_generation is None:
             self._create_generation()
         if self._current_generation is None:
@@ -494,11 +486,11 @@ class DeepslateRealtimeSession(
         if self._current_generation.first_token_timestamp is None:
             self._current_generation.first_token_timestamp = time.time()
 
-    async def _on_audio_chunk(
+    async def on_audio_chunk(
         self,
         pcm_bytes: bytes,
         sample_rate: int,
-        num_channels: int,
+        channels: int,
         transcript: str | None,
     ) -> None:
         if self._current_generation is None:
@@ -509,7 +501,7 @@ class DeepslateRealtimeSession(
         frame = rtc.AudioFrame(
             data=pcm_bytes,
             sample_rate=sample_rate,
-            num_channels=num_channels,
+            num_channels=channels,
             samples_per_channel=len(pcm_bytes) // 2,
         )
         self._current_generation.audio_ch.send_nowait(frame)
@@ -521,9 +513,7 @@ class DeepslateRealtimeSession(
             self._current_generation.audio_transcript += transcript
             self.emit("audio_transcript", transcript)
 
-    async def _on_tool_call(
-        self, call_id: str, function_name: str, params: dict
-    ) -> None:
+    async def on_tool_call(self, call_id: str, name: str, params: dict) -> None:
         if self._current_generation is None:
             self._create_generation()
         if self._current_generation is None:
@@ -531,37 +521,35 @@ class DeepslateRealtimeSession(
         self._current_generation.function_ch.send_nowait(
             FunctionCall(
                 call_id=call_id,
-                name=function_name,
+                name=name,
                 arguments=json.dumps(params),
             )
         )
-        logger.debug(f"tool call request: {function_name}({call_id})")
+        logger.debug(f"tool call request: {name}({call_id})")
         self._close_current_generation()
 
-    async def _on_response_begin(self) -> None:
+    async def on_response_begin(self) -> None:
         if self._current_generation is None:
             self._create_generation()
 
-    async def _on_response_end(self) -> None:
+    async def on_response_end(self) -> None:
         self._close_current_generation()
 
-    async def _on_playback_buffer_clear(self) -> None:
+    async def on_playback_buffer_clear(self) -> None:
         if self._current_generation is not None:
             self.emit("input_speech_started", InputSpeechStartedEvent())
             self._close_current_generation()
 
-    async def _on_user_transcription(
-        self, text: str, language: str | None, turn_id: int = 0
-    ) -> None:
+    async def on_user_transcription(self, text: str, language: str | None, turn_id: int) -> None:
         self.emit(
             "user_transcription",
             SimpleNamespace(text=text, language=language or ""),
         )
 
-    async def _on_chat_history(self, messages) -> None:
+    async def on_chat_history(self, messages) -> None:
         self.emit("chat_history_exported", messages)
 
-    async def _on_conversation_query_result(self, query_id: str, text: str) -> None:
+    async def on_conversation_query_result(self, query_id: str, text: str) -> None:
         fut = self._pending_queries.pop(query_id, None)
         if fut is not None and not fut.done():
             fut.set_result(text)
@@ -570,9 +558,7 @@ class DeepslateRealtimeSession(
                 f"received conversation_query_result for unknown query_id: '{query_id}'"
             )
 
-    async def _on_error(
-        self, category: str, message: str, trace_id: str | None
-    ) -> None:
+    async def on_error(self, category: str, message: str, trace_id: str | None) -> None:
         trace_suffix = f" (trace_id={trace_id})" if trace_id else ""
         error_msg = f"[Deepslate] {category}: {message}{trace_suffix}"
         logger.error(error_msg)
@@ -586,7 +572,7 @@ class DeepslateRealtimeSession(
             ),
         )
 
-    async def _on_fatal_error(self, e: Exception) -> None:
+    async def on_fatal_error(self, e: Exception) -> None:
         self.emit(
             "error",
             llm.RealtimeModelError(

@@ -4,7 +4,6 @@ import asyncio
 import contextlib
 import logging
 from collections import deque
-from collections.abc import Awaitable, Callable
 from typing import Any, Optional
 
 import aiohttp
@@ -12,31 +11,10 @@ import aiohttp
 from .client import BaseDeepslateClient
 from .options import DeepslateOptions, ElevenLabsTtsConfig, VadConfig
 from .proto import realtime_pb2 as proto
-from ._types import ChatMessageDict, FunctionToolDict, TriggerMode
+from ._types import DeepslateSessionListener, FunctionToolDict, TriggerMode
 from ._utils import build_initialize_request, dict_to_struct, parse_chat_history, struct_to_dict
 
 logger = logging.getLogger("deepslate.core")
-
-OnTextFragment = Callable[[str], Awaitable[None]]
-
-OnAudioChunk = Callable[[bytes, int, int, Optional[str]], Awaitable[None]]
-
-OnToolCall = Callable[[str, str, dict], Awaitable[None]]
-
-OnError = Callable[[str, str, Optional[str]], Awaitable[None]]
-
-OnResponseBegin = Callable[[], Awaitable[None]]
-OnResponseEnd = Callable[[], Awaitable[None]]
-
-OnUserTranscription = Callable[[str, Optional[str], int], Awaitable[None]]
-
-OnPlaybackBufferClear = Callable[[], Awaitable[None]]
-
-OnChatHistory = Callable[[list[ChatMessageDict]], Awaitable[None]]
-
-OnConversationQueryResult = Callable[[str, str], Awaitable[None]]
-
-OnFatalError = Callable[[Exception], Awaitable[None]]
 
 
 class DeepslateSession:
@@ -51,18 +29,7 @@ class DeepslateSession:
         options: DeepslateOptions,
         vad_config: Optional[VadConfig] = None,
         tts_config: Optional[ElevenLabsTtsConfig] = None,
-        # Callbacks
-        on_text_fragment: Optional[OnTextFragment] = None,
-        on_audio_chunk: Optional[OnAudioChunk] = None,
-        on_tool_call: Optional[OnToolCall] = None,
-        on_error: Optional[OnError] = None,
-        on_response_begin: Optional[OnResponseBegin] = None,
-        on_response_end: Optional[OnResponseEnd] = None,
-        on_user_transcription: Optional[OnUserTranscription] = None,
-        on_playback_buffer_clear: Optional[OnPlaybackBufferClear] = None,
-        on_chat_history: Optional[OnChatHistory] = None,
-        on_conversation_query_result: Optional[OnConversationQueryResult] = None,
-        on_fatal_error: Optional[OnFatalError] = None,
+        listener: Optional[DeepslateSessionListener] = None,
     ) -> None:
         self._client = client
         self._owns_client = False  # set to True by DeepslateSession.create()
@@ -71,19 +38,7 @@ class DeepslateSession:
         self._tts_config = tts_config
         self._current_tools: list[FunctionToolDict] = []
         self._should_stop = False
-
-        # Callbacks
-        self.on_text_fragment = on_text_fragment
-        self.on_audio_chunk = on_audio_chunk
-        self.on_tool_call = on_tool_call
-        self.on_error = on_error
-        self.on_response_begin = on_response_begin
-        self.on_response_end = on_response_end
-        self.on_user_transcription = on_user_transcription
-        self.on_playback_buffer_clear = on_playback_buffer_clear
-        self.on_chat_history = on_chat_history
-        self.on_conversation_query_result = on_conversation_query_result
-        self.on_fatal_error = on_fatal_error
+        self._listener = listener if listener is not None else DeepslateSessionListener()
 
         self._ws: Optional[aiohttp.ClientWebSocketResponse] = None
         self._session_initialized = False
@@ -150,17 +105,7 @@ class DeepslateSession:
         tts_config: Optional[ElevenLabsTtsConfig] = None,
         user_agent: str = "DeepslateCore",
         http_session: Optional[Any] = None,
-        on_text_fragment: Optional[OnTextFragment] = None,
-        on_audio_chunk: Optional[OnAudioChunk] = None,
-        on_tool_call: Optional[OnToolCall] = None,
-        on_error: Optional[OnError] = None,
-        on_response_begin: Optional[OnResponseBegin] = None,
-        on_response_end: Optional[OnResponseEnd] = None,
-        on_user_transcription: Optional[OnUserTranscription] = None,
-        on_playback_buffer_clear: Optional[OnPlaybackBufferClear] = None,
-        on_chat_history: Optional[OnChatHistory] = None,
-        on_conversation_query_result: Optional[OnConversationQueryResult] = None,
-        on_fatal_error: Optional[OnFatalError] = None,
+        listener: Optional[DeepslateSessionListener] = None,
     ) -> "DeepslateSession":
         """Create a session together with its own ``BaseDeepslateClient``.
 
@@ -176,17 +121,7 @@ class DeepslateSession:
             options=options,
             vad_config=vad_config,
             tts_config=tts_config,
-            on_text_fragment=on_text_fragment,
-            on_audio_chunk=on_audio_chunk,
-            on_tool_call=on_tool_call,
-            on_error=on_error,
-            on_response_begin=on_response_begin,
-            on_response_end=on_response_end,
-            on_user_transcription=on_user_transcription,
-            on_playback_buffer_clear=on_playback_buffer_clear,
-            on_chat_history=on_chat_history,
-            on_conversation_query_result=on_conversation_query_result,
-            on_fatal_error=on_fatal_error,
+            listener=listener,
         )
         session._owns_client = True
         return session
@@ -440,20 +375,16 @@ class DeepslateSession:
         update_req = proto.UpdateToolDefinitionsRequest(tool_definitions=tool_definitions)
         return proto.ServiceBoundMessage(update_tool_definitions_request=update_req)
 
-    async def _fire(self, cb: Optional[Callable], *args: Any) -> None:
-        """Null-safe, exception-isolated async callback invocation.
+    async def _fire(self, coro: Any) -> None:
+        """Exception-isolated awaitable invocation.
 
-        Exceptions raised inside a callback are logged and swallowed so that a
-        misbehaving plugin callback cannot crash the receive loop.
+        Exceptions raised inside a listener method are logged and swallowed so
+        that a misbehaving listener cannot crash the receive loop.
         """
-        if cb is None:
-            return
         try:
-            result = cb(*args)
-            if asyncio.iscoroutine(result):
-                await result
+            await coro
         except Exception:
-            logger.exception("DeepslateSession: unhandled exception in callback")
+            logger.exception("DeepslateSession: unhandled exception in listener")
 
     async def _main(self) -> None:
         await self._client.run_with_retry(
@@ -463,7 +394,7 @@ class DeepslateSession:
         )
 
     async def _on_fatal_error(self, e: Exception) -> None:
-        await self._fire(self.on_fatal_error, e)
+        await self._fire(self._listener.on_fatal_error(e))
 
     async def _run_ws(self, ws: aiohttp.ClientWebSocketResponse) -> None:
         """Run one WebSocket session.
@@ -548,46 +479,48 @@ class DeepslateSession:
                 await ws.close()
 
     async def _handle_server_message(self, msg: proto.ClientBoundMessage) -> None:
-        """Route a ``ClientBoundMessage`` to the appropriate callback."""
+        """Route a ``ClientBoundMessage`` to the appropriate listener method."""
         payload_type = msg.WhichOneof("payload")
 
         if payload_type == "response_begin":
-            await self._fire(self.on_response_begin)
+            await self._fire(self._listener.on_response_begin())
 
         elif payload_type == "response_end":
-            await self._fire(self.on_response_end)
+            await self._fire(self._listener.on_response_end())
 
         elif payload_type == "model_text_fragment":
-            await self._fire(self.on_text_fragment, msg.model_text_fragment.text)
+            await self._fire(self._listener.on_text_fragment(msg.model_text_fragment.text))
 
         elif payload_type == "model_audio_chunk":
             chunk = msg.model_audio_chunk
             if chunk.audio and chunk.audio.data:
                 transcript: Optional[str] = chunk.transcript if chunk.transcript else None
                 await self._fire(
-                    self.on_audio_chunk,
-                    chunk.audio.data,
-                    self._sample_rate or 24000,
-                    self._channels or 1,
-                    transcript,
+                    self._listener.on_audio_chunk(
+                        chunk.audio.data,
+                        self._sample_rate or 24000,
+                        self._channels or 1,
+                        transcript,
+                    )
                 )
 
         elif payload_type == "user_transcription_result":
             result = msg.user_transcription_result
             await self._fire(
-                self.on_user_transcription,
-                result.text,
-                result.language or None,
-                result.turn_id,
+                self._listener.on_user_transcription(
+                    result.text,
+                    result.language or None,
+                    result.turn_id,
+                )
             )
 
         elif payload_type == "playback_clear_buffer":
-            await self._fire(self.on_playback_buffer_clear)
+            await self._fire(self._listener.on_playback_buffer_clear())
 
         elif payload_type == "tool_call_request":
             req = msg.tool_call_request
             params = struct_to_dict(req.parameters) if req.HasField("parameters") else {}
-            await self._fire(self.on_tool_call, req.id, req.name, params)
+            await self._fire(self._listener.on_tool_call(req.id, req.name, params))
 
         elif payload_type == "conversation_query_result":
             result_text = msg.conversation_query_result.text
@@ -597,11 +530,11 @@ class DeepslateSession:
                     "DeepslateSession: received conversation_query_result "
                     "with no pending query_id"
                 )
-            await self._fire(self.on_conversation_query_result, query_id, result_text)
+            await self._fire(self._listener.on_conversation_query_result(query_id, result_text))
 
         elif payload_type == "chat_history":
             messages = parse_chat_history(msg.chat_history)
-            await self._fire(self.on_chat_history, messages)
+            await self._fire(self._listener.on_chat_history(messages))
 
         elif payload_type == "error":
             notification = msg.error
@@ -614,7 +547,7 @@ class DeepslateSession:
                 f"{notification.message}"
                 + (f" (trace_id={trace_id})" if trace_id else "")
             )
-            await self._fire(self.on_error, category_name, notification.message, trace_id)
+            await self._fire(self._listener.on_error(category_name, notification.message, trace_id))
 
         else:
             logger.debug(f"DeepslateSession: unhandled payload type: {payload_type}")

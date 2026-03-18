@@ -29,9 +29,10 @@ from pipecat.services.llm_service import FunctionCallParams, LLMService
 from deepslate.core import (
     DeepslateOptions,
     DeepslateSession,
+    DeepslateSessionListener,
     ElevenLabsTtsConfig,
     FunctionToolDict,
-    InferenceTriggerMode,
+    TriggerMode,
     VadConfig,
 )
 from .frames import (
@@ -45,7 +46,7 @@ from .frames import (
 )
 
 
-class DeepslateRealtimeLLMService(LLMService):
+class DeepslateRealtimeLLMService(LLMService, DeepslateSessionListener):
     """Pipecat service for Deepslate's end-to-end Speech-to-Speech Realtime API."""
 
     def __init__(
@@ -71,17 +72,7 @@ class DeepslateRealtimeLLMService(LLMService):
             vad_config=self._vad_config,
             tts_config=self._tts_config,
             user_agent="PipecatDeepslate/1.0",
-            on_text_fragment=self._on_text_fragment,
-            on_audio_chunk=self._on_audio_chunk,
-            on_tool_call=self._on_tool_call,
-            on_error=self._on_error,
-            on_response_begin=self._on_response_begin,
-            on_response_end=self._on_response_end,
-            on_user_transcription=self._on_user_transcription,
-            on_playback_buffer_clear=self._on_playback_buffer_clear,
-            on_chat_history=self._on_chat_history,
-            on_conversation_query_result=self._on_conversation_query_result,
-            on_fatal_error=self._on_fatal_error,
+            listener=self,
         )
         self._session.start()
 
@@ -158,48 +149,44 @@ class DeepslateRealtimeLLMService(LLMService):
         else:
             await self.push_frame(frame, direction)
 
-    async def _on_response_begin(self) -> None:
+    async def on_response_begin(self) -> None:
         await self.push_frame(LLMFullResponseStartFrame())
 
-    async def _on_response_end(self) -> None:
+    async def on_response_end(self) -> None:
         await self.push_frame(LLMFullResponseEndFrame())
 
-    async def _on_text_fragment(self, text: str) -> None:
+    async def on_text_fragment(self, text: str) -> None:
         await self.push_frame(LLMTextFrame(text))
 
-    async def _on_audio_chunk(
+    async def on_audio_chunk(
         self,
         pcm_bytes: bytes,
         sample_rate: int,
-        num_channels: int,
+        channels: int,
         transcript: Optional[str],
     ) -> None:
         await self.push_frame(
             OutputAudioRawFrame(
                 audio=pcm_bytes,
                 sample_rate=sample_rate,
-                num_channels=num_channels,
+                num_channels=channels,
             )
         )
         if transcript:
             await self.push_frame(DeepslateModelTranscriptionFrame(text=transcript))
 
-    async def _on_tool_call(
-        self, call_id: str, function_name: str, params: dict
-    ) -> None:
+    async def on_tool_call(self, call_id: str, name: str, params: dict) -> None:
         asyncio.create_task(
-            self._dispatch_function_call(call_id, function_name, params)
+            self._dispatch_function_call(call_id, name, params)
         )
 
-    async def _on_error(
-        self, category: str, message: str, trace_id: Optional[str]
-    ) -> None:
+    async def on_error(self, category: str, message: str, trace_id: Optional[str]) -> None:
         trace_suffix = f" (trace_id={trace_id})" if trace_id else ""
         await self.push_frame(
             ErrorFrame(f"[Deepslate] {category}: {message}{trace_suffix}")
         )
 
-    async def _on_user_transcription(self, text: str, language: Optional[str], turn_id: int = 0) -> None:
+    async def on_user_transcription(self, text: str, language: Optional[str], turn_id: int) -> None:
         await self.push_frame(
             DeepslateUserTranscriptionFrame(
                 text=text,
@@ -209,16 +196,16 @@ class DeepslateRealtimeLLMService(LLMService):
             )
         )
 
-    async def _on_playback_buffer_clear(self) -> None:
+    async def on_playback_buffer_clear(self) -> None:
         await self.push_frame(InterruptionFrame())
 
-    async def _on_chat_history(self, messages) -> None:
+    async def on_chat_history(self, messages) -> None:
         await self.push_frame(DeepslateChatHistoryFrame(messages=messages))
 
-    async def _on_conversation_query_result(self, query_id: str, text: str) -> None:
+    async def on_conversation_query_result(self, query_id: str, text: str) -> None:
         await self.push_frame(DeepslateConversationQueryResultFrame(text=text))
 
-    async def _on_fatal_error(self, e: Exception) -> None:
+    async def on_fatal_error(self, e: Exception) -> None:
         await self.push_frame(ErrorFrame(f"Connection failed: {e}"))
 
     async def _handle_messages_append(self, frame: LLMMessagesAppendFrame):
@@ -244,7 +231,7 @@ class DeepslateRealtimeLLMService(LLMService):
 
             if role == "user":
                 await self._session.send_text(
-                    content, trigger=InferenceTriggerMode.NO_TRIGGER
+                    content, trigger=TriggerMode.NO_TRIGGER
                 )
             elif role == "system":
                 system_parts.append(content)

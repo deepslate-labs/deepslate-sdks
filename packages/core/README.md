@@ -104,48 +104,61 @@ tts = ElevenLabsTtsConfig(
 
 ### `DeepslateSession`
 
-`DeepslateSession` is the recommended entry point for custom integrations. It handles the full protocol lifecycle — session initialization, protobuf serialization, reconnection, and server-event routing — exposing a clean callback interface so your code only deals with application logic.
+`DeepslateSession` is the recommended entry point for custom integrations. It handles the full protocol lifecycle — session initialization, protobuf serialization, reconnection, and server-event routing — delivering events to a `DeepslateSessionListener` so your code only deals with application logic.
 
-Use `DeepslateSession.create()` when your code owns the connection. It creates its own `BaseDeepslateClient` and closes it automatically when `close()` is called:
+Subclass `DeepslateSessionListener` and override only the methods you care about, then pass the instance to `DeepslateSession.create()`. Use `create()` when your code owns the connection — it creates its own `BaseDeepslateClient` and closes it automatically when `close()` is called:
 
 ```python
 import asyncio
-from deepslate.core import DeepslateOptions, DeepslateSession, ElevenLabsTtsConfig
+from deepslate.core import (
+    DeepslateOptions,
+    DeepslateSession,
+    DeepslateSessionListener,
+    ElevenLabsTtsConfig,
+)
+
+class MyListener(DeepslateSessionListener):
+    def __init__(self) -> None:
+        self.session: DeepslateSession | None = None
+
+    async def on_text_fragment(self, text: str) -> None:
+        print(text, end="", flush=True)
+
+    async def on_audio_chunk(
+        self, pcm_bytes: bytes, sample_rate: int, channels: int, transcript: str | None
+    ) -> None:
+        # Forward PCM audio to your output device / transport
+        ...
+
+    async def on_tool_call(self, call_id: str, name: str, params: dict) -> None:
+        result = await dispatch_tool(name, params)
+        if self.session:
+            await self.session.send_tool_response(call_id, result)
+
+    async def on_error(self, category: str, message: str, trace_id: str | None) -> None:
+        print(f"[{category}] {message}")
+
+    async def on_response_begin(self) -> None:
+        print("\n--- response start ---")
+
+    async def on_response_end(self) -> None:
+        print("--- response end ---\n")
+
 
 async def main():
     opts = DeepslateOptions.from_env(
         system_prompt="You are a helpful assistant."
     )
     tts = ElevenLabsTtsConfig.from_env()
-
-    async def on_text_fragment(text: str) -> None:
-        print(text, end="", flush=True)
-
-    async def on_audio_chunk(
-        pcm_bytes: bytes, sample_rate: int, channels: int, transcript: str | None
-    ) -> None:
-        # Forward PCM audio to your output device / transport
-        ...
-
-    async def on_tool_call(call_id: str, name: str, params: dict) -> None:
-        result = await dispatch_tool(name, params)
-        await session.send_tool_response(call_id, result)
-
-    async def on_error(category: str, message: str, trace_id: str | None) -> None:
-        print(f"[{category}] {message}")
+    listener = MyListener()
 
     session = DeepslateSession.create(
         opts,
         tts_config=tts,
         user_agent="MyApp/1.0",
-        on_text_fragment=on_text_fragment,
-        on_audio_chunk=on_audio_chunk,
-        on_tool_call=on_tool_call,
-        on_error=on_error,
-        on_response_begin=lambda: print("\n--- response start ---"),
-        on_response_end=lambda: print("--- response end ---\n"),
+        listener=listener,
     )
-
+    listener.session = session
     session.start()
 
     # Initialize for text-only interaction (audio sessions initialize automatically)
@@ -214,7 +227,7 @@ Factory that creates a session together with its own `BaseDeepslateClient`. The 
 | `tts_config` | `ElevenLabsTtsConfig \| None` | `None` | Enables server-side TTS audio output |
 | `user_agent` | `str` | `"DeepslateCore"` | HTTP `User-Agent` header sent on connect |
 | `http_session` | `aiohttp.ClientSession \| None` | `None` | Shared aiohttp session (not closed by the session) |
-| `on_*` | callbacks | `None` | See callback table below |
+| `listener` | `DeepslateSessionListener \| None` | `None` | Receives all session events; defaults to a no-op base instance |
 
 ### `DeepslateSession` — send methods
 
@@ -232,23 +245,23 @@ Factory that creates a session together with its own `BaseDeepslateClient`. The 
 | `await session.send_conversation_query(query_id, prompt, instructions)` | Side-channel inference; at least one of `prompt`/`instructions` required; result via `on_conversation_query_result` |
 | `await session.report_playback_position(bytes_played)` | Report audio playback position for server-side truncation |
 
-### `DeepslateSession` — callbacks
+### `DeepslateSessionListener`
 
-All callbacks are optional `async` callables, set as constructor parameters or reassigned as attributes after construction.
+Subclass this and override only the methods you need. All methods are `async` and default to no-ops.
 
-| Callback | Signature | Fired when |
+| Method | Signature | Called when |
 |---|---|---|
 | `on_text_fragment` | `(text: str)` | Model streams a text token |
-| `on_audio_chunk` | `(pcm: bytes, sr: int, ch: int, transcript: str \| None)` | Model streams a TTS audio chunk |
+| `on_audio_chunk` | `(pcm_bytes: bytes, sample_rate: int, channels: int, transcript: str \| None)` | Model streams a TTS audio chunk |
 | `on_tool_call` | `(call_id: str, name: str, params: dict)` | Model requests a tool invocation |
 | `on_response_begin` | `()` | Model response starts |
 | `on_response_end` | `()` | Model response ends |
-| `on_user_transcription` | `(text: str, language: str \| None)` | User speech transcription result arrives |
+| `on_user_transcription` | `(text: str, language: str \| None, turn_id: int)` | User speech transcription result arrives |
 | `on_playback_buffer_clear` | `()` | Server cleared its audio playback buffer |
 | `on_chat_history` | `(messages: list[ChatMessageDict])` | Chat history export received |
 | `on_conversation_query_result` | `(query_id: str, text: str)` | Side-channel query result received |
 | `on_error` | `(category: str, message: str, trace_id: str \| None)` | Server sent an error notification |
-| `on_fatal_error` | `(exc: Exception)` | All reconnect retries exhausted |
+| `on_fatal_error` | `(e: Exception)` | All reconnect retries exhausted |
 
 ### `DeepslateOptions`
 

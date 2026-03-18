@@ -6,20 +6,7 @@ except importlib.metadata.PackageNotFoundError:
     __version__ = "unknown"
 
 from .client import BaseDeepslateClient
-from .session import (
-    DeepslateSession,
-    OnAudioChunk,
-    OnChatHistory,
-    OnConversationQueryResult,
-    OnError,
-    OnFatalError,
-    OnPlaybackBufferClear,
-    OnResponseBegin,
-    OnResponseEnd,
-    OnTextFragment,
-    OnToolCall,
-    OnUserTranscription,
-)
+from .session import DeepslateSession
 from .options import (
     DeepslateOptions,
     ElevenLabsLocation,
@@ -30,7 +17,7 @@ from .options import (
 from ._types import (
     ChatMessageDict,
     ContentBlockDict,
-    TriggerMode,
+    DeepslateSessionListener,
     FunctionDefinitionDict,
     FunctionToolDict,
     InputAudioContentDict,
@@ -39,6 +26,7 @@ from ._types import (
     ThoughtsContentDict,
     ToolCallContentDict,
     ToolResultContentDict,
+    TriggerMode,
     TtsAudioDict,
 )
 
@@ -46,18 +34,8 @@ __all__ = [
     "__version__",
     "BaseDeepslateClient",
     "DeepslateSession",
+    "DeepslateSessionListener",
     "TriggerMode",
-    "OnAudioChunk",
-    "OnChatHistory",
-    "OnConversationQueryResult",
-    "OnError",
-    "OnFatalError",
-    "OnPlaybackBufferClear",
-    "OnResponseBegin",
-    "OnResponseEnd",
-    "OnTextFragment",
-    "OnToolCall",
-    "OnUserTranscription",
     "ChatMessageDict",
     "ContentBlockDict",
     "FunctionDefinitionDict",
