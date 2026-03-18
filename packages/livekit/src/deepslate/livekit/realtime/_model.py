@@ -390,9 +390,9 @@ class DeepslateRealtimeSession(
         """
         await self._session.export_chat_history(await_pending)
 
-    def generate_reply(
-        self, *, instructions: NotGivenOr[str] = NOT_GIVEN
-    ) -> asyncio.Future[GenerationCreatedEvent]:
+    async def generate_reply(
+            self, *, instructions: NotGivenOr[str] = NOT_GIVEN
+    ) -> GenerationCreatedEvent:
         """Request the model to generate a reply."""
         fut: asyncio.Future[GenerationCreatedEvent] = asyncio.Future()
         request_id = utils.shortuuid("gen_")
@@ -404,46 +404,33 @@ class DeepslateRealtimeSession(
 
         if self._pending_user_text:
             if utils.is_given(instructions):
-                asyncio.ensure_future(
-                    self._session.send_text(
-                        self._pending_user_text,
-                        trigger=TriggerMode.NO_TRIGGER,
-                    )
+                await self._session.send_text(
+                    self._pending_user_text,
+                    trigger=TriggerMode.NO_TRIGGER,
                 )
-                asyncio.ensure_future(
-                    self._session.trigger_inference(instructions=instructions)
-                )
+                await self._session.trigger_inference(instructions=instructions)
             else:
-                asyncio.ensure_future(self._session.initialize())
-                asyncio.ensure_future(
-                    self._session.send_text(
-                        self._pending_user_text,
-                        trigger=TriggerMode.IMMEDIATE,
-                    )
+                await self._session.initialize()
+                await self._session.send_text(
+                    self._pending_user_text,
+                    trigger=TriggerMode.IMMEDIATE,
                 )
             self._pending_user_text = None
         else:
-            asyncio.ensure_future(self._session.initialize())
-            asyncio.ensure_future(
-                self._session.trigger_inference(
-                    instructions=instructions if utils.is_given(instructions) else None
-                )
+            await self._session.initialize()
+            await self._session.trigger_inference(
+                instructions=instructions if utils.is_given(instructions) else None
             )
 
         timeout = self._opts.generate_reply_timeout
+
         if timeout > 0:
-            loop = asyncio.get_event_loop()
-
-            def _on_timeout() -> None:
-                if not fut.done():
-                    fut.set_exception(
-                        TimeoutError(f"generate_reply timed out after {timeout}s")
-                    )
-
-            handle = loop.call_later(timeout, _on_timeout)
-            fut.add_done_callback(lambda _: handle.cancel())
-
-        return fut
+            try:
+                return await asyncio.wait_for(fut, timeout=timeout)
+            except asyncio.TimeoutError:
+                raise TimeoutError(f"generate_reply timed out after {timeout}s")
+        else:
+            return await fut
 
     def commit_audio(self) -> None:
         """Deepslate uses server-side VAD for auto-commit."""
