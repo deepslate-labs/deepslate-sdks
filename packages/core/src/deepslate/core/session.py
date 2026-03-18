@@ -337,6 +337,8 @@ class DeepslateSession:
         instructions: Optional[str] = None,
     ) -> None:
         """Send a side-channel ``ConversationQuery``"""
+        if prompt is None and instructions is None:
+            raise ValueError("At least one of 'prompt' or 'instructions' must be provided.")
         self._pending_query_ids.append(query_id)
         query = proto.ConversationQuery()
         if prompt is not None:
