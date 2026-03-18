@@ -31,6 +31,8 @@ from .options import (
 from ._types import (
     ChatMessageDict,
     ContentBlockDict,
+    FunctionDefinitionDict,
+    FunctionToolDict,
     InputAudioContentDict,
     InstructionsContentDict,
     TextContentDict,
@@ -58,6 +60,8 @@ __all__ = [
     "OnUserTranscription",
     "ChatMessageDict",
     "ContentBlockDict",
+    "FunctionDefinitionDict",
+    "FunctionToolDict",
     "DeepslateOptions",
     "ElevenLabsLocation",
     "ElevenLabsTtsConfig",

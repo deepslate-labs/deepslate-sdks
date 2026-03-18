@@ -30,6 +30,7 @@ from deepslate.core import (
     DeepslateOptions,
     DeepslateSession,
     ElevenLabsTtsConfig,
+    FunctionToolDict,
     InferenceTriggerMode,
     VadConfig,
 )
@@ -60,7 +61,7 @@ class DeepslateRealtimeLLMService(LLMService):
         self._tts_config = tts_config
 
         self._session: Optional[DeepslateSession] = None
-        self._tools: List[dict] = []
+        self._tools: List[FunctionToolDict] = []
 
     async def start(self, frame: StartFrame):
         """Starts the Pipecat service and opens the Deepslate connection."""
@@ -118,7 +119,7 @@ class DeepslateRealtimeLLMService(LLMService):
                 await self._session.send_tool_response(frame.tool_call_id, frame.result)
 
         elif isinstance(frame, LLMSetToolsFrame):
-            # Normalise ToolsSchema (pipecat >=0.0.104) to list[dict].
+            # Normalise ToolsSchema (pipecat >=0.0.104) to list[FunctionToolDict].
             if isinstance(frame.tools, ToolsSchema):
                 self._tools = [
                     {"type": "function", "function": schema.to_default_dict()}

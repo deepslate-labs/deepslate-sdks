@@ -39,6 +39,7 @@ from deepslate.core import (
     DeepslateOptions,
     DeepslateSession,
     ElevenLabsTtsConfig,
+    FunctionToolDict,
     InferenceTriggerMode,
     VadConfig,
 )
@@ -243,7 +244,7 @@ class DeepslateRealtimeSession(
         self._pending_queries: dict[str, asyncio.Future[str]] = {}
 
         # Tool state
-        self._tools_dicts: list[dict] = []
+        self._tools_dicts: list[FunctionToolDict] = []
         self._tool_choice: ToolChoice | None = None
 
         # Core session — owns the WebSocket lifecycle
@@ -332,7 +333,7 @@ class DeepslateRealtimeSession(
         self._tool_choice = tool_choice
         asyncio.ensure_future(self._sync_tool_choice())
 
-    def _effective_tools_dicts(self) -> list[dict]:
+    def _effective_tools_dicts(self) -> list[FunctionToolDict]:
         """Return the tools list filtered by the current tool_choice."""
         tc = self._tool_choice
         if tc == "none":

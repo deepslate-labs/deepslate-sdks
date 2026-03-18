@@ -12,7 +12,7 @@ import aiohttp
 from .client import BaseDeepslateClient
 from .options import DeepslateOptions, ElevenLabsTtsConfig, VadConfig
 from .proto import realtime_pb2 as proto
-from ._types import ChatMessageDict
+from ._types import ChatMessageDict, FunctionToolDict
 from ._utils import build_initialize_request, dict_to_struct, parse_chat_history, struct_to_dict
 
 logger = logging.getLogger("deepslate.core")
@@ -69,7 +69,7 @@ class DeepslateSession:
         self._options = options
         self._vad_config = vad_config or VadConfig()
         self._tts_config = tts_config
-        self._current_tools: list[dict] = []
+        self._current_tools: list[FunctionToolDict] = []
         self._should_stop = False
 
         # Callbacks
@@ -275,7 +275,7 @@ class DeepslateSession:
             proto.ServiceBoundMessage(tool_call_response=response)
         )
 
-    async def update_tools(self, tools: list[dict]) -> None:
+    async def update_tools(self, tools: list[FunctionToolDict]) -> None:
         """Persist tool definitions and sync them to the server.
 
         If the session is not yet initialized the tools are buffered and sent
@@ -417,7 +417,7 @@ class DeepslateSession:
             self._pending_before_init.append(msg)
 
     def _build_update_tools_msg(
-        self, tools: list[dict]
+        self, tools: list[FunctionToolDict]
     ) -> Optional[proto.ServiceBoundMessage]:
         if not tools:
             return None

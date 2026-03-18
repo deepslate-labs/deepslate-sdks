@@ -53,6 +53,20 @@ ContentBlockDict = Union[
 ]
 
 
+class _FunctionDefinitionRequired(TypedDict):
+    name: str
+
+
+class FunctionDefinitionDict(_FunctionDefinitionRequired, total=False):
+    description: str
+    parameters: dict[str, object]
+
+
+class FunctionToolDict(TypedDict):
+    type: Literal["function"]
+    function: FunctionDefinitionDict
+
+
 class ChatMessageDict(TypedDict):
     role: str
     delivery_status: str
