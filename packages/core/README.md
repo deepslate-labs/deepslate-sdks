@@ -229,7 +229,7 @@ Factory that creates a session together with its own `BaseDeepslateClient`. The 
 | `await session.reconfigure(system_prompt=None, temperature=None)` | Live-update inference settings |
 | `await session.send_direct_speech(text, include_in_history=True)` | Speak text directly via TTS, bypassing the LLM |
 | `await session.export_chat_history(await_pending=False)` | Request a history export; result delivered via `on_chat_history` |
-| `await session.send_conversation_query(query_id, prompt, instructions)` | Side-channel inference; result via `on_conversation_query_result` |
+| `await session.send_conversation_query(query_id, prompt, instructions)` | Side-channel inference; at least one of `prompt`/`instructions` required; result via `on_conversation_query_result` |
 | `await session.report_playback_position(bytes_played)` | Report audio playback position for server-side truncation |
 
 ### `DeepslateSession` — callbacks
@@ -244,7 +244,7 @@ All callbacks are optional `async` callables, set as constructor parameters or r
 | `on_response_begin` | `()` | Model response starts |
 | `on_response_end` | `()` | Model response ends |
 | `on_user_transcription` | `(text: str, language: str \| None)` | User speech transcription result arrives |
-| `on_interruption` | `()` | User interrupted — server cleared its audio buffer |
+| `on_playback_buffer_clear` | `()` | Server cleared its audio playback buffer |
 | `on_chat_history` | `(messages: list[ChatMessageDict])` | Chat history export received |
 | `on_conversation_query_result` | `(query_id: str, text: str)` | Side-channel query result received |
 | `on_error` | `(category: str, message: str, trace_id: str \| None)` | Server sent an error notification |
