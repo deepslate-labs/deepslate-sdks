@@ -12,7 +12,7 @@ import aiohttp
 from .client import BaseDeepslateClient
 from .options import DeepslateOptions, ElevenLabsTtsConfig, VadConfig
 from .proto import realtime_pb2 as proto
-from ._types import ChatMessageDict, FunctionToolDict
+from ._types import ChatMessageDict, FunctionToolDict, TriggerMode
 from ._utils import build_initialize_request, dict_to_struct, parse_chat_history, struct_to_dict
 
 logger = logging.getLogger("deepslate.core")
@@ -191,12 +191,18 @@ class DeepslateSession:
         session._owns_client = True
         return session
 
+    _TRIGGER_MODE_MAP = {
+        TriggerMode.NO_TRIGGER: proto.InferenceTriggerMode.NO_TRIGGER,
+        TriggerMode.QUEUE: proto.InferenceTriggerMode.QUEUE,
+        TriggerMode.IMMEDIATE: proto.InferenceTriggerMode.IMMEDIATE,
+    }
+
     async def send_audio(
         self,
         pcm_bytes: bytes,
         sample_rate: int,
         channels: int,
-        trigger: proto.InferenceTriggerMode = proto.InferenceTriggerMode.IMMEDIATE,
+        trigger: TriggerMode = TriggerMode.IMMEDIATE,
     ) -> int:
         """Send raw PCM audio.
 
@@ -225,7 +231,7 @@ class DeepslateSession:
         packet_id = self._next_packet_id()
         user_input = proto.UserInput(
             packet_id=packet_id,
-            mode=trigger,
+            mode=self._TRIGGER_MODE_MAP[trigger],
             audio_data=proto.AudioData(data=pcm_bytes),
         )
         await self._enqueue_or_buffer(proto.ServiceBoundMessage(user_input=user_input))
@@ -234,7 +240,7 @@ class DeepslateSession:
     async def send_text(
         self,
         text: str,
-        trigger: proto.InferenceTriggerMode = proto.InferenceTriggerMode.IMMEDIATE,
+        trigger: TriggerMode = TriggerMode.IMMEDIATE,
     ) -> int:
         """Send a text ``UserInput``.
 
@@ -244,7 +250,7 @@ class DeepslateSession:
         packet_id = self._next_packet_id()
         user_input = proto.UserInput(
             packet_id=packet_id,
-            mode=trigger,
+            mode=self._TRIGGER_MODE_MAP[trigger],
             text_data=proto.TextData(data=text),
         )
         await self._enqueue_or_buffer(proto.ServiceBoundMessage(user_input=user_input))

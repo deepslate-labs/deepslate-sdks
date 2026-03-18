@@ -1,6 +1,13 @@
 from __future__ import annotations
 
+from enum import Enum
 from typing import Literal, Optional, TypedDict, Union
+
+
+class TriggerMode(str, Enum):
+    NO_TRIGGER = "no_trigger"
+    QUEUE = "queue"
+    IMMEDIATE = "immediate"
 
 
 class TtsAudioDict(TypedDict):

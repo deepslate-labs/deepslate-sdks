@@ -6,7 +6,6 @@ except importlib.metadata.PackageNotFoundError:
     __version__ = "unknown"
 
 from .client import BaseDeepslateClient
-from .proto.realtime_pb2 import InferenceTriggerMode
 from .session import (
     DeepslateSession,
     OnAudioChunk,
@@ -31,6 +30,7 @@ from .options import (
 from ._types import (
     ChatMessageDict,
     ContentBlockDict,
+    TriggerMode,
     FunctionDefinitionDict,
     FunctionToolDict,
     InputAudioContentDict,
@@ -46,7 +46,7 @@ __all__ = [
     "__version__",
     "BaseDeepslateClient",
     "DeepslateSession",
-    "InferenceTriggerMode",
+    "TriggerMode",
     "OnAudioChunk",
     "OnChatHistory",
     "OnConversationQueryResult",
