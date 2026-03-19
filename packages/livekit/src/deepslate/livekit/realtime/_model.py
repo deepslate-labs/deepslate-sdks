@@ -317,13 +317,15 @@ class DeepslateRealtimeSession(
         await self._sync_tool_choice()
         logger.debug(f"updated tools: {[t.get('function', {}).get('name') for t in tools_dicts]}")
 
-    def update_options(self, *, tool_choice: NotGivenOr[ToolChoice | None] = NOT_GIVEN) -> None:
+    async def update_options(
+            self, *, tool_choice: NotGivenOr[ToolChoice | None] = NOT_GIVEN
+    ) -> None:
         """Apply a tool_choice constraint."""
         if not utils.is_given(tool_choice):
             logger.warning("Tool choice constraint not given")
             return
         self._tool_choice = tool_choice
-        asyncio.ensure_future(self._sync_tool_choice())
+        await self._sync_tool_choice()
 
     def _effective_tools_dicts(self) -> list[FunctionToolDict]:
         """Return the tools list filtered by the current tool_choice."""
