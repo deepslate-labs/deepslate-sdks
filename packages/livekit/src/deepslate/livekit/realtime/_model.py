@@ -6,6 +6,7 @@ import json
 import os
 import time
 from dataclasses import dataclass
+from types import SimpleNamespace
 from typing import Any, Literal
 
 import aiohttp
@@ -33,10 +34,16 @@ try:
 except importlib.metadata.PackageNotFoundError:
     __version__ = "unknown"
 
-from deepslate.core._utils import build_initialize_request, dict_to_struct, struct_to_dict
-from deepslate.core.client import BaseDeepslateClient
-from deepslate.core.options import DeepslateOptions, ElevenLabsTtsConfig, VadConfig
-from deepslate.core.proto import realtime_pb2 as proto
+from deepslate.core import (
+    BaseDeepslateClient,
+    DeepslateOptions,
+    DeepslateSession,
+    DeepslateSessionListener,
+    ElevenLabsTtsConfig,
+    FunctionToolDict,
+    TriggerMode,
+    VadConfig,
+)
 
 from .._log import logger
 
@@ -120,7 +127,6 @@ class RealtimeModel(llm.RealtimeModel):
         self._tts_config = tts_config
 
         if ws_url:
-            # Used for local development or self-hosting Deepslate infrastructure
             deepslate_vendor_id = vendor_id or ""
             deepslate_organization_id = organization_id or ""
             deepslate_api_key = api_key or ""
@@ -175,7 +181,7 @@ class RealtimeModel(llm.RealtimeModel):
     def provider(self) -> str:
         return "deepslate"
 
-    def session(self) -> DeepslateRealtimeSession:
+    def session(self) -> "DeepslateRealtimeSession":
         """Create a new Deepslate real-time session."""
         return DeepslateRealtimeSession(realtime_model=self)
 
@@ -187,9 +193,10 @@ class RealtimeModel(llm.RealtimeModel):
     ) -> None:
         """Update model options.
 
-        Note: Changes take effect on the next session initialization (e.g., after reconnect).
-        Mid-session reconfiguration via ReconfigureSessionRequest is not yet implemented for
-        the LiveKit plugin. See TODO in DeepslateRealtimeSession._queue_initialize_session.
+        Changes take effect on the next session initialization (e.g., after reconnect).
+        To apply immediately to an active session use
+        ``DeepslateRealtimeSession.update_instructions()`` or send a
+        ``ReconfigureSessionRequest`` via the session.
         """
         if utils.is_given(system_prompt):
             self._opts.system_prompt = system_prompt
@@ -208,52 +215,49 @@ class DeepslateRealtimeSession(
             "user_transcription",
             "audio_transcript",
         ]
-    ]
+    ],
+    DeepslateSessionListener,
 ):
     """A session for the Deepslate Realtime API.
 
-    This class manages WebSocket communication with Deepslate,
-    handling audio streaming, tool calls, and response generation.
+    Wraps ``DeepslateSession`` from deepslate-core and translates its
+    callbacks into LiveKit agent events and channel writes.  All
+    protobuf details are encapsulated in the core session; this class
+    contains only LiveKit-specific logic.
     """
 
     def __init__(self, realtime_model: RealtimeModel):
         super().__init__(realtime_model)
-        self._realtime_model: RealtimeModel = realtime_model
+        self._realtime_model = realtime_model
         self._opts = realtime_model._opts
-        self._vad_config = realtime_model._vad_config
 
-        # Context
+        # LiveKit context
         self._tools = llm.ToolContext.empty()
         self._chat_ctx = llm.ChatContext.empty()
         self._instructions: str | None = None
-
-        # Message channel for outgoing messages
-        self._msg_ch: utils.aio.Chan[proto.ServiceBoundMessage] = utils.aio.Chan()
-
-        # Audio state - will be initialized on first audio frame
-        self._session_initialized = False
-        self._detected_sample_rate: int | None = None
-        self._detected_num_channels: int | None = None
-        self._packet_id_counter: int = 0
-
-        # Buffer for messages that need to be sent after initialization
-        self._pending_messages: list[proto.ServiceBoundMessage] = []
-
-        # Pending user text to send with next generate_reply
-        self._pending_user_text: str | None = None
 
         # Generation tracking
         self._current_generation: _ResponseGeneration | None = None
         self._response_created_futures: dict[str, asyncio.Future[GenerationCreatedEvent]] = {}
         self._pending_user_generation: bool = False
+        self._pending_user_text: str | None = None
 
-        # Conversation query tracking
-        self._pending_queries: asyncio.Queue[asyncio.Future[str]] = asyncio.Queue()
+        # Conversation query tracking: query_id → Future[str]
+        self._pending_queries: dict[str, asyncio.Future[str]] = {}
 
-        # Main task
-        self._main_atask = asyncio.create_task(
-            self._main_task(), name="DeepslateRealtimeSession._main_task"
+        # Tool state
+        self._tools_dicts: list[FunctionToolDict] = []
+        self._tool_choice: ToolChoice | None = None
+
+        # Core session — owns the WebSocket lifecycle
+        self._session = DeepslateSession(
+            client=realtime_model._client,
+            options=realtime_model._opts,
+            vad_config=realtime_model._vad_config,
+            tts_config=realtime_model._tts_config,
+            listener=self,
         )
+        self._session.start()
 
     @property
     def chat_ctx(self) -> llm.ChatContext:
@@ -264,18 +268,13 @@ class DeepslateRealtimeSession(
         return self._tools.copy()
 
     async def update_instructions(self, instructions: str) -> None:
-        """Update system prompt."""
+        """Update system prompt for the next session initialization."""
         self._instructions = instructions
         self._opts.system_prompt = instructions
         logger.debug("instructions updated (will take effect on next session)")
 
     async def update_chat_ctx(self, chat_ctx: llm.ChatContext) -> None:
-        """Update chat context.
-
-        Deepslate manages its own context, but we capture new user messages
-        to send them via TextData when generate_reply is called.
-        We also handle function call outputs to send tool results back to the server.
-        """
+        """Capture new user messages and handle function call outputs."""
         existing_ids = {item.id for item in self._chat_ctx.items}
 
         for item in chat_ctx.items:
@@ -284,155 +283,119 @@ class DeepslateRealtimeSession(
                     if text := item.text_content:
                         self._pending_user_text = text
                 elif item.type == "function_call_output":
-                    self._send_tool_response(item.call_id, item.output)
+                    await self._session.send_tool_response(item.call_id, item.output)
 
         self._chat_ctx = chat_ctx.copy()
 
     async def update_tools(self, tools: list[FunctionTool | RawFunctionTool | Any]) -> None:
-        """Update tool definitions."""
-        tool_definitions = []
-
+        """Sync tool definitions to the server."""
+        tools_dicts = []
         for tool in tools:
             if is_function_tool(tool):
-                tool_schema = llm.utils.build_legacy_openai_schema(tool, internally_tagged=True)
-                tool_def = proto.ToolDefinition(
-                    name=tool_schema["name"],
-                    description=tool_schema.get("description", ""),
-                    parameters=dict_to_struct(tool_schema.get("parameters", {})),
-                )
-                tool_definitions.append(tool_def)
+                schema = llm.utils.build_legacy_openai_schema(tool, internally_tagged=True)
+                tools_dicts.append({
+                    "type": "function",
+                    "function": {
+                        "name": schema["name"],
+                        "description": schema.get("description", ""),
+                        "parameters": schema.get("parameters", {}),
+                    },
+                })
             elif is_raw_function_tool(tool):
                 info = get_raw_function_info(tool)
-                tool_def = proto.ToolDefinition(
-                    name=info.name,
-                    description=info.raw_schema.get("description", ""),
-                    parameters=dict_to_struct(info.raw_schema.get("parameters", {})),
-                )
-                tool_definitions.append(tool_def)
+                tools_dicts.append({
+                    "type": "function",
+                    "function": {
+                        "name": info.name,
+                        "description": info.raw_schema.get("description", ""),
+                        "parameters": info.raw_schema.get("parameters", {}),
+                    },
+                })
 
-        update_request = proto.UpdateToolDefinitionsRequest(tool_definitions=tool_definitions)
-        msg = proto.ServiceBoundMessage(update_tool_definitions_request=update_request)
-
-        if not self._session_initialized:
-            self._pending_messages.append(msg)
-        else:
-            self._send_message(msg)
-
+        self._tools_dicts = tools_dicts
         self._tools = llm.ToolContext(tools)
-        logger.debug(f"updated tools: {[t.name for t in tool_definitions]}")
+        await self._sync_tool_choice()
+        logger.debug(f"updated tools: {[t.get('function', {}).get('name') for t in tools_dicts]}")
 
-    def update_options(self, *, tool_choice: NotGivenOr[ToolChoice | None] = NOT_GIVEN) -> None:
-        """Update session options. Dynamic tool_choice updates not supported."""
-        pass
+    async def update_options(
+            self, *, tool_choice: NotGivenOr[ToolChoice | None] = NOT_GIVEN
+    ) -> None:
+        """Apply a tool_choice constraint."""
+        if not utils.is_given(tool_choice):
+            logger.warning("Tool choice constraint not given")
+            return
+        self._tool_choice = tool_choice
+        await self._sync_tool_choice()
 
-    def push_audio(self, frame: rtc.AudioFrame) -> None:
-        """Push audio frame to Deepslate."""
-        if not self._session_initialized:
-            self._detected_sample_rate = frame.sample_rate
-            self._detected_num_channels = frame.num_channels
-            self._queue_initialize_session()
-            self._session_initialized = True
-            logger.debug(
-                f"session initialized with audio format: {frame.sample_rate}Hz, {frame.num_channels}ch"
-            )
-        elif (
-            frame.sample_rate != self._detected_sample_rate
-            or frame.num_channels != self._detected_num_channels
-        ):
-            self._detected_sample_rate = frame.sample_rate
-            self._detected_num_channels = frame.num_channels
-            reconfig = proto.ReconfigureSessionRequest(
-                input_audio_line=proto.AudioLineConfiguration(
-                    sample_rate=frame.sample_rate,
-                    channel_count=frame.num_channels,
-                    sample_format=proto.SampleFormat.SIGNED_16_BIT,
-                )
-            )
-            msg = proto.ServiceBoundMessage(reconfigure_session_request=reconfig)
-            self._send_message(msg)
-            logger.debug(f"reconfigured audio to {frame.sample_rate}Hz, {frame.num_channels}ch")
+    def _effective_tools_dicts(self) -> list[FunctionToolDict]:
+        """Return the tools list filtered by the current tool_choice."""
+        tc = self._tool_choice
+        if tc == "none":
+            return []
+        if isinstance(tc, dict):  # NamedToolChoice
+            name = tc.get("function", {}).get("name")
+            return [t for t in self._tools_dicts if t.get("function", {}).get("name") == name]
+        # "auto", "required", None → send all tools
+        return self._tools_dicts
 
-        self._packet_id_counter += 1
-        user_input = proto.UserInput(
-            packet_id=self._packet_id_counter,
-            mode=proto.InferenceTriggerMode.IMMEDIATE,
-            audio_data=proto.AudioData(data=frame.data.tobytes()),
+    async def _sync_tool_choice(self) -> None:
+        """Push the effective tool list (after applying tool_choice) to the server."""
+        await self._session.update_tools(self._effective_tools_dicts())
+
+    async def push_audio(self, frame: rtc.AudioFrame) -> None:
+        """Push an audio frame to Deepslate."""
+        await self._session.send_audio(
+            frame.data.tobytes(),
+            frame.sample_rate,
+            frame.num_channels,
         )
-        msg = proto.ServiceBoundMessage(user_input=user_input)
-        self._send_message(msg)
 
     def push_video(self, frame: rtc.VideoFrame) -> None:
-        """Push video frame. Not supported by Deepslate."""
+        """Video input is not supported by Deepslate."""
         logger.warning("Deepslate does not support video input")
 
-    def send_text(
+    async def send_text(
         self,
         text: str,
-        mode: proto.InferenceTriggerMode = proto.InferenceTriggerMode.NO_TRIGGER,
+        mode: TriggerMode = TriggerMode.NO_TRIGGER,
     ) -> None:
         """Send text input to Deepslate."""
-        self._ensure_session_initialized()
+        await self._session.initialize()
+        await self._session.send_text(text, trigger=mode)
 
-        self._packet_id_counter += 1
-        user_input = proto.UserInput(
-            packet_id=self._packet_id_counter,
-            mode=mode,
-            text_data=proto.TextData(data=text),
-        )
-        msg = proto.ServiceBoundMessage(user_input=user_input)
-        self._send_message(msg)
+    async def speak_direct(self, text: str, include_in_history: bool = True) -> None:
+        """Bypass the LLM and speak text directly via TTS."""
+        await self._session.initialize()
+        await self._session.send_direct_speech(text, include_in_history)
 
-    def speak_direct(self, text: str, include_in_history: bool = True) -> None:
-        """Bypass the LLM and speak text directly via TTS, canceling active inference."""
-        self._ensure_session_initialized()
-        direct_speech = proto.DirectSpeech(
-            text=text,
-            include_in_history=include_in_history,
-        )
-        msg = proto.ServiceBoundMessage(direct_speech=direct_speech)
-        self._send_message(msg)
-
-    def query_conversation(
+    async def query_conversation(
         self,
         prompt: str | None = None,
         instructions: str | None = None,
-    ) -> asyncio.Future[str]:
-        """Run a one-shot side-channel inference query against the current conversation.
+    ) -> str:
+        """Run a one-shot side-channel inference against the current conversation.
 
-        The query runs independently of the main voice conversation and does not
-        affect the conversation history.  The returned future resolves to the
-        LLM's complete text reply once the server responds.
+        Returns the model's complete text reply.
         """
-        self._ensure_session_initialized()
-
+        query_id = utils.shortuuid("query_")
         fut: asyncio.Future[str] = asyncio.get_event_loop().create_future()
-        self._pending_queries.put_nowait(fut)
+        self._pending_queries[query_id] = fut
 
-        query = proto.ConversationQuery()
-        if prompt is not None:
-            query.prompt = prompt
-        if instructions is not None:
-            query.instructions = instructions
-        self._send_message(proto.ServiceBoundMessage(conversation_query=query))
+        await self._session.initialize()
+        await self._session.send_conversation_query(query_id, prompt, instructions)
+        return await fut
 
-        return fut
-
-    def export_chat_history(self, await_pending: bool = False) -> None:
+    async def export_chat_history(self, await_pending: bool = False) -> None:
         """Request the server to export the current chat history.
 
-        The server will respond with a ``chat_history`` message, which is
-        emitted as a ``chat_history_exported`` event carrying the raw
-        ``proto.ChatHistory`` object (including ``ephemeral`` flags and
-        ``transcription`` fields on audio blocks).
+        The result is delivered via the ``chat_history_exported`` event.
         """
-        req = proto.ExportChatHistoryRequest(await_pending=await_pending)
-        msg = proto.ServiceBoundMessage(export_chat_history_request=req)
-        self._send_message(msg)
+        await self._session.export_chat_history(await_pending)
 
-    def generate_reply(
-        self, *, instructions: NotGivenOr[str] = NOT_GIVEN
-    ) -> asyncio.Future[GenerationCreatedEvent]:
-        """Request model to generate a reply."""
+    async def generate_reply(
+            self, *, instructions: NotGivenOr[str] = NOT_GIVEN
+    ) -> GenerationCreatedEvent:
+        """Request the model to generate a reply."""
         fut: asyncio.Future[GenerationCreatedEvent] = asyncio.Future()
         request_id = utils.shortuuid("gen_")
         self._response_created_futures[request_id] = fut
@@ -443,45 +406,44 @@ class DeepslateRealtimeSession(
 
         if self._pending_user_text:
             if utils.is_given(instructions):
-                self.send_text(self._pending_user_text, mode=proto.InferenceTriggerMode.NO_TRIGGER)
-                trigger = proto.TriggerInference(extra_instructions=instructions)
-                msg = proto.ServiceBoundMessage(trigger_inference=trigger)
-                self._send_auto_initialize(msg)
+                await self._session.send_text(
+                    self._pending_user_text,
+                    trigger=TriggerMode.NO_TRIGGER,
+                )
+                await self._session.trigger_inference(instructions=instructions)
             else:
-                self.send_text(self._pending_user_text, mode=proto.InferenceTriggerMode.IMMEDIATE)
+                await self._session.initialize()
+                await self._session.send_text(
+                    self._pending_user_text,
+                    trigger=TriggerMode.IMMEDIATE,
+                )
             self._pending_user_text = None
         else:
-            trigger = proto.TriggerInference()
-            if utils.is_given(instructions):
-                trigger = proto.TriggerInference(extra_instructions=instructions)
-            msg = proto.ServiceBoundMessage(trigger_inference=trigger)
-            self._send_auto_initialize(msg)
+            await self._session.initialize()
+            await self._session.trigger_inference(
+                instructions=instructions if utils.is_given(instructions) else None
+            )
 
         timeout = self._opts.generate_reply_timeout
+
         if timeout > 0:
-            loop = asyncio.get_event_loop()
-
-            def _on_timeout() -> None:
-                if not fut.done():
-                    fut.set_exception(
-                        TimeoutError(f"generate_reply timed out after {timeout}s")
-                    )
-
-            handle = loop.call_later(timeout, _on_timeout)
-            fut.add_done_callback(lambda _: handle.cancel())
-
-        return fut
+            try:
+                return await asyncio.wait_for(fut, timeout=timeout)
+            except asyncio.TimeoutError:
+                raise TimeoutError(f"generate_reply timed out after {timeout}s")
+        else:
+            return await fut
 
     def commit_audio(self) -> None:
-        """Commit audio buffer. Deepslate uses VAD for auto-commit."""
+        """Deepslate uses server-side VAD for auto-commit."""
         pass
 
     def clear_audio(self) -> None:
-        """Clear audio buffer. TODO: Backend doesn't support yet."""
+        """Audio buffer clearing is not yet supported by the Deepslate backend."""
         logger.warning("clear_audio not yet supported by Deepslate backend")
 
     def interrupt(self) -> None:
-        """Interrupt current generation."""
+        """Interrupt the current generation."""
         if self._current_generation:
             self._close_current_generation()
 
@@ -493,79 +455,128 @@ class DeepslateRealtimeSession(
         audio_end_ms: int,
         audio_transcript: NotGivenOr[str] = NOT_GIVEN,
     ) -> None:
-        """Truncate message. Deepslate does automatic truncation server side."""
+        """Deepslate handles truncation server-side automatically."""
         pass
 
     async def aclose(self) -> None:
         """Close the session."""
-        self._msg_ch.close()
         if self._current_generation:
             with contextlib.suppress(asyncio.InvalidStateError):
                 self._current_generation.done_fut.set_result(None)
-        await utils.aio.cancel_and_wait(self._main_atask)
+        await self._session.close()
 
-    # --- Internal methods ---
+    async def on_text_fragment(self, text: str) -> None:
+        if self._current_generation is None:
+            self._create_generation()
+        if self._current_generation is None:
+            return
+        self._current_generation.text_ch.send_nowait(text)
+        self._current_generation.audio_transcript += text
+        if self._current_generation.first_token_timestamp is None:
+            self._current_generation.first_token_timestamp = time.time()
 
-    def _send_message(self, msg: proto.ServiceBoundMessage) -> None:
-        with contextlib.suppress(utils.aio.channel.ChanClosed):
-            self._msg_ch.send_nowait(msg)
-
-    def _send_auto_initialize(self, msg: proto.ServiceBoundMessage) -> None:
-        self._ensure_session_initialized()
-        self._send_message(msg)
-
-    def _ensure_session_initialized(self) -> None:
-        """Ensure session is initialized, using defaults if no audio detected."""
-        if self._session_initialized:
+    async def on_audio_chunk(
+        self,
+        pcm_bytes: bytes,
+        sample_rate: int,
+        channels: int,
+        transcript: str | None,
+    ) -> None:
+        if self._current_generation is None:
+            self._create_generation()
+        if self._current_generation is None:
             return
 
-        self._detected_sample_rate = 24000
-        self._detected_num_channels = 1
+        frame = rtc.AudioFrame(
+            data=pcm_bytes,
+            sample_rate=sample_rate,
+            num_channels=channels,
+            samples_per_channel=len(pcm_bytes) // 2,
+        )
+        self._current_generation.audio_ch.send_nowait(frame)
 
-        self._queue_initialize_session()
-        self._session_initialized = True
-        logger.debug("session initialized for text-only mode (24kHz mono)")
+        if self._current_generation.first_token_timestamp is None:
+            self._current_generation.first_token_timestamp = time.time()
 
-    def _queue_initialize_session(self) -> None:
-        """Queue the InitializeSessionRequest message."""
-        if self._detected_sample_rate is None or self._detected_num_channels is None:
-            logger.error("cannot initialize session: audio format not detected")
+        if transcript:
+            self._current_generation.audio_transcript += transcript
+            self.emit("audio_transcript", transcript)
+
+    async def on_tool_call(self, call_id: str, name: str, params: dict) -> None:
+        if self._current_generation is None:
+            self._create_generation()
+        if self._current_generation is None:
             return
+        self._current_generation.function_ch.send_nowait(
+            FunctionCall(
+                call_id=call_id,
+                name=name,
+                arguments=json.dumps(params),
+            )
+        )
+        logger.debug(f"tool call request: {name}({call_id})")
+        self._close_current_generation()
 
-        # TODO: mid-session temperature/system_prompt changes are not propagated via
-        # ReconfigureSessionRequest. They only take effect on the next session init.
-        init_request = build_initialize_request(
-            sample_rate=self._detected_sample_rate,
-            num_channels=self._detected_num_channels,
-            vad_config=self._vad_config,
-            system_prompt=self._opts.system_prompt,
-            tts_config=self._realtime_model._tts_config,
-            temperature=self._opts.temperature,
+    async def on_response_begin(self) -> None:
+        if self._current_generation is None:
+            self._create_generation()
+
+    async def on_response_end(self) -> None:
+        self._close_current_generation()
+
+    async def on_playback_buffer_clear(self) -> None:
+        if self._current_generation is not None:
+            self.emit("input_speech_started", InputSpeechStartedEvent())
+            self._close_current_generation()
+
+    async def on_user_transcription(self, text: str, language: str | None, turn_id: int) -> None:
+        self.emit(
+            "user_transcription",
+            SimpleNamespace(text=text, language=language or ""),
         )
 
-        msg = proto.ServiceBoundMessage(initialize_session_request=init_request)
-        logger.debug(
-            f"initializing session: {self._detected_sample_rate}Hz, {self._detected_num_channels}ch"
+    async def on_chat_history(self, messages) -> None:
+        self.emit("chat_history_exported", messages)
+
+    async def on_conversation_query_result(self, query_id: str, text: str) -> None:
+        fut = self._pending_queries.pop(query_id, None)
+        if fut is not None and not fut.done():
+            fut.set_result(text)
+        else:
+            logger.warning(
+                f"received conversation_query_result for unknown query_id: '{query_id}'"
+            )
+
+    async def on_error(self, category: str, message: str, trace_id: str | None) -> None:
+        trace_suffix = f" (trace_id={trace_id})" if trace_id else ""
+        error_msg = f"[Deepslate] {category}: {message}{trace_suffix}"
+        logger.error(error_msg)
+        self.emit(
+            "error",
+            llm.RealtimeModelError(
+                timestamp=time.time(),
+                label=self._realtime_model.label,
+                error=RuntimeError(error_msg),
+                recoverable=False,
+            ),
         )
-        self._send_message(msg)
 
-        for pending_msg in self._pending_messages:
-            self._send_message(pending_msg)
-        self._pending_messages.clear()
-
-    def _send_tool_response(self, call_id: str, result: str) -> None:
-        """Send tool call response back to Deepslate."""
-        response = proto.ToolCallResponse(id=call_id, result=result)
-        msg = proto.ServiceBoundMessage(tool_call_response=response)
-        self._send_message(msg)
+    async def on_fatal_error(self, e: Exception) -> None:
+        self.emit(
+            "error",
+            llm.RealtimeModelError(
+                timestamp=time.time(),
+                label=self._realtime_model.label,
+                error=e,
+                recoverable=False,
+            ),
+        )
 
     def _create_generation(self) -> None:
-        """Create a new response generation."""
         is_user_initiated = self._pending_user_generation
         self._pending_user_generation = False
 
         response_id = utils.shortuuid("resp_")
-
         self._current_generation = _ResponseGeneration(
             message_ch=utils.aio.Chan(),
             function_ch=utils.aio.Chan(),
@@ -608,237 +619,12 @@ class DeepslateRealtimeSession(
         self._response_created_futures.clear()
 
     def _close_current_generation(self) -> None:
-        """Close the current generation and its channels."""
         if self._current_generation is None:
             return
-
         self._current_generation.text_ch.close()
         self._current_generation.audio_ch.close()
         self._current_generation.function_ch.close()
         self._current_generation.message_ch.close()
-
         with contextlib.suppress(asyncio.InvalidStateError):
             self._current_generation.done_fut.set_result(None)
-
         self._current_generation = None
-
-    # --- WebSocket lifecycle ---
-
-    @utils.log_exceptions(logger=logger)
-    async def _main_task(self) -> None:
-        """Main event loop with reconnection support."""
-
-        async def _on_fatal_error(e: Exception) -> None:
-            self.emit(
-                "error",
-                llm.RealtimeModelError(
-                    timestamp=time.time(),
-                    label=self._realtime_model.label,
-                    error=e,
-                    recoverable=False,
-                ),
-            )
-
-        await self._realtime_model._client.run_with_retry(
-            self._run_ws,
-            should_continue=lambda: not self._msg_ch.closed,
-            on_fatal_error=_on_fatal_error,
-        )
-
-    async def _run_ws(self, ws_conn: aiohttp.ClientWebSocketResponse) -> None:
-        """Run WebSocket communication tasks."""
-        closing = False
-
-        @utils.log_exceptions(logger=logger)
-        async def _send_task() -> None:
-            nonlocal closing
-            async for msg in self._msg_ch:
-                try:
-                    data = msg.SerializeToString()
-                    await ws_conn.send_bytes(data)
-                    self.emit("deepslate_client_event_sent", msg)
-                except Exception as e:
-                    logger.error(f"failed to send message: {e}")
-                    break
-
-            closing = True
-            await ws_conn.close()
-
-        @utils.log_exceptions(logger=logger)
-        async def _recv_task() -> None:
-            while True:
-                msg = await ws_conn.receive()
-
-                if msg.type in (
-                    aiohttp.WSMsgType.CLOSED,
-                    aiohttp.WSMsgType.CLOSE,
-                    aiohttp.WSMsgType.CLOSING,
-                ):
-                    if closing:
-                        return
-                    close_code = ws_conn.close_code
-                    close_reason = msg.extra if msg.extra else "no reason provided"
-                    logger.error(
-                        f"WebSocket closed: code={close_code}, reason={close_reason}"
-                    )
-                    raise aiohttp.ClientError(
-                        f"WebSocket connection closed unexpectedly: code={close_code}, reason={close_reason}"
-                    )
-
-                if msg.type == aiohttp.WSMsgType.ERROR:
-                    raise aiohttp.ClientError(f"WebSocket error: {ws_conn.exception()}")
-
-                if msg.type != aiohttp.WSMsgType.BINARY:
-                    logger.warning(f"unexpected message type: {msg.type}")
-                    continue
-
-                client_msg = proto.ClientBoundMessage()
-                client_msg.ParseFromString(msg.data)
-                self.emit("deepslate_server_event_received", client_msg)
-
-                self._handle_server_message(client_msg)
-
-        tasks = [
-            asyncio.create_task(_send_task(), name="_send_task"),
-            asyncio.create_task(_recv_task(), name="_recv_task"),
-        ]
-
-        try:
-            done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
-            for task in done:
-                task.result()
-        finally:
-            await utils.aio.cancel_and_wait(*tasks)
-            await ws_conn.close()
-
-    def _handle_server_message(self, msg: proto.ClientBoundMessage) -> None:
-        """Handle messages from Deepslate server."""
-        payload_type = msg.WhichOneof("payload")
-
-        if payload_type == "model_text_fragment":
-            self._handle_model_text_fragment(msg.model_text_fragment)
-        elif payload_type == "model_audio_chunk":
-            self._handle_model_audio_chunk(msg.model_audio_chunk)
-        elif payload_type == "tool_call_request":
-            self._handle_tool_call_request(msg.tool_call_request)
-        elif payload_type == "playback_clear_buffer":
-            self._handle_playback_clear_buffer(msg.playback_clear_buffer)
-        elif payload_type == "response_begin":
-            self._handle_response_begin()
-        elif payload_type == "response_end":
-            self._handle_response_end()
-        elif payload_type == "conversation_query_result":
-            if not self._pending_queries.empty():
-                fut = self._pending_queries.get_nowait()
-                if not fut.done():
-                    fut.set_result(msg.conversation_query_result.text)
-            else:
-                logger.warning("received conversation_query_result with no pending query future")
-        elif payload_type == "chat_history":
-            self.emit("chat_history_exported", msg.chat_history)
-        elif payload_type == "user_transcription_result":
-            self.emit("user_transcription", msg.user_transcription_result)
-        elif payload_type == "error":
-            self._handle_error_notification(msg.error)
-        else:
-            logger.debug(f"unhandled message type: {payload_type}")
-
-    def _handle_model_text_fragment(self, fragment: proto.ModelTextFragment) -> None:
-        """Handle streaming text output from model."""
-        if self._current_generation is None:
-            self._create_generation()
-
-        if self._current_generation is None:
-            logger.warning("failed to create generation for text fragment")
-            return
-
-        self._current_generation.text_ch.send_nowait(fragment.text)
-        self._current_generation.audio_transcript += fragment.text
-
-        if self._current_generation.first_token_timestamp is None:
-            self._current_generation.first_token_timestamp = time.time()
-
-    def _handle_model_audio_chunk(self, chunk: proto.ModelAudioChunk) -> None:
-        """Handle streaming TTS audio output from Deepslate."""
-        if self._current_generation is None:
-            self._create_generation()
-
-        if self._current_generation is None:
-            logger.warning("failed to create generation for audio chunk")
-            return
-
-        if not chunk.audio or not chunk.audio.data:
-            return
-
-        audio_bytes = chunk.audio.data
-
-        frame = rtc.AudioFrame(
-            data=audio_bytes,
-            sample_rate=self._detected_sample_rate or 24000,
-            num_channels=self._detected_num_channels or 1,
-            samples_per_channel=len(audio_bytes) // 2,
-        )
-
-        self._current_generation.audio_ch.send_nowait(frame)
-
-        if self._current_generation.first_token_timestamp is None:
-            self._current_generation.first_token_timestamp = time.time()
-
-        if chunk.transcript:
-            self._current_generation.audio_transcript += chunk.transcript
-            self.emit("audio_transcript", chunk.transcript)
-
-    def _handle_tool_call_request(self, request: proto.ToolCallRequest) -> None:
-        """Handle tool call requests from model."""
-        if self._current_generation is None:
-            self._create_generation()
-
-        if self._current_generation is None:
-            return
-
-        params_dict = {}
-        if request.HasField("parameters"):
-            params_dict = struct_to_dict(request.parameters)
-
-        self._current_generation.function_ch.send_nowait(
-            FunctionCall(
-                call_id=request.id,
-                name=request.name,
-                arguments=json.dumps(params_dict),
-            )
-        )
-
-        logger.debug(f"tool call request: {request.name}({request.id})")
-        self._close_current_generation()
-
-    def _handle_playback_clear_buffer(self, _: proto.PlaybackClearBuffer) -> None:
-        """Handle playback clear buffer signal."""
-        if self._current_generation is not None:
-            self.emit("input_speech_started", InputSpeechStartedEvent())
-            self._close_current_generation()
-
-    def _handle_response_begin(self) -> None:
-        """Handle response begin signal."""
-        if self._current_generation is None:
-            self._create_generation()
-
-    def _handle_response_end(self) -> None:
-        """Handle response end - close the current generation."""
-        self._close_current_generation()
-
-    def _handle_error_notification(self, notification: proto.SessionErrorNotification) -> None:
-        """Handle a server-sent error notification before connection close."""
-        category_name = proto.SessionErrorCategory.Name(notification.category)
-        trace_id = notification.trace_id if notification.HasField("trace_id") else None
-        trace_suffix = f" (trace_id={trace_id})" if trace_id else ""
-        error_msg = f"[Deepslate] {category_name}: {notification.message}{trace_suffix}"
-        logger.error(error_msg)
-        self.emit(
-            "error",
-            llm.RealtimeModelError(
-                timestamp=time.time(),
-                label=self._realtime_model.label,
-                error=RuntimeError(error_msg),
-                recoverable=False,
-            ),
-        )

@@ -430,9 +430,8 @@ transport = WebsocketTransport(
 | Frame | Description |
 |---|---|
 | `LLMFullResponseStartFrame` / `LLMFullResponseEndFrame` | Marks the start/end of an AI response |
-| `LLMTextFrame` | Text transcript of the AI response |
-| `TTSTextFrame` | Text for TTS (only without server-side TTS) |
-| `OutputAudioRawFrame` | PCM audio output (only with server-side TTS) |
+| `LLMTextFrame` | Streaming text transcript of the AI response |
+| `OutputAudioRawFrame` | PCM audio output (only with server-side TTS configured) |
 | `InterruptionFrame` | User interrupted — signals buffer clearing |
 | `FunctionCallRequestFrame` | Request to execute a function tool |
 | `ErrorFrame` | An error occurred during processing |

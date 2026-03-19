@@ -1,6 +1,13 @@
 from __future__ import annotations
 
+from enum import Enum
 from typing import Literal, Optional, TypedDict, Union
+
+
+class TriggerMode(str, Enum):
+    NO_TRIGGER = "no_trigger"
+    QUEUE = "queue"
+    IMMEDIATE = "immediate"
 
 
 class TtsAudioDict(TypedDict):
@@ -53,8 +60,69 @@ ContentBlockDict = Union[
 ]
 
 
+class _FunctionDefinitionRequired(TypedDict):
+    name: str
+
+
+class FunctionDefinitionDict(_FunctionDefinitionRequired, total=False):
+    description: str
+    parameters: dict[str, object]
+
+
+class FunctionToolDict(TypedDict):
+    type: Literal["function"]
+    function: FunctionDefinitionDict
+
+
 class ChatMessageDict(TypedDict):
     role: str
     delivery_status: str
     ephemeral: bool
     content: list[ContentBlockDict]
+
+
+class DeepslateSessionListener:
+    """Base class for receiving events from a :class:`DeepslateSession`."""
+
+    async def on_text_fragment(self, text: str) -> None:
+        pass
+
+    async def on_audio_chunk(
+        self,
+        pcm_bytes: bytes,
+        sample_rate: int,
+        channels: int,
+        transcript: Optional[str],
+    ) -> None:
+        pass
+
+    async def on_tool_call(self, call_id: str, name: str, params: dict) -> None:
+        pass
+
+    async def on_error(
+        self, category: str, message: str, trace_id: Optional[str]
+    ) -> None:
+        pass
+
+    async def on_response_begin(self) -> None:
+        pass
+
+    async def on_response_end(self) -> None:
+        pass
+
+    async def on_user_transcription(
+        self, text: str, language: Optional[str], turn_id: int
+    ) -> None:
+        pass
+
+    async def on_playback_buffer_clear(self) -> None:
+        pass
+
+    async def on_chat_history(self, messages: list[ChatMessageDict]) -> None:
+        pass
+
+    async def on_conversation_query_result(self, query_id: str, text: str) -> None:
+        pass
+
+    async def on_fatal_error(self, e: Exception) -> None:
+        pass
