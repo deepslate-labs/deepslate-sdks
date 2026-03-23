@@ -1,0 +1,152 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+*"   # v0.1.0  v0.1.0-rc.1  v1.2.3+build-meta
+
+permissions:
+  contents: write   # create GitHub Releases
+  id-token: write   # PyPI OIDC trusted publishing
+
+jobs:
+  parse-tag:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.parse.outputs.version }}
+      prerelease: ${{ steps.parse.outputs.prerelease }}
+    steps:
+      - name: Parse tag → PEP 440
+        id: parse
+        run: |
+          TAG="${GITHUB_REF_NAME}"      # e.g. v0.1.0-rc.1+build-meta
+          RAW="${TAG#v}"                # strip leading 'v'  → 0.1.0-rc.1+build-meta
+
+          # Split off build metadata (after '+')
+          CORE_PRE="${RAW%%+*}"         # 0.1.0-rc.1
+          BUILD="${RAW#*+}"
+          [[ "$BUILD" == "$RAW" ]] && BUILD=""
+
+          # Split core version and pre-release label (after first '-')
+          CORE="${CORE_PRE%%-*}"        # 0.1.0
+          PRE="${CORE_PRE#*-}"
+          [[ "$PRE" == "$CORE_PRE" ]] && PRE=""
+
+          if [[ -n "$PRE" ]]; then
+            # Normalise: rc.1→rc1  alpha.2→a2  beta.3→b3
+            N="${PRE//./}"
+            N="${N/alpha/a}"
+            N="${N/beta/b}"
+            PEP440="${CORE}${N}"
+            IS_PRE="true"
+          else
+            PEP440="${CORE}"
+            IS_PRE="false"
+          fi
+
+          [[ -n "$BUILD" ]] && PEP440="${PEP440}+${BUILD}"
+
+          echo "version=${PEP440}"     >> "$GITHUB_OUTPUT"
+          echo "prerelease=${IS_PRE}"  >> "$GITHUB_OUTPUT"
+          echo "Resolved: ${PEP440}  (pre-release: ${IS_PRE})"
+
+  build:
+    needs: parse-tag
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.parse-tag.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Sync workspace
+        run: uv sync --all-packages
+
+      - name: Stamp version in pyproject.toml files
+        run: |
+          for toml in \
+            pyproject.toml \
+            packages/core/pyproject.toml \
+            packages/livekit/pyproject.toml \
+            packages/pipecat/pyproject.toml
+          do
+            sed -i "s/^version = \".*\"/version = \"${VERSION}\"/" "$toml"
+            echo "Stamped ${toml}"
+          done
+
+      - name: Pin deepslate-core dependency to release version
+        run: |
+          for toml in \
+            packages/livekit/pyproject.toml \
+            packages/pipecat/pyproject.toml
+          do
+            sed -i "s/\"deepslate-core\"/\"deepslate-core==${VERSION}\"/" "$toml"
+            echo "Pinned deepslate-core in ${toml}"
+          done
+
+      - name: Build deepslate-core
+        run: uv build --package deepslate-core --out-dir dist/
+
+      - name: Build deepslate-livekit
+        run: uv build --package deepslate-livekit --out-dir dist/
+
+      - name: Build deepslate-pipecat
+        run: uv build --package deepslate-pipecat --out-dir dist/
+
+      - name: Show dist contents
+        run: ls -lh dist/
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 1
+
+  publish-pypi:
+    needs: [parse-tag, build]
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/deepslate-core
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+
+  github-release:
+    needs: [parse-tag, publish-pypi]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          prerelease: ${{ needs.parse-tag.outputs.prerelease }}
+          generate_release_notes: true
+          files: dist/*
