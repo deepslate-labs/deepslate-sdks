@@ -1,3 +1,17 @@
+# Copyright 2026 Deepslate
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import annotations
 
 import asyncio
@@ -138,7 +152,9 @@ class RealtimeModel(llm.RealtimeModel):
                     "Provide it via the vendor_id parameter or set the DEEPSLATE_VENDOR_ID environment variable."
                 )
 
-            deepslate_organization_id = organization_id or os.environ.get("DEEPSLATE_ORGANIZATION_ID")
+            deepslate_organization_id = organization_id or os.environ.get(
+                "DEEPSLATE_ORGANIZATION_ID"
+            )
             if not deepslate_organization_id:
                 raise ValueError(
                     "Deepslate organization ID is required. "
@@ -238,7 +254,9 @@ class DeepslateRealtimeSession(
 
         # Generation tracking
         self._current_generation: _ResponseGeneration | None = None
-        self._response_created_futures: dict[str, asyncio.Future[GenerationCreatedEvent]] = {}
+        self._response_created_futures: dict[
+            str, asyncio.Future[GenerationCreatedEvent]
+        ] = {}
         self._pending_user_generation: bool = False
         self._pending_user_text: str | None = None
 
@@ -287,38 +305,48 @@ class DeepslateRealtimeSession(
 
         self._chat_ctx = chat_ctx.copy()
 
-    async def update_tools(self, tools: list[FunctionTool | RawFunctionTool | Any]) -> None:
+    async def update_tools(
+        self, tools: list[FunctionTool | RawFunctionTool | Any]
+    ) -> None:
         """Sync tool definitions to the server."""
         tools_dicts = []
         for tool in tools:
             if is_function_tool(tool):
-                schema = llm.utils.build_legacy_openai_schema(tool, internally_tagged=True)
-                tools_dicts.append({
-                    "type": "function",
-                    "function": {
-                        "name": schema["name"],
-                        "description": schema.get("description", ""),
-                        "parameters": schema.get("parameters", {}),
-                    },
-                })
+                schema = llm.utils.build_legacy_openai_schema(
+                    tool, internally_tagged=True
+                )
+                tools_dicts.append(
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": schema["name"],
+                            "description": schema.get("description", ""),
+                            "parameters": schema.get("parameters", {}),
+                        },
+                    }
+                )
             elif is_raw_function_tool(tool):
                 info = get_raw_function_info(tool)
-                tools_dicts.append({
-                    "type": "function",
-                    "function": {
-                        "name": info.name,
-                        "description": info.raw_schema.get("description", ""),
-                        "parameters": info.raw_schema.get("parameters", {}),
-                    },
-                })
+                tools_dicts.append(
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": info.name,
+                            "description": info.raw_schema.get("description", ""),
+                            "parameters": info.raw_schema.get("parameters", {}),
+                        },
+                    }
+                )
 
         self._tools_dicts = tools_dicts
         self._tools = llm.ToolContext(tools)
         await self._sync_tool_choice()
-        logger.debug(f"updated tools: {[t.get('function', {}).get('name') for t in tools_dicts]}")
+        logger.debug(
+            f"updated tools: {[t.get('function', {}).get('name') for t in tools_dicts]}"
+        )
 
     async def update_options(
-            self, *, tool_choice: NotGivenOr[ToolChoice | None] = NOT_GIVEN
+        self, *, tool_choice: NotGivenOr[ToolChoice | None] = NOT_GIVEN
     ) -> None:
         """Apply a tool_choice constraint."""
         if not utils.is_given(tool_choice):
@@ -334,7 +362,11 @@ class DeepslateRealtimeSession(
             return []
         if isinstance(tc, dict):  # NamedToolChoice
             name = tc.get("function", {}).get("name")
-            return [t for t in self._tools_dicts if t.get("function", {}).get("name") == name]
+            return [
+                t
+                for t in self._tools_dicts
+                if t.get("function", {}).get("name") == name
+            ]
         # "auto", "required", None → send all tools
         return self._tools_dicts
 
@@ -393,7 +425,7 @@ class DeepslateRealtimeSession(
         await self._session.export_chat_history(await_pending)
 
     async def generate_reply(
-            self, *, instructions: NotGivenOr[str] = NOT_GIVEN
+        self, *, instructions: NotGivenOr[str] = NOT_GIVEN
     ) -> GenerationCreatedEvent:
         """Request the model to generate a reply."""
         fut: asyncio.Future[GenerationCreatedEvent] = asyncio.Future()
@@ -529,7 +561,9 @@ class DeepslateRealtimeSession(
             self.emit("input_speech_started", InputSpeechStartedEvent())
             self._close_current_generation()
 
-    async def on_user_transcription(self, text: str, language: str | None, turn_id: int) -> None:
+    async def on_user_transcription(
+        self, text: str, language: str | None, turn_id: int
+    ) -> None:
         self.emit(
             "user_transcription",
             SimpleNamespace(text=text, language=language or ""),
@@ -588,7 +622,9 @@ class DeepslateRealtimeSession(
         )
 
         has_audio = self._realtime_model._tts_config is not None
-        msg_modalities: asyncio.Future[list[Literal["text", "audio"]]] = asyncio.Future()
+        msg_modalities: asyncio.Future[list[Literal["text", "audio"]]] = (
+            asyncio.Future()
+        )
         if has_audio:
             msg_modalities.set_result(["audio", "text"])
         else:

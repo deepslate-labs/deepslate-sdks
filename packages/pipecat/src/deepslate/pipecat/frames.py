@@ -1,3 +1,17 @@
+# Copyright 2026 Deepslate
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -70,6 +84,7 @@ class DeepslateChatHistoryFrame(Frame):
 
     messages: list[ChatMessageDict] = field(default_factory=list)
 
+
 @dataclass
 class DeepslateDirectSpeechFrame(Frame):
     """Instructs Deepslate to speak text directly via TTS, bypassing the LLM.
@@ -87,6 +102,7 @@ class DeepslateDirectSpeechFrame(Frame):
     text: str
     include_in_history: bool = True
 
+
 @dataclass
 class DeepslateUserTranscriptionFrame(TranscriptionFrame):
     """User STT transcription produced by Deepslate."""
@@ -98,6 +114,7 @@ class DeepslateModelTranscriptionFrame(Frame):
 
     text: str
     """The transcribed text aligned to the model's TTS output."""
+
 
 @dataclass
 class DeepslateConversationQueryFrame(Frame):

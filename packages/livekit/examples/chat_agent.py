@@ -1,3 +1,17 @@
+# Copyright 2026 Deepslate
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """
 Deepslate + LiveKit Agents — Chat Agent Example
 ================================================
@@ -22,7 +36,14 @@ from typing import Any
 
 from dotenv import load_dotenv
 from livekit import agents
-from livekit.agents import Agent, AgentServer, AgentSession, RunContext, function_tool, room_io
+from livekit.agents import (
+    Agent,
+    AgentServer,
+    AgentSession,
+    RunContext,
+    function_tool,
+    room_io,
+)
 
 from deepslate.livekit import ElevenLabsTtsConfig, RealtimeModel
 
@@ -37,6 +58,7 @@ load_dotenv(os.path.join(_script_dir, ".env.local"), override=True)
 # Agent definition
 # ---------------------------------------------------------------------------
 
+
 class Assistant(Agent):
     def __init__(self) -> None:
         super().__init__(instructions="You are a helpful voice AI assistant.")
@@ -45,6 +67,7 @@ class Assistant(Agent):
 # ---------------------------------------------------------------------------
 # Function tools
 # ---------------------------------------------------------------------------
+
 
 @function_tool()
 async def lookup_weather(

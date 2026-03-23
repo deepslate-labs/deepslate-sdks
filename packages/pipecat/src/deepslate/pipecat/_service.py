@@ -1,3 +1,17 @@
+# Copyright 2026 Deepslate
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import asyncio
 import time
 from typing import Any, List, Optional
@@ -136,7 +150,9 @@ class DeepslateRealtimeLLMService(LLMService, DeepslateSessionListener):
 
         elif isinstance(frame, DeepslateDirectSpeechFrame):
             if self._session is not None:
-                await self._session.send_direct_speech(frame.text, frame.include_in_history)
+                await self._session.send_direct_speech(
+                    frame.text, frame.include_in_history
+                )
 
         elif isinstance(frame, DeepslateConversationQueryFrame):
             if self._session is not None:
@@ -176,17 +192,19 @@ class DeepslateRealtimeLLMService(LLMService, DeepslateSessionListener):
             await self.push_frame(DeepslateModelTranscriptionFrame(text=transcript))
 
     async def on_tool_call(self, call_id: str, name: str, params: dict) -> None:
-        asyncio.create_task(
-            self._dispatch_function_call(call_id, name, params)
-        )
+        asyncio.create_task(self._dispatch_function_call(call_id, name, params))
 
-    async def on_error(self, category: str, message: str, trace_id: Optional[str]) -> None:
+    async def on_error(
+        self, category: str, message: str, trace_id: Optional[str]
+    ) -> None:
         trace_suffix = f" (trace_id={trace_id})" if trace_id else ""
         await self.push_frame(
             ErrorFrame(f"[Deepslate] {category}: {message}{trace_suffix}")
         )
 
-    async def on_user_transcription(self, text: str, language: Optional[str], turn_id: int) -> None:
+    async def on_user_transcription(
+        self, text: str, language: Optional[str], turn_id: int
+    ) -> None:
         await self.push_frame(
             DeepslateUserTranscriptionFrame(
                 text=text,
@@ -221,7 +239,8 @@ class DeepslateRealtimeLLMService(LLMService, DeepslateSessionListener):
 
             if isinstance(content, list):
                 text_parts = [
-                    block.get("text", "") for block in content
+                    block.get("text", "")
+                    for block in content
                     if isinstance(block, dict) and block.get("type") == "text"
                 ]
                 content = " ".join(text_parts)
@@ -230,9 +249,7 @@ class DeepslateRealtimeLLMService(LLMService, DeepslateSessionListener):
                 continue
 
             if role == "user":
-                await self._session.send_text(
-                    content, trigger=TriggerMode.NO_TRIGGER
-                )
+                await self._session.send_text(content, trigger=TriggerMode.NO_TRIGGER)
             elif role == "system":
                 system_parts.append(content)
             else:
@@ -264,9 +281,8 @@ class DeepslateRealtimeLLMService(LLMService, DeepslateSessionListener):
         if new_temp is not None:
             self._opts.temperature = new_temp
         if (
-            (new_prompt is not None or new_temp is not None)
-            and self._session.session_initialized
-        ):
+            new_prompt is not None or new_temp is not None
+        ) and self._session.session_initialized:
             await self._session.reconfigure(
                 system_prompt=new_prompt,
                 temperature=new_temp,

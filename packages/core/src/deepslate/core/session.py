@@ -1,3 +1,17 @@
+# Copyright 2026 Deepslate
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import annotations
 
 import asyncio
@@ -12,7 +26,12 @@ from .client import BaseDeepslateClient
 from .options import DeepslateOptions, ElevenLabsTtsConfig, VadConfig
 from .proto import realtime_pb2 as proto
 from ._types import DeepslateSessionListener, FunctionToolDict, TriggerMode
-from ._utils import build_initialize_request, dict_to_struct, parse_chat_history, struct_to_dict
+from ._utils import (
+    build_initialize_request,
+    dict_to_struct,
+    parse_chat_history,
+    struct_to_dict,
+)
 
 logger = logging.getLogger("deepslate.core")
 
@@ -38,7 +57,9 @@ class DeepslateSession:
         self._tts_config = tts_config
         self._current_tools: list[FunctionToolDict] = []
         self._should_stop = False
-        self._listener = listener if listener is not None else DeepslateSessionListener()
+        self._listener = (
+            listener if listener is not None else DeepslateSessionListener()
+        )
 
         self._ws: Optional[aiohttp.ClientWebSocketResponse] = None
         self._session_initialized = False
@@ -204,7 +225,9 @@ class DeepslateSession:
         trigger = proto.TriggerInference()
         if instructions is not None:
             trigger.extra_instructions = instructions
-        await self._enqueue_or_buffer(proto.ServiceBoundMessage(trigger_inference=trigger))
+        await self._enqueue_or_buffer(
+            proto.ServiceBoundMessage(trigger_inference=trigger)
+        )
 
     async def send_tool_response(self, call_id: str, result: Any) -> None:
         """Serialize ``result`` and send a ``ToolCallResponse``."""
@@ -255,7 +278,9 @@ class DeepslateSession:
         self, text: str, include_in_history: bool = True
     ) -> None:
         """Bypass the LLM and speak ``text`` directly via TTS."""
-        direct_speech = proto.DirectSpeech(text=text, include_in_history=include_in_history)
+        direct_speech = proto.DirectSpeech(
+            text=text, include_in_history=include_in_history
+        )
         await self._enqueue_or_buffer(
             proto.ServiceBoundMessage(direct_speech=direct_speech)
         )
@@ -279,14 +304,18 @@ class DeepslateSession:
     ) -> None:
         """Send a side-channel ``ConversationQuery``"""
         if prompt is None and instructions is None:
-            raise ValueError("At least one of 'prompt' or 'instructions' must be provided.")
+            raise ValueError(
+                "At least one of 'prompt' or 'instructions' must be provided."
+            )
         self._pending_query_ids.append(query_id)
         query = proto.ConversationQuery()
         if prompt is not None:
             query.prompt = prompt
         if instructions is not None:
             query.instructions = instructions
-        await self._enqueue_or_buffer(proto.ServiceBoundMessage(conversation_query=query))
+        await self._enqueue_or_buffer(
+            proto.ServiceBoundMessage(conversation_query=query)
+        )
 
     async def report_playback_position(self, bytes_played: int) -> None:
         """Send a ``PlaybackPositionReport`` for server-side audio truncation."""
@@ -372,7 +401,9 @@ class DeepslateSession:
                     parameters=dict_to_struct(func.get("parameters", {})),
                 )
             )
-        update_req = proto.UpdateToolDefinitionsRequest(tool_definitions=tool_definitions)
+        update_req = proto.UpdateToolDefinitionsRequest(
+            tool_definitions=tool_definitions
+        )
         return proto.ServiceBoundMessage(update_tool_definitions_request=update_req)
 
     async def _fire(self, coro: Any) -> None:
@@ -446,9 +477,7 @@ class DeepslateSession:
                     )
 
                 if raw.type == aiohttp.WSMsgType.ERROR:
-                    raise aiohttp.ClientError(
-                        f"WebSocket error: {ws.exception()}"
-                    )
+                    raise aiohttp.ClientError(f"WebSocket error: {ws.exception()}")
 
                 if raw.type != aiohttp.WSMsgType.BINARY:
                     logger.warning(
@@ -460,8 +489,12 @@ class DeepslateSession:
                 client_msg.ParseFromString(raw.data)
                 await self._handle_server_message(client_msg)
 
-        send_task = asyncio.create_task(_send_loop(), name="DeepslateSession._send_loop")
-        recv_task = asyncio.create_task(_recv_loop(), name="DeepslateSession._recv_loop")
+        send_task = asyncio.create_task(
+            _send_loop(), name="DeepslateSession._send_loop"
+        )
+        recv_task = asyncio.create_task(
+            _recv_loop(), name="DeepslateSession._recv_loop"
+        )
         try:
             done, _ = await asyncio.wait(
                 [send_task, recv_task], return_when=asyncio.FIRST_COMPLETED
@@ -489,12 +522,16 @@ class DeepslateSession:
             await self._fire(self._listener.on_response_end())
 
         elif payload_type == "model_text_fragment":
-            await self._fire(self._listener.on_text_fragment(msg.model_text_fragment.text))
+            await self._fire(
+                self._listener.on_text_fragment(msg.model_text_fragment.text)
+            )
 
         elif payload_type == "model_audio_chunk":
             chunk = msg.model_audio_chunk
             if chunk.audio and chunk.audio.data:
-                transcript: Optional[str] = chunk.transcript if chunk.transcript else None
+                transcript: Optional[str] = (
+                    chunk.transcript if chunk.transcript else None
+                )
                 await self._fire(
                     self._listener.on_audio_chunk(
                         chunk.audio.data,
@@ -519,18 +556,24 @@ class DeepslateSession:
 
         elif payload_type == "tool_call_request":
             req = msg.tool_call_request
-            params = struct_to_dict(req.parameters) if req.HasField("parameters") else {}
+            params = (
+                struct_to_dict(req.parameters) if req.HasField("parameters") else {}
+            )
             await self._fire(self._listener.on_tool_call(req.id, req.name, params))
 
         elif payload_type == "conversation_query_result":
             result_text = msg.conversation_query_result.text
-            query_id = self._pending_query_ids.popleft() if self._pending_query_ids else ""
+            query_id = (
+                self._pending_query_ids.popleft() if self._pending_query_ids else ""
+            )
             if not query_id:
                 logger.warning(
                     "DeepslateSession: received conversation_query_result "
                     "with no pending query_id"
                 )
-            await self._fire(self._listener.on_conversation_query_result(query_id, result_text))
+            await self._fire(
+                self._listener.on_conversation_query_result(query_id, result_text)
+            )
 
         elif payload_type == "chat_history":
             messages = parse_chat_history(msg.chat_history)
@@ -547,7 +590,9 @@ class DeepslateSession:
                 f"{notification.message}"
                 + (f" (trace_id={trace_id})" if trace_id else "")
             )
-            await self._fire(self._listener.on_error(category_name, notification.message, trace_id))
+            await self._fire(
+                self._listener.on_error(category_name, notification.message, trace_id)
+            )
 
         else:
             logger.debug(f"DeepslateSession: unhandled payload type: {payload_type}")

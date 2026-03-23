@@ -1,3 +1,17 @@
+# Copyright 2026 Deepslate
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from __future__ import annotations
 
 from typing import Optional
@@ -111,48 +125,66 @@ def parse_chat_history(chat_history) -> list[ChatMessageDict]:
                         audio=tc.tts_audio.audio.data,
                         transcription=tc.tts_audio.transcription,
                     )
-                content_blocks.append(TextContentDict(
-                    type="text",
-                    text=tc.text,
-                    tts_audio=tts_audio,
-                ))
+                content_blocks.append(
+                    TextContentDict(
+                        type="text",
+                        text=tc.text,
+                        tts_audio=tts_audio,
+                    )
+                )
 
             elif kind == "input_audio":
-                content_blocks.append(InputAudioContentDict(
-                    type="input_audio",
-                    audio=block.input_audio.audio.data,
-                    transcription=block.input_audio.transcription,
-                ))
+                content_blocks.append(
+                    InputAudioContentDict(
+                        type="input_audio",
+                        audio=block.input_audio.audio.data,
+                        transcription=block.input_audio.transcription,
+                    )
+                )
 
             elif kind == "tool_call":
                 tc = block.tool_call
-                content_blocks.append(ToolCallContentDict(
-                    type="tool_call",
-                    id=tc.id,
-                    name=tc.name,
-                    parameters=struct_to_dict(tc.parameters) if tc.HasField("parameters") else {},
-                ))
+                content_blocks.append(
+                    ToolCallContentDict(
+                        type="tool_call",
+                        id=tc.id,
+                        name=tc.name,
+                        parameters=struct_to_dict(tc.parameters)
+                        if tc.HasField("parameters")
+                        else {},
+                    )
+                )
 
             elif kind == "tool_result":
                 tr = block.tool_result
-                content_blocks.append(ToolResultContentDict(
-                    type="tool_result",
-                    id=tr.id,
-                    result=tr.result,
-                ))
+                content_blocks.append(
+                    ToolResultContentDict(
+                        type="tool_result",
+                        id=tr.id,
+                        result=tr.result,
+                    )
+                )
 
             elif kind == "thoughts":
-                content_blocks.append(ThoughtsContentDict(type="thoughts", text=block.thoughts))
+                content_blocks.append(
+                    ThoughtsContentDict(type="thoughts", text=block.thoughts)
+                )
 
             elif kind == "instructions":
-                content_blocks.append(InstructionsContentDict(type="instructions", text=block.instructions))
+                content_blocks.append(
+                    InstructionsContentDict(
+                        type="instructions", text=block.instructions
+                    )
+                )
 
-        messages.append(ChatMessageDict(
-            role=proto.ChatMessageRole.Name(msg.role).lower(),
-            delivery_status=proto.ChatDeliveryStatus.Name(msg.delivery_status),
-            ephemeral=msg.ephemeral,
-            content=content_blocks,
-        ))
+        messages.append(
+            ChatMessageDict(
+                role=proto.ChatMessageRole.Name(msg.role).lower(),
+                delivery_status=proto.ChatDeliveryStatus.Name(msg.delivery_status),
+                ephemeral=msg.ephemeral,
+                content=content_blocks,
+            )
+        )
     return messages
 
 

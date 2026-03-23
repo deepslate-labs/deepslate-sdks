@@ -1,3 +1,17 @@
+# Copyright 2026 Deepslate
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """
 Deepslate + Pipecat — Daily.co Voice Bot Example
 =================================================
@@ -32,7 +46,11 @@ from pipecat.pipeline.task import PipelineParams, PipelineTask
 from pipecat.services.llm_service import FunctionCallParams
 from pipecat.transports.services.daily import DailyParams, DailyTransport
 
-from deepslate.pipecat import DeepslateOptions, DeepslateRealtimeLLMService, ElevenLabsTtsConfig
+from deepslate.pipecat import (
+    DeepslateOptions,
+    DeepslateRealtimeLLMService,
+    ElevenLabsTtsConfig,
+)
 
 load_dotenv(override=True)
 
@@ -77,6 +95,7 @@ TOOLS = [
 # Function handlers
 # ---------------------------------------------------------------------------
 
+
 async def lookup_weather(params: FunctionCallParams):
     location = params.arguments.get("location", "unknown")
     result = {
@@ -98,6 +117,7 @@ async def get_current_location(params: FunctionCallParams):
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 async def main():
     daily_api_key = os.getenv("DAILY_API_KEY")
@@ -150,11 +170,13 @@ async def main():
     llm.register_function("get_current_location", get_current_location)
 
     # 3. Pipeline
-    pipeline = Pipeline([
-        transport.input(),
-        llm,
-        transport.output(),
-    ])
+    pipeline = Pipeline(
+        [
+            transport.input(),
+            llm,
+            transport.output(),
+        ]
+    )
 
     task = PipelineTask(pipeline, params=PipelineParams(allow_interruptions=True))
 
