@@ -378,6 +378,7 @@ class DeepslateSession:
         self._pending_before_init.clear()
 
         self._session_initialized = True
+        await self._fire(self._listener.on_session_initialized())
 
     async def _enqueue_or_buffer(self, msg: proto.ServiceBoundMessage) -> None:
         """Route a message to the send queue or the pre-init buffer."""

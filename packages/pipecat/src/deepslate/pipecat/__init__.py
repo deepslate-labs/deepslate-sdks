@@ -31,6 +31,7 @@ from .frames import (
     DeepslateExportChatHistoryFrame,
     DeepslateChatHistoryFrame,
     DeepslateDirectSpeechFrame,
+    DeepslateSessionInitializedFrame,
     DeepslateUserTranscriptionFrame,
     DeepslateModelTranscriptionFrame,
     DeepslateConversationQueryFrame,
@@ -54,4 +55,5 @@ __all__ = [
     "DeepslateDirectSpeechFrame",
     "DeepslateConversationQueryFrame",
     "DeepslateConversationQueryResultFrame",
+    "DeepslateSessionInitializedFrame",
 ]

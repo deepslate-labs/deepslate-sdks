@@ -230,6 +230,7 @@ class DeepslateRealtimeSession(
             "deepslate_client_event_sent",
             "user_transcription",
             "audio_transcript",
+            "session_initialized",
         ]
     ],
     DeepslateSessionListener,
@@ -496,6 +497,9 @@ class DeepslateRealtimeSession(
             with contextlib.suppress(asyncio.InvalidStateError):
                 self._current_generation.done_fut.set_result(None)
         await self._session.close()
+
+    async def on_session_initialized(self) -> None:
+        self.emit("session_initialized", None)
 
     async def on_text_fragment(self, text: str) -> None:
         if self._current_generation is None:
