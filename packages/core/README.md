@@ -19,6 +19,7 @@ Shared core library for [Deepslate's](https://deepslate.eu/) realtime voice AI S
 - **`DeepslateSession`** — High-level session that manages the full WebSocket lifecycle, protobuf framing, session initialization, reconnection, and callback dispatch. The primary building block for custom integrations.
 - **`DeepslateOptions`** — API credentials and connection configuration
 - **`VadConfig`** — Server-side Voice Activity Detection parameters
+- **`HostedTtsConfig`** — Deepslate-hosted (cloned) voice TTS configuration
 - **`ElevenLabsTtsConfig` / `ElevenLabsLocation`** — ElevenLabs TTS configuration
 - **`BaseDeepslateClient`** — Low-level async WebSocket client with exponential-backoff reconnection (used internally by `DeepslateSession`)
 - **Protobuf definitions** — Compiled `.proto` bindings for the Deepslate realtime wire protocol
@@ -85,7 +86,21 @@ vad = VadConfig(
 )
 ```
 
-### ElevenLabs TTS Configuration
+### TTS Configuration
+
+Two TTS providers are supported. Pass either config as `tts_config` to `DeepslateSession.create()`.
+
+#### Deepslate-hosted (cloned) voice
+
+Use a voice that has been cloned and hosted within Deepslate. No external provider credentials required.
+
+```python
+from deepslate.core import HostedTtsConfig
+
+tts = HostedTtsConfig(voice_id="your_hosted_voice_id")
+```
+
+#### ElevenLabs
 
 ```python
 from deepslate.core import ElevenLabsTtsConfig, ElevenLabsLocation
@@ -224,7 +239,7 @@ Factory that creates a session together with its own `BaseDeepslateClient`. The 
 |---|---|---|---|
 | `options` | `DeepslateOptions` | required | API credentials and settings |
 | `vad_config` | `VadConfig \| None` | `None` | VAD settings (uses defaults if omitted) |
-| `tts_config` | `ElevenLabsTtsConfig \| None` | `None` | Enables server-side TTS audio output |
+| `tts_config` | `ElevenLabsTtsConfig \| HostedTtsConfig \| None` | `None` | Enables server-side TTS audio output |
 | `user_agent` | `str` | `"DeepslateCore"` | HTTP `User-Agent` header sent on connect |
 | `http_session` | `aiohttp.ClientSession \| None` | `None` | Shared aiohttp session (not closed by the session) |
 | `listener` | `DeepslateSessionListener \| None` | `None` | Receives all session events; defaults to a no-op base instance |
