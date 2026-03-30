@@ -23,7 +23,7 @@ from typing import Any, Optional
 import aiohttp
 
 from .client import BaseDeepslateClient
-from .options import DeepslateOptions, ElevenLabsTtsConfig, VadConfig
+from .options import DeepslateOptions, ElevenLabsTtsConfig, HostedTtsConfig, VadConfig
 from .proto import realtime_pb2 as proto
 from ._types import DeepslateSessionListener, FunctionToolDict, TriggerMode
 from ._utils import (
@@ -47,7 +47,7 @@ class DeepslateSession:
         client: BaseDeepslateClient,
         options: DeepslateOptions,
         vad_config: Optional[VadConfig] = None,
-        tts_config: Optional[ElevenLabsTtsConfig] = None,
+        tts_config: Optional[ElevenLabsTtsConfig | HostedTtsConfig] = None,
         listener: Optional[DeepslateSessionListener] = None,
     ) -> None:
         self._client = client
@@ -123,7 +123,7 @@ class DeepslateSession:
         options: DeepslateOptions,
         *,
         vad_config: Optional[VadConfig] = None,
-        tts_config: Optional[ElevenLabsTtsConfig] = None,
+        tts_config: Optional[ElevenLabsTtsConfig | HostedTtsConfig] = None,
         user_agent: str = "DeepslateCore",
         http_session: Optional[Any] = None,
         listener: Optional[DeepslateSessionListener] = None,

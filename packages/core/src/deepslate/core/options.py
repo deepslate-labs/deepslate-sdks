@@ -164,6 +164,18 @@ class ElevenLabsVoiceSettingsConfig:
 
 
 @dataclass
+class HostedTtsConfig:
+    """Deepslate-hosted TTS configuration using a cloned voice.
+
+    When provided, audio output is enabled using a voice that has been cloned
+    and hosted within Deepslate. No external TTS provider credentials are required.
+    """
+
+    voice_id: str
+    """The ID of the hosted (cloned) voice to use for synthesis."""
+
+
+@dataclass
 class ElevenLabsTtsConfig:
     """ElevenLabs TTS configuration for Deepslate-hosted TTS.
 

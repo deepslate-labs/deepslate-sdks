@@ -54,6 +54,7 @@ from deepslate.core import (
     DeepslateSession,
     DeepslateSessionListener,
     ElevenLabsTtsConfig,
+    HostedTtsConfig,
     FunctionToolDict,
     TriggerMode,
     VadConfig,
@@ -102,7 +103,7 @@ class RealtimeModel(llm.RealtimeModel):
         vad_stop_duration_ms: int = 500,
         vad_backbuffer_duration_ms: int = 1000,
         # TTS configuration
-        tts_config: ElevenLabsTtsConfig | None = None,
+        tts_config: ElevenLabsTtsConfig | HostedTtsConfig | None = None,
         http_session: aiohttp.ClientSession | None = None,
         # Internal use only - direct WebSocket URL (bypass standard auth)
         ws_url: str | None = None,
@@ -122,8 +123,9 @@ class RealtimeModel(llm.RealtimeModel):
             vad_start_duration_ms: Duration of speech to detect start (milliseconds).
             vad_stop_duration_ms: Duration of silence to detect end (milliseconds).
             vad_backbuffer_duration_ms: Audio buffer duration before speech detection (milliseconds).
-            tts_config: ElevenLabs TTS configuration. When provided, audio output is enabled
-                        and Deepslate will use ElevenLabs for text-to-speech synthesis.
+            tts_config: TTS configuration. When provided, audio output is enabled.
+                        Use ``ElevenLabsTtsConfig`` for ElevenLabs-hosted synthesis or
+                        ``HostedTtsConfig`` for Deepslate-hosted (cloned) voices.
                         When None (default), only text output is provided.
             http_session: Optional shared aiohttp session.
         """
