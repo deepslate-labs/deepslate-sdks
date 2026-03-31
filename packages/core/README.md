@@ -97,7 +97,7 @@ Use a voice that has been cloned and hosted within Deepslate. No external provid
 ```python
 from deepslate.core import HostedTtsConfig
 
-tts = HostedTtsConfig(voice_id="your_hosted_voice_id")
+tts = HostedTtsConfig(voice_id="c3dfa73f-a1ab-4aad-b48a-0e9b9fe4a69f")
 ```
 
 #### ElevenLabs
