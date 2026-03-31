@@ -29,4 +29,4 @@ Website = "https://deepslate.eu/"
 Source = "https://github.com/deepslate-labs/deepslate-sdks"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/deepslate/core"]
+packages = ["src/deepslate"]

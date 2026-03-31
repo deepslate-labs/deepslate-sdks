@@ -29,7 +29,7 @@ Website = "https://deepslate.eu/"
 Source = "https://github.com/deepslate-labs/deepslate-sdks"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/deepslate/livekit"]
+packages = ["src/deepslate"]
 
 [tool.uv.sources]
 deepslate-core = { workspace = true }
