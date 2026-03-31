@@ -138,5 +138,8 @@ class DeepslateSessionListener:
     async def on_conversation_query_result(self, query_id: str, text: str) -> None:
         pass
 
+    async def on_session_initialized(self) -> None:
+        pass
+
     async def on_fatal_error(self, e: Exception) -> None:
         pass

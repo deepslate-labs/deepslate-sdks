@@ -128,6 +128,14 @@ class DeepslateConversationQueryFrame(Frame):
 
 
 @dataclass
+class DeepslateSessionInitializedFrame(Frame):
+    """Emitted once when the Deepslate session is fully initialized.
+
+    Push a welcome message or any first-turn logic in response to this frame.
+    """
+
+
+@dataclass
 class DeepslateConversationQueryResultFrame(Frame):
     """Carries the result of a side-channel conversation query pushed down the pipeline."""
 

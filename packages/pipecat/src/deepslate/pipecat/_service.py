@@ -53,6 +53,7 @@ from .frames import (
     DeepslateExportChatHistoryFrame,
     DeepslateChatHistoryFrame,
     DeepslateDirectSpeechFrame,
+    DeepslateSessionInitializedFrame,
     DeepslateUserTranscriptionFrame,
     DeepslateModelTranscriptionFrame,
     DeepslateConversationQueryFrame,
@@ -164,6 +165,9 @@ class DeepslateRealtimeLLMService(LLMService, DeepslateSessionListener):
 
         else:
             await self.push_frame(frame, direction)
+
+    async def on_session_initialized(self) -> None:
+        await self.push_frame(DeepslateSessionInitializedFrame())
 
     async def on_response_begin(self) -> None:
         await self.push_frame(LLMFullResponseStartFrame())

@@ -367,6 +367,24 @@ await task.queue_frame(
 
 ---
 
+## Sending a Welcome Message
+
+`DeepslateSessionInitializedFrame` is emitted once the WebSocket session is fully initialized and ready to accept messages. Use it to send a welcome message instead of relying on a fixed delay:
+
+```python
+from deepslate_pipecat import DeepslateRealtimeLLMService, DeepslateSessionInitializedFrame, DeepslateDirectSpeechFrame
+
+class MyPipeline(FrameProcessor):
+    async def process_frame(self, frame, direction):
+        await super().process_frame(frame, direction)
+
+        if isinstance(frame, DeepslateSessionInitializedFrame):
+            # Session is ready — send a welcome message
+            await self.push_frame(DeepslateDirectSpeechFrame(text="Hello! How can I help you today?"))
+```
+
+---
+
 ## Transport Integration
 
 ### Daily.co (WebRTC)
@@ -429,6 +447,7 @@ transport = WebsocketTransport(
 
 | Frame | Description |
 |---|---|
+| `DeepslateSessionInitializedFrame` | Session is fully initialized and ready to accept messages |
 | `LLMFullResponseStartFrame` / `LLMFullResponseEndFrame` | Marks the start/end of an AI response |
 | `LLMTextFrame` | Streaming text transcript of the AI response |
 | `OutputAudioRawFrame` | PCM audio output (only with server-side TTS configured) |

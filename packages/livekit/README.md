@@ -185,6 +185,26 @@ class Assistant(Agent):
 
 ---
 
+## Sending a Welcome Message
+
+`DeepslateRealtimeSession` emits a `"session_initialized"` event once the WebSocket session is fully initialized and ready to accept messages. Listen for this event to send a welcome message instead of relying on a fixed delay:
+
+```python
+@server.rtc_session()
+async def my_agent(ctx: agents.JobContext):
+    model = RealtimeModel(tts_config=ElevenLabsTtsConfig.from_env())
+    session = AgentSession(llm=model)
+
+    deepslate_session = model.session()
+    deepslate_session.on("session_initialized", lambda _: asyncio.create_task(
+        deepslate_session.speak_direct("Hello! How can I help you today?")
+    ))
+
+    await session.start(room=ctx.room, agent=Assistant())
+```
+
+---
+
 ## Examples
 
 The [`examples/`](examples/) directory contains a ready-to-run agent you can use as a starting point.

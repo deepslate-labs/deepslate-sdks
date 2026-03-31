@@ -121,6 +121,11 @@ class MyListener(DeepslateSessionListener):
     def __init__(self) -> None:
         self.session: DeepslateSession | None = None
 
+    async def on_session_initialized(self) -> None:
+        # Session is ready — safe to send the first message
+        if self.session:
+            await self.session.send_text("What is the capital of France?")
+
     async def on_text_fragment(self, text: str) -> None:
         print(text, end="", flush=True)
 
@@ -161,11 +166,9 @@ async def main():
     listener.session = session
     session.start()
 
-    # Initialize for text-only interaction (audio sessions initialize automatically)
+    # Initialize for text-only interaction (audio sessions initialize automatically).
+    # on_session_initialized will be called once the session is ready.
     await session.initialize(sample_rate=24000, channels=1)
-
-    # Send a text prompt and trigger a reply
-    await session.send_text("What is the capital of France?")
 
     await asyncio.sleep(5)  # Wait for response
     await session.close()
@@ -251,6 +254,7 @@ Subclass this and override only the methods you need. All methods are `async` an
 
 | Method | Signature | Called when |
 |---|---|---|
+| `on_session_initialized` | `()` | Session is fully initialized and ready to accept messages |
 | `on_text_fragment` | `(text: str)` | Model streams a text token |
 | `on_audio_chunk` | `(pcm_bytes: bytes, sample_rate: int, channels: int, transcript: str \| None)` | Model streams a TTS audio chunk |
 | `on_tool_call` | `(call_id: str, name: str, params: dict)` | Model requests a tool invocation |
