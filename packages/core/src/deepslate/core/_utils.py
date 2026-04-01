@@ -20,7 +20,7 @@ from urllib.parse import urlparse
 from google.protobuf import json_format
 from google.protobuf.struct_pb2 import Struct
 
-from .options import ElevenLabsLocation, ElevenLabsTtsConfig, VadConfig
+from .options import ElevenLabsLocation, ElevenLabsTtsConfig, HostedTtsConfig, VadConfig
 from .proto import realtime_pb2 as proto
 from ._types import (
     ChatMessageDict,
@@ -193,7 +193,7 @@ def build_initialize_request(
     num_channels: int,
     vad_config: VadConfig,
     system_prompt: str,
-    tts_config: Optional[ElevenLabsTtsConfig] = None,
+    tts_config: Optional[ElevenLabsTtsConfig | HostedTtsConfig] = None,
     temperature: float = 1.0,
 ) -> proto.InitializeSessionRequest:
     """Build a proto.InitializeSessionRequest from core configuration objects.
@@ -202,7 +202,7 @@ def build_initialize_request(
     the protobuf construction logic in each plugin.
     """
     tts_proto = None
-    if tts_config is not None:
+    if isinstance(tts_config, ElevenLabsTtsConfig):
         el_config = proto.ElevenLabsTtsConfiguration(
             api_key=tts_config.api_key,
             voice_id=tts_config.voice_id,
@@ -213,6 +213,11 @@ def build_initialize_request(
         if tts_config.voice_settings is not None:
             el_config.voice_settings.CopyFrom(tts_config.voice_settings.to_proto())
         tts_proto = proto.TtsConfiguration(eleven_labs=el_config)
+    elif isinstance(tts_config, HostedTtsConfig):
+        hosted_config = proto.HostedTtsConfiguration(
+            voice_ref=proto.HostedVoiceRef(voice_id=tts_config.voice_id)
+        )
+        tts_proto = proto.TtsConfiguration(hosted=hosted_config)
 
     audio_line = proto.AudioLineConfiguration(
         sample_rate=sample_rate,

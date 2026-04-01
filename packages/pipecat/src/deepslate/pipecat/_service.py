@@ -45,6 +45,7 @@ from deepslate.core import (
     DeepslateSession,
     DeepslateSessionListener,
     ElevenLabsTtsConfig,
+    HostedTtsConfig,
     FunctionToolDict,
     TriggerMode,
     VadConfig,
@@ -68,7 +69,7 @@ class DeepslateRealtimeLLMService(LLMService, DeepslateSessionListener):
         self,
         options: DeepslateOptions,
         vad_config: Optional[VadConfig] = None,
-        tts_config: Optional[ElevenLabsTtsConfig] = None,
+        tts_config: Optional[ElevenLabsTtsConfig | HostedTtsConfig] = None,
         **kwargs,
     ):
         super().__init__(**kwargs)

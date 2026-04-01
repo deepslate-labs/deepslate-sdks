@@ -23,6 +23,7 @@ from deepslate.core.options import (
     DeepslateOptions,
     ElevenLabsLocation,
     ElevenLabsTtsConfig,
+    HostedTtsConfig,
     VadConfig,
 )
 
@@ -49,6 +50,7 @@ __all__ = [
     "DeepslateModelTranscriptionFrame",
     "ElevenLabsLocation",
     "ElevenLabsTtsConfig",
+    "HostedTtsConfig",
     "DeepslateRealtimeLLMService",
     "DeepslateExportChatHistoryFrame",
     "DeepslateChatHistoryFrame",
