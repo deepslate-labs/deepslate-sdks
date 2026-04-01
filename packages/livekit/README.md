@@ -69,7 +69,7 @@ ELEVENLABS_MODEL_ID=eleven_turbo_v2  # optional
 from livekit import agents
 from livekit.agents import AgentServer, AgentSession, Agent, room_io
 
-from deepslate_livekit import RealtimeModel, ElevenLabsTtsConfig
+from deepslate.livekit import RealtimeModel, ElevenLabsTtsConfig
 
 
 class Assistant(Agent):
@@ -124,7 +124,7 @@ You can also pass a `VadConfig` instance to tune voice activity detection — se
 ### VAD Configuration
 
 ```python
-from deepslate_livekit import RealtimeModel, VadConfig
+from deepslate.livekit import RealtimeModel, VadConfig
 
 llm = RealtimeModel(
     vad_config=VadConfig(
@@ -169,7 +169,7 @@ Use LiveKit's `@function_tool()` decorator to expose tools to the model:
 
 ```python
 from livekit.agents import Agent, function_tool, RunContext
-from deepslate_livekit import RealtimeModel
+from deepslate.livekit import RealtimeModel
 
 
 class Assistant(Agent):

@@ -89,7 +89,7 @@ from pipecat.pipeline.task import PipelineParams, PipelineTask
 from pipecat.services.llm_service import FunctionCallParams
 from pipecat.transports.services.daily import DailyParams, DailyTransport
 
-from deepslate_pipecat import DeepslateOptions, DeepslateRealtimeLLMService, ElevenLabsLocation, ElevenLabsTtsConfig
+from deepslate.pipecat import DeepslateOptions, DeepslateRealtimeLLMService, ElevenLabsLocation, ElevenLabsTtsConfig
 
 load_dotenv(override=True)
 
@@ -212,7 +212,7 @@ if __name__ == "__main__":
 Use `DeepslateOptions.from_env()` to load credentials from environment variables:
 
 ```python
-from deepslate_pipecat import DeepslateOptions
+from deepslate.pipecat import DeepslateOptions
 
 opts = DeepslateOptions.from_env(
     system_prompt="You are a customer service agent. Be professional and helpful.",
@@ -225,7 +225,7 @@ opts = DeepslateOptions.from_env(
 Pass a `VadConfig` (also aliased as `DeepslateVadConfig` for backwards compatibility) to tune server-side voice activity detection:
 
 ```python
-from deepslate_pipecat import DeepslateRealtimeLLMService, VadConfig
+from deepslate.pipecat import DeepslateRealtimeLLMService, VadConfig
 
 llm = DeepslateRealtimeLLMService(
     options=opts,
@@ -267,7 +267,7 @@ llm = DeepslateRealtimeLLMService(
 **Server-side TTS (recommended — best interruption handling):**
 
 ```python
-from deepslate_pipecat import DeepslateRealtimeLLMService, ElevenLabsTtsConfig
+from deepslate.pipecat import DeepslateRealtimeLLMService, ElevenLabsTtsConfig
 
 tts_config = ElevenLabsTtsConfig.from_env()
 llm = DeepslateRealtimeLLMService(options=opts, tts_config=tts_config)
@@ -372,7 +372,7 @@ await task.queue_frame(
 `DeepslateSessionInitializedFrame` is emitted once the WebSocket session is fully initialized and ready to accept messages. Use it to send a welcome message instead of relying on a fixed delay:
 
 ```python
-from deepslate_pipecat import DeepslateRealtimeLLMService, DeepslateSessionInitializedFrame, DeepslateDirectSpeechFrame
+from deepslate.pipecat import DeepslateRealtimeLLMService, DeepslateSessionInitializedFrame, DeepslateDirectSpeechFrame
 
 class MyPipeline(FrameProcessor):
     async def process_frame(self, frame, direction):
