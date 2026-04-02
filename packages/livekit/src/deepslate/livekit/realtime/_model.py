@@ -250,6 +250,9 @@ class DeepslateRealtimeSession(
         self._realtime_model = realtime_model
         self._opts = realtime_model._opts
 
+        self._audio_ch = utils.aio.Chan[rtc.AudioFrame]()
+        self._audio_task = asyncio.create_task(self._audio_worker())
+
         # LiveKit context
         self._tools = llm.ToolContext.empty()
         self._chat_ctx = llm.ChatContext.empty()
@@ -377,13 +380,22 @@ class DeepslateRealtimeSession(
         """Push the effective tool list (after applying tool_choice) to the server."""
         await self._session.update_tools(self._effective_tools_dicts())
 
-    async def push_audio(self, frame: rtc.AudioFrame) -> None:
+    def push_audio(self, frame: rtc.AudioFrame) -> None:
         """Push an audio frame to Deepslate."""
-        await self._session.send_audio(
-            frame.data.tobytes(),
-            frame.sample_rate,
-            frame.num_channels,
-        )
+        if not self._audio_ch.closed:
+            self._audio_ch.send_nowait(frame)
+
+    async def _audio_worker(self) -> None:
+        """Persistent background task that pushes queued frames to Deepslate."""
+        try:
+            async for frame in self._audio_ch:
+                await self._session.send_audio(
+                    frame.data.tobytes(),
+                    frame.sample_rate,
+                    frame.num_channels,
+                )
+        except Exception as e:
+            logger.error(f"Deepslate audio dispatcher worker failed: {e}", exc_info=True)
 
     def push_video(self, frame: rtc.VideoFrame) -> None:
         """Video input is not supported by Deepslate."""
@@ -498,6 +510,15 @@ class DeepslateRealtimeSession(
         if self._current_generation:
             with contextlib.suppress(asyncio.InvalidStateError):
                 self._current_generation.done_fut.set_result(None)
+
+        # Close channel to break the async for-loop in the worker
+        if not self._audio_ch.closed:
+            self._audio_ch.close()
+
+        # Await worker to ensure graceful shutdown
+        with contextlib.suppress(asyncio.CancelledError):
+            await self._audio_task
+
         await self._session.close()
 
     async def on_session_initialized(self) -> None:
