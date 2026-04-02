@@ -377,12 +377,14 @@ class DeepslateRealtimeSession(
         """Push the effective tool list (after applying tool_choice) to the server."""
         await self._session.update_tools(self._effective_tools_dicts())
 
-    async def push_audio(self, frame: rtc.AudioFrame) -> None:
+    def push_audio(self, frame: rtc.AudioFrame) -> None:
         """Push an audio frame to Deepslate."""
-        await self._session.send_audio(
-            frame.data.tobytes(),
-            frame.sample_rate,
-            frame.num_channels,
+        asyncio.create_task(
+            self._session.send_audio(
+                frame.data.tobytes(),
+                frame.sample_rate,
+                frame.num_channels,
+            )
         )
 
     def push_video(self, frame: rtc.VideoFrame) -> None:
