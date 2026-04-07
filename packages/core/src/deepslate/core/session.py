@@ -242,14 +242,22 @@ class DeepslateSession:
     async def update_tools(self, tools: list[FunctionToolDict]) -> None:
         """Persist tool definitions and sync them to the server.
 
-        If the session is not yet initialized the tools are buffered and sent
-        immediately after ``InitializeSessionRequest``.  The full list is
-        always re-sent on every reconnect so plugins do not need to replay it.
+        If the session is not yet initialized, only ``_current_tools`` is
+        updated.  ``_ensure_initialized`` will send the tool definitions at the
+        right point in the wire sequence — immediately after
+        ``InitializeSessionRequest`` and before any audio data — so the server
+        never auto-transitions to *Active* with an empty tool list.
+
+        If the session is already initialized the update is sent immediately.
+        The full list is always re-sent on every reconnect via ``_current_tools``
+        so callers do not need to replay it.
         """
         self._current_tools = tools
+        if not self._session_initialized:
+            return
         msg = self._build_update_tools_msg(tools)
         if msg is not None:
-            await self._enqueue_or_buffer(msg)
+            await self._send_queue.put(msg)
 
     async def reconfigure(
         self,
