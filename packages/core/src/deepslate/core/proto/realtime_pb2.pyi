@@ -21,6 +21,11 @@ class ElevenLabsLocation(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     EU: _ClassVar[ElevenLabsLocation]
     INDIA: _ClassVar[ElevenLabsLocation]
 
+class HostedTtsMode(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    HIGH_QUALITY: _ClassVar[HostedTtsMode]
+    LOW_LATENCY: _ClassVar[HostedTtsMode]
+
 class InferenceTriggerMode(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     __slots__ = ()
     NO_TRIGGER: _ClassVar[InferenceTriggerMode]
@@ -57,6 +62,8 @@ FLOAT_64_BIT: SampleFormat
 US: ElevenLabsLocation
 EU: ElevenLabsLocation
 INDIA: ElevenLabsLocation
+HIGH_QUALITY: HostedTtsMode
+LOW_LATENCY: HostedTtsMode
 NO_TRIGGER: InferenceTriggerMode
 QUEUE: InferenceTriggerMode
 IMMEDIATE: InferenceTriggerMode
@@ -184,10 +191,12 @@ class HostedVoiceRef(_message.Message):
     def __init__(self, voice_id: _Optional[str] = ...) -> None: ...
 
 class HostedTtsConfiguration(_message.Message):
-    __slots__ = ("voice_ref",)
+    __slots__ = ("voice_ref", "mode")
     VOICE_REF_FIELD_NUMBER: _ClassVar[int]
+    MODE_FIELD_NUMBER: _ClassVar[int]
     voice_ref: HostedVoiceRef
-    def __init__(self, voice_ref: _Optional[_Union[HostedVoiceRef, _Mapping]] = ...) -> None: ...
+    mode: HostedTtsMode
+    def __init__(self, voice_ref: _Optional[_Union[HostedVoiceRef, _Mapping]] = ..., mode: _Optional[_Union[HostedTtsMode, str]] = ...) -> None: ...
 
 class TtsConfiguration(_message.Message):
     __slots__ = ("eleven_labs", "hosted")

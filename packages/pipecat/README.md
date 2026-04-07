@@ -15,7 +15,7 @@ Pipecat plugin for [Deepslate's](https://deepslate.eu/) realtime speech-to-speec
 - **Realtime Audio Streaming** — Low-latency bidirectional PCM audio over WebSockets
 - **Server-side VAD** — Voice Activity Detection handled by Deepslate with configurable sensitivity
 - **Function Calling** — Full tool/function calling support via Pipecat's `register_function` API
-- **Flexible TTS** — Choose server-side ElevenLabs TTS (via Deepslate) or any downstream Pipecat TTS service
+- **Flexible TTS** — Choose server-side Deepslate-hosted (cloned) voice TTS, ElevenLabs TTS, or any downstream Pipecat TTS service
 - **Automatic Interruption Handling** — Native support for interruptions with buffer clearing
 - **Dynamic Context Injection** — Append user or system messages to an active session mid-conversation via `LLMMessagesAppendFrame`
 - **Frame-based Architecture** — Seamless integration with Pipecat's pipeline model
@@ -253,6 +253,34 @@ llm = DeepslateRealtimeLLMService(
 - **Natural conversations:** Slightly increase `stop_duration_ms` (600–800)
 - **Capture sentence starts:** Increase `backbuffer_duration_ms` (1500–2000)
 
+### `HostedTtsConfig`
+
+Use a voice cloned and hosted within Deepslate. No external TTS credentials required.
+
+```python
+from deepslate.pipecat import DeepslateRealtimeLLMService, HostedTtsConfig, HostedTtsMode
+
+llm = DeepslateRealtimeLLMService(
+    options=opts,
+    tts_config=HostedTtsConfig(
+        voice_id="c3dfa73f-a1ab-4aad-b48a-0e9b9fe4a69f",
+        mode=HostedTtsMode.HIGH_QUALITY,  # or LOW_LATENCY
+    ),
+)
+```
+
+| Parameter  | Type            | Default                      | Description |
+|------------|-----------------|------------------------------|-------------|
+| `voice_id` | `str`           | required                     | ID of the hosted (cloned) voice |
+| `mode`     | `HostedTtsMode` | `HostedTtsMode.HIGH_QUALITY` | Quality/latency tradeoff for highest response speed |
+
+**`HostedTtsMode` values:**
+
+| Value | Description |
+|---|---|
+| `HIGH_QUALITY` | Best output quality with still relatively low latency. Recommended for most use cases (default).                                                                  |
+| `LOW_LATENCY` | Low latency generation mode that takes next to no time to complete. Output quality may be significantly reduced. |
+
 ### `ElevenLabsTtsConfig`
 
 | Parameter  | Type                 | Default                    | Description                                                           |
@@ -267,9 +295,14 @@ llm = DeepslateRealtimeLLMService(
 **Server-side TTS (recommended — best interruption handling):**
 
 ```python
-from deepslate.pipecat import DeepslateRealtimeLLMService, ElevenLabsTtsConfig
+from deepslate.pipecat import DeepslateRealtimeLLMService, ElevenLabsTtsConfig, HostedTtsConfig, HostedTtsMode
 
+# Option A: Deepslate-hosted (cloned) voice — no external credentials needed
+tts_config = HostedTtsConfig(voice_id="c3dfa73f-a1ab-4aad-b48a-0e9b9fe4a69f", mode=HostedTtsMode.HIGH_QUALITY)
+
+# Option B: ElevenLabs
 tts_config = ElevenLabsTtsConfig.from_env()
+
 llm = DeepslateRealtimeLLMService(options=opts, tts_config=tts_config)
 
 pipeline = Pipeline([transport.input(), llm, transport.output()])

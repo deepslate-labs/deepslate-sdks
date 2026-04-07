@@ -228,10 +228,37 @@ message HostedVoiceRef {
   string voice_id = 1;
 }
 
+/*
+ * Quality/latency mode for hosted TTS.
+ *
+ * High quality prefers higher quality output over response speed,
+ * low latency may degrade output but answer faster.
+ */
+enum HostedTtsMode {
+  /*
+   * Use a high quality generation mode which takes more time,
+   * but produces high quality output.
+   *
+   * This is the recommended mode, as latency is still relatively low
+   * next to being nearly imperceptible with a significantly better
+   * quality.
+   */
+  HIGH_QUALITY = 0;
+
+  /*
+   * Use a low latency generation mode.
+   *
+   * Output quality may be significantly degraded, but speech generation
+   * takes next to no time to complete.
+   */
+  LOW_LATENCY = 1;
+}
+
 message HostedTtsConfiguration {
   oneof voice {
     HostedVoiceRef voice_ref = 1;
   }
+  HostedTtsMode mode = 2;
 }
 
 /*

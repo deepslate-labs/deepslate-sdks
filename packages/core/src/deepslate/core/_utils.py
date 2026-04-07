@@ -20,7 +20,7 @@ from urllib.parse import urlparse
 from google.protobuf import json_format
 from google.protobuf.struct_pb2 import Struct
 
-from .options import ElevenLabsLocation, ElevenLabsTtsConfig, HostedTtsConfig, VadConfig
+from .options import ElevenLabsLocation, ElevenLabsTtsConfig, HostedTtsConfig, HostedTtsMode, VadConfig
 from .proto import realtime_pb2 as proto
 from ._types import (
     ChatMessageDict,
@@ -78,12 +78,15 @@ def build_ws_url(base_url: str, vendor_id: str, organization_id: str) -> str:
     return f"{scheme}://{host}/api/v1/vendors/{vendor_id}/organizations/{organization_id}/realtime"
 
 
-# Maps the Python ElevenLabsLocation enum to the proto ElevenLabsLocation enum value.
-# Shared by deepslate-livekit and deepslate-pipecat when building InitializeSessionRequest.
 ELEVENLABS_LOCATION_MAP: dict[ElevenLabsLocation, proto.ElevenLabsLocation] = {
     ElevenLabsLocation.US: proto.ElevenLabsLocation.US,
     ElevenLabsLocation.EU: proto.ElevenLabsLocation.EU,
     ElevenLabsLocation.INDIA: proto.ElevenLabsLocation.INDIA,
+}
+
+HOSTED_TTS_MODE_MAP: dict[HostedTtsMode, proto.HostedTtsMode] = {
+    HostedTtsMode.HIGH_QUALITY: proto.HostedTtsMode.HIGH_QUALITY,
+    HostedTtsMode.LOW_LATENCY: proto.HostedTtsMode.LOW_LATENCY,
 }
 
 
@@ -215,7 +218,8 @@ def build_initialize_request(
         tts_proto = proto.TtsConfiguration(eleven_labs=el_config)
     elif isinstance(tts_config, HostedTtsConfig):
         hosted_config = proto.HostedTtsConfiguration(
-            voice_ref=proto.HostedVoiceRef(voice_id=tts_config.voice_id)
+            voice_ref=proto.HostedVoiceRef(voice_id=tts_config.voice_id),
+            mode=HOSTED_TTS_MODE_MAP[tts_config.mode],
         )
         tts_proto = proto.TtsConfiguration(hosted=hosted_config)
 

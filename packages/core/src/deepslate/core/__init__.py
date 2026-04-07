@@ -27,6 +27,7 @@ from .options import (
     ElevenLabsTtsConfig,
     ElevenLabsVoiceSettingsConfig,
     HostedTtsConfig,
+    HostedTtsMode,
     VadConfig,
 )
 from ._types import (
@@ -60,6 +61,7 @@ __all__ = [
     "ElevenLabsTtsConfig",
     "ElevenLabsVoiceSettingsConfig",
     "HostedTtsConfig",
+    "HostedTtsMode",
     "InputAudioContentDict",
     "InstructionsContentDict",
     "TextContentDict",
