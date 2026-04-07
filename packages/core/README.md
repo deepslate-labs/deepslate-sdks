@@ -19,7 +19,7 @@ Shared core library for [Deepslate's](https://deepslate.eu/) realtime voice AI S
 - **`DeepslateSession`** — High-level session that manages the full WebSocket lifecycle, protobuf framing, session initialization, reconnection, and callback dispatch. The primary building block for custom integrations.
 - **`DeepslateOptions`** — API credentials and connection configuration
 - **`VadConfig`** — Server-side Voice Activity Detection parameters
-- **`HostedTtsConfig`** — Deepslate-hosted (cloned) voice TTS configuration
+- **`HostedTtsConfig` / `HostedTtsMode`** — Deepslate-hosted (cloned) voice TTS configuration
 - **`ElevenLabsTtsConfig` / `ElevenLabsLocation`** — ElevenLabs TTS configuration
 - **`BaseDeepslateClient`** — Low-level async WebSocket client with exponential-backoff reconnection (used internally by `DeepslateSession`)
 - **Protobuf definitions** — Compiled `.proto` bindings for the Deepslate realtime wire protocol
@@ -95,10 +95,28 @@ Two TTS providers are supported. Pass either config as `tts_config` to `Deepslat
 Use a voice that has been cloned and hosted within Deepslate. No external provider credentials required.
 
 ```python
-from deepslate.core import HostedTtsConfig
+from deepslate.core import HostedTtsConfig, HostedTtsMode
 
 tts = HostedTtsConfig(voice_id="c3dfa73f-a1ab-4aad-b48a-0e9b9fe4a69f")
+
+# Explicit mode selection
+tts = HostedTtsConfig(
+    voice_id="c3dfa73f-a1ab-4aad-b48a-0e9b9fe4a69f",
+    mode=HostedTtsMode.HIGH_QUALITY,  # or HostedTtsMode.LOW_LATENCY
+)
 ```
+
+| Parameter  | Type            | Default                    | Description                                         |
+|------------|-----------------|----------------------------|-----------------------------------------------------|
+| `voice_id` | `str`           | required                   | ID of the hosted (cloned) voice to use              |
+| `mode`     | `HostedTtsMode` | `HostedTtsMode.HIGH_QUALITY` | Quality/latency tradeoff for highest response speed |
+
+**`HostedTtsMode` values:**
+
+| Value | Description                                                                                                              |
+|---|--------------------------------------------------------------------------------------------------------------------------|
+| `HIGH_QUALITY` | Best output quality with still relatively low latency. Recommended for most use cases (default).                         |
+| `LOW_LATENCY` | Low latency generation mode that takes next to no time to complete. Output quality may be significantly reduced. |
 
 #### ElevenLabs
 

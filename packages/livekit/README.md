@@ -15,7 +15,7 @@ LiveKit Agents plugin for [Deepslate's](https://deepslate.eu/) realtime voice AI
 - **Realtime Voice AI Streaming** — Low-latency bidirectional audio streaming over WebSockets
 - **Server-side VAD** — Voice Activity Detection handled by Deepslate with configurable sensitivity
 - **Function Tools** — Define and invoke tools using LiveKit's `@function_tool()` decorator
-- **ElevenLabs TTS Integration** — Server-side text-to-speech with automatic context truncation on interruption
+- **Flexible TTS** — Server-side TTS via Deepslate-hosted (cloned) voices or ElevenLabs, with automatic context truncation on interruption
 - **Automatic Interruption Handling** — Truncates the in-flight response when users interrupt
 
 ---
@@ -117,7 +117,7 @@ if __name__ == "__main__":
 | `base_url`               | `str`                 | `"https://app.deepslate.eu"`     | Base URL for Deepslate API                              |
 | `system_prompt`          | `str`                 | `"You are a helpful assistant."` | System prompt for the model                             |
 | `generate_reply_timeout` | `float`               | `30.0`                           | Timeout in seconds for `generate_reply` (0 = no limit) |
-| `tts_config`             | `ElevenLabsTtsConfig` | `None`                           | TTS configuration (enables server-side audio output)    |
+| `tts_config`             | `ElevenLabsTtsConfig \| HostedTtsConfig` | `None`          | TTS configuration (enables server-side audio output)    |
 
 You can also pass a `VadConfig` instance to tune voice activity detection — see [VAD Configuration](#vad-configuration) below.
 
@@ -149,6 +149,33 @@ llm = RealtimeModel(
 - **Noisy environments:** Increase `confidence_threshold` (0.6–0.8) and `min_volume` (0.02–0.05)
 - **Lower latency:** Decrease `start_duration_ms` (100–150) and `stop_duration_ms` (200–300)
 - **Natural pacing:** Slightly increase `stop_duration_ms` (600–800)
+
+### `HostedTtsConfig`
+
+Use a voice cloned and hosted within Deepslate. No external TTS credentials required.
+
+```python
+from deepslate.livekit import RealtimeModel, HostedTtsConfig, HostedTtsMode
+
+llm = RealtimeModel(
+    tts_config=HostedTtsConfig(
+        voice_id="c3dfa73f-a1ab-4aad-b48a-0e9b9fe4a69f",
+        mode=HostedTtsMode.HIGH_QUALITY,  # or LOW_LATENCY
+    )
+)
+```
+
+| Parameter  | Type            | Default                      | Description |
+|------------|-----------------|------------------------------|-------------|
+| `voice_id` | `str`           | required                     | ID of the hosted (cloned) voice |
+| `mode`     | `HostedTtsMode` | `HostedTtsMode.HIGH_QUALITY` | Quality/latency tradeoff for highest response speed |
+
+**`HostedTtsMode` values:**
+
+| Value | Description                                                                                                                                                      |
+|---|------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `HIGH_QUALITY` | Best output quality with still relatively low latency. Recommended for most use cases (default).                                                                 |
+| `LOW_LATENCY` | Low latency generation mode that takes next to no time to complete. Output quality may be significantly reduced. |
 
 ### `ElevenLabsTtsConfig`
 
