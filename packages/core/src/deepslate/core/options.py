@@ -163,6 +163,23 @@ class ElevenLabsVoiceSettingsConfig:
         return proto.ElevenLabsVoiceSettings(**kwargs)
 
 
+class HostedTtsMode(Enum):
+    """Quality/latency mode for Deepslate-hosted TTS synthesis."""
+
+    HIGH_QUALITY = "HIGH_QUALITY"
+    """High quality output with slightly higher latency. 
+    
+    This is the default and recommended mode for most use cases. Latency 
+    remains low, while audio quality is significantly better than LOW_LATENCY.
+    """
+
+    LOW_LATENCY = "LOW_LATENCY"
+    """Minimal latency at the cost of reduced output quality.
+
+    Use this mode when immediate response speed is the primary concern.
+    """
+
+
 @dataclass
 class HostedTtsConfig:
     """Deepslate-hosted TTS configuration using a cloned voice.
@@ -173,6 +190,9 @@ class HostedTtsConfig:
 
     voice_id: str
     """The ID of the hosted (cloned) voice to use for synthesis."""
+
+    mode: HostedTtsMode = HostedTtsMode.HIGH_QUALITY
+    """Quality/latency mode for hosted TTS. Defaults to HIGH_QUALITY."""
 
 
 @dataclass

@@ -24,6 +24,7 @@ from deepslate.core.options import (
     ElevenLabsLocation,
     ElevenLabsTtsConfig,
     HostedTtsConfig,
+    HostedTtsMode,
     VadConfig,
 )
 
@@ -51,6 +52,7 @@ __all__ = [
     "ElevenLabsLocation",
     "ElevenLabsTtsConfig",
     "HostedTtsConfig",
+    "HostedTtsMode",
     "DeepslateRealtimeLLMService",
     "DeepslateExportChatHistoryFrame",
     "DeepslateChatHistoryFrame",
