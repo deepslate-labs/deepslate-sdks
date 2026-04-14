@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import inspect
 import json
 import os
 import time
@@ -129,15 +130,21 @@ class RealtimeModel(llm.RealtimeModel):
                         When None (default), only text output is provided.
             http_session: Optional shared aiohttp session.
         """
+        capabilities_kwargs = {
+            "message_truncation": True,
+            "turn_detection": True,
+            "user_transcription": True,
+            "auto_tool_reply_generation": True,
+            "audio_output": tts_config is not None,
+            "manual_function_calls": False,
+        }
+
+        sig = inspect.signature(llm.RealtimeCapabilities)
+        if "per_response_tool_choice" in sig.parameters: # Expected argument in newer livekit-agents versions
+            capabilities_kwargs["per_response_tool_choice"] = False
+
         super().__init__(
-            capabilities=llm.RealtimeCapabilities(
-                message_truncation=True,
-                turn_detection=True,
-                user_transcription=True,
-                auto_tool_reply_generation=True,
-                audio_output=tts_config is not None,
-                manual_function_calls=False,
-            )
+            capabilities=llm.RealtimeCapabilities(**capabilities_kwargs)
         )
 
         self._tts_config = tts_config
