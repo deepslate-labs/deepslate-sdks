@@ -137,6 +137,7 @@ class RealtimeModel(llm.RealtimeModel):
                 auto_tool_reply_generation=True,
                 audio_output=tts_config is not None,
                 manual_function_calls=False,
+                per_response_tool_choice=False,
             )
         )
 
