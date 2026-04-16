@@ -32,6 +32,7 @@ from livekit.agents.llm import (
     InputSpeechStartedEvent,
     MessageGeneration,
     RawFunctionTool,
+    Tool,
     ToolChoice,
     ToolContext,
 )
@@ -441,7 +442,11 @@ class DeepslateRealtimeSession(
         await self._session.export_chat_history(await_pending)
 
     async def generate_reply(
-        self, *, instructions: NotGivenOr[str] = NOT_GIVEN
+        self,
+        *,
+        instructions: NotGivenOr[str] = NOT_GIVEN,
+        tool_choice: NotGivenOr[ToolChoice] = NOT_GIVEN,
+        tools: NotGivenOr[list[Tool]] = NOT_GIVEN,
     ) -> GenerationCreatedEvent:
         """Request the model to generate a reply."""
         fut: asyncio.Future[GenerationCreatedEvent] = asyncio.Future()
