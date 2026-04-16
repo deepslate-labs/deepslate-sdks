@@ -449,6 +449,14 @@ class DeepslateRealtimeSession(
         tools: NotGivenOr[list[Tool]] = NOT_GIVEN,
     ) -> GenerationCreatedEvent:
         """Request the model to generate a reply."""
+        if utils.is_given(tool_choice):
+            logger.warning(
+                "tool_choice is not supported in generate_reply and will be ignored"
+            )
+
+        if utils.is_given(tools):
+            await self.update_tools(tools)
+
         fut: asyncio.Future[GenerationCreatedEvent] = asyncio.Future()
         request_id = utils.shortuuid("gen_")
         self._response_created_futures[request_id] = fut
