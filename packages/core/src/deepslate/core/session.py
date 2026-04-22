@@ -358,6 +358,9 @@ class DeepslateSession:
         if self._session_initialized:
             return
 
+        if self._ws is None:
+            return
+
         self._sample_rate = sample_rate
         self._channels = channels
 
