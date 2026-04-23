@@ -1,6 +1,7 @@
 syntax = "proto3";
 
 import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
 
 package eu.deepslate.realtime.speeq;
 
@@ -566,6 +567,11 @@ message ChatMessage {
    * not part of the LLM's context.
    */
   bool ephemeral = 4;
+
+  /*
+   * When this message was started (turn creation time).
+   */
+  google.protobuf.Timestamp created_at = 5;
 }
 
 /*
@@ -718,6 +724,12 @@ message UserTranscriptionResult {
   string language = 3;
 }
 
+/*
+ * Notification sent to the client when the session is fully initialized
+ * and ready to accept user input. Sent after TTS warmup completes.
+ */
+message SessionReady {}
+
 message ClientBoundMessage {
   oneof payload {
     ToolCallRequest tool_call_request = 1;
@@ -730,5 +742,6 @@ message ClientBoundMessage {
     SessionErrorNotification error = 8;
     UserTranscriptionResult user_transcription_result = 9;
     ConversationQueryResult conversation_query_result = 10;
+    SessionReady session_ready = 11;
   }
 }

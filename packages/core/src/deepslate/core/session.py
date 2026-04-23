@@ -63,6 +63,7 @@ class DeepslateSession:
 
         self._ws: Optional[aiohttp.ClientWebSocketResponse] = None
         self._session_initialized = False
+        self._init_request_sent = False
         self._sample_rate: Optional[int] = None
         self._channels: Optional[int] = None
         self._packet_id_counter = 0
@@ -77,7 +78,7 @@ class DeepslateSession:
 
     @property
     def session_initialized(self) -> bool:
-        """True after the server has acknowledged ``InitializeSessionRequest``"""
+        """True after the server has sent ``SessionReady``"""
         return self._session_initialized
 
     @property
@@ -344,6 +345,7 @@ class DeepslateSession:
         """
         self._ws = None
         self._session_initialized = False
+        self._init_request_sent = False
         self._sample_rate = None
         self._channels = None
         self._packet_id_counter = 0
@@ -357,12 +359,14 @@ class DeepslateSession:
         """Idempotent session initialization."""
         if self._session_initialized:
             return
-
+        if self._init_request_sent:
+            return
         if self._ws is None:
             return
 
         self._sample_rate = sample_rate
         self._channels = channels
+        self._init_request_sent = True
 
         init_request = build_initialize_request(
             sample_rate=sample_rate,
@@ -383,13 +387,6 @@ class DeepslateSession:
             tools_msg = self._build_update_tools_msg(self._current_tools)
             if tools_msg is not None:
                 await self._send_queue.put(tools_msg)
-
-        for msg in self._pending_before_init:
-            await self._send_queue.put(msg)
-        self._pending_before_init.clear()
-
-        self._session_initialized = True
-        await self._fire(self._listener.on_session_initialized())
 
     async def _enqueue_or_buffer(self, msg: proto.ServiceBoundMessage) -> None:
         """Route a message to the send queue or the pre-init buffer."""
@@ -527,7 +524,15 @@ class DeepslateSession:
         """Route a ``ClientBoundMessage`` to the appropriate listener method."""
         payload_type = msg.WhichOneof("payload")
 
-        if payload_type == "response_begin":
+        if payload_type == "session_ready":
+            logger.info("DeepslateSession: session ready")
+            for pending in self._pending_before_init:
+                await self._send_queue.put(pending)
+            self._pending_before_init.clear()
+            self._session_initialized = True
+            await self._fire(self._listener.on_session_initialized())
+
+        elif payload_type == "response_begin":
             await self._fire(self._listener.on_response_begin())
 
         elif payload_type == "response_end":
