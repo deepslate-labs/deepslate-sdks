@@ -1,4 +1,5 @@
 from google.protobuf import struct_pb2 as _struct_pb2
+from google.protobuf import timestamp_pb2 as _timestamp_pb2
 from google.protobuf.internal import containers as _containers
 from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
 from google.protobuf import descriptor as _descriptor
@@ -339,16 +340,18 @@ class ChatHistory(_message.Message):
     def __init__(self, messages: _Optional[_Iterable[_Union[ChatMessage, _Mapping]]] = ...) -> None: ...
 
 class ChatMessage(_message.Message):
-    __slots__ = ("role", "content", "delivery_status", "ephemeral")
+    __slots__ = ("role", "content", "delivery_status", "ephemeral", "created_at")
     ROLE_FIELD_NUMBER: _ClassVar[int]
     CONTENT_FIELD_NUMBER: _ClassVar[int]
     DELIVERY_STATUS_FIELD_NUMBER: _ClassVar[int]
     EPHEMERAL_FIELD_NUMBER: _ClassVar[int]
+    CREATED_AT_FIELD_NUMBER: _ClassVar[int]
     role: ChatMessageRole
     content: _containers.RepeatedCompositeFieldContainer[ChatMessageContent]
     delivery_status: ChatDeliveryStatus
     ephemeral: bool
-    def __init__(self, role: _Optional[_Union[ChatMessageRole, str]] = ..., content: _Optional[_Iterable[_Union[ChatMessageContent, _Mapping]]] = ..., delivery_status: _Optional[_Union[ChatDeliveryStatus, str]] = ..., ephemeral: bool = ...) -> None: ...
+    created_at: _timestamp_pb2.Timestamp
+    def __init__(self, role: _Optional[_Union[ChatMessageRole, str]] = ..., content: _Optional[_Iterable[_Union[ChatMessageContent, _Mapping]]] = ..., delivery_status: _Optional[_Union[ChatDeliveryStatus, str]] = ..., ephemeral: bool = ..., created_at: _Optional[_Union[_timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
 
 class ChatMessageContent(_message.Message):
     __slots__ = ("text_content", "input_audio", "thoughts", "tool_call", "tool_result", "instructions")
@@ -416,8 +419,12 @@ class UserTranscriptionResult(_message.Message):
     language: str
     def __init__(self, turn_id: _Optional[int] = ..., text: _Optional[str] = ..., language: _Optional[str] = ...) -> None: ...
 
+class SessionReady(_message.Message):
+    __slots__ = ()
+    def __init__(self) -> None: ...
+
 class ClientBoundMessage(_message.Message):
-    __slots__ = ("tool_call_request", "model_text_fragment", "model_audio_chunk", "playback_clear_buffer", "response_begin", "response_end", "chat_history", "error", "user_transcription_result", "conversation_query_result")
+    __slots__ = ("tool_call_request", "model_text_fragment", "model_audio_chunk", "playback_clear_buffer", "response_begin", "response_end", "chat_history", "error", "user_transcription_result", "conversation_query_result", "session_ready")
     TOOL_CALL_REQUEST_FIELD_NUMBER: _ClassVar[int]
     MODEL_TEXT_FRAGMENT_FIELD_NUMBER: _ClassVar[int]
     MODEL_AUDIO_CHUNK_FIELD_NUMBER: _ClassVar[int]
@@ -428,6 +435,7 @@ class ClientBoundMessage(_message.Message):
     ERROR_FIELD_NUMBER: _ClassVar[int]
     USER_TRANSCRIPTION_RESULT_FIELD_NUMBER: _ClassVar[int]
     CONVERSATION_QUERY_RESULT_FIELD_NUMBER: _ClassVar[int]
+    SESSION_READY_FIELD_NUMBER: _ClassVar[int]
     tool_call_request: ToolCallRequest
     model_text_fragment: ModelTextFragment
     model_audio_chunk: ModelAudioChunk
@@ -438,4 +446,5 @@ class ClientBoundMessage(_message.Message):
     error: SessionErrorNotification
     user_transcription_result: UserTranscriptionResult
     conversation_query_result: ConversationQueryResult
-    def __init__(self, tool_call_request: _Optional[_Union[ToolCallRequest, _Mapping]] = ..., model_text_fragment: _Optional[_Union[ModelTextFragment, _Mapping]] = ..., model_audio_chunk: _Optional[_Union[ModelAudioChunk, _Mapping]] = ..., playback_clear_buffer: _Optional[_Union[PlaybackClearBuffer, _Mapping]] = ..., response_begin: _Optional[_Union[ResponseBegin, _Mapping]] = ..., response_end: _Optional[_Union[ResponseEnd, _Mapping]] = ..., chat_history: _Optional[_Union[ChatHistory, _Mapping]] = ..., error: _Optional[_Union[SessionErrorNotification, _Mapping]] = ..., user_transcription_result: _Optional[_Union[UserTranscriptionResult, _Mapping]] = ..., conversation_query_result: _Optional[_Union[ConversationQueryResult, _Mapping]] = ...) -> None: ...
+    session_ready: SessionReady
+    def __init__(self, tool_call_request: _Optional[_Union[ToolCallRequest, _Mapping]] = ..., model_text_fragment: _Optional[_Union[ModelTextFragment, _Mapping]] = ..., model_audio_chunk: _Optional[_Union[ModelAudioChunk, _Mapping]] = ..., playback_clear_buffer: _Optional[_Union[PlaybackClearBuffer, _Mapping]] = ..., response_begin: _Optional[_Union[ResponseBegin, _Mapping]] = ..., response_end: _Optional[_Union[ResponseEnd, _Mapping]] = ..., chat_history: _Optional[_Union[ChatHistory, _Mapping]] = ..., error: _Optional[_Union[SessionErrorNotification, _Mapping]] = ..., user_transcription_result: _Optional[_Union[UserTranscriptionResult, _Mapping]] = ..., conversation_query_result: _Optional[_Union[ConversationQueryResult, _Mapping]] = ..., session_ready: _Optional[_Union[SessionReady, _Mapping]] = ...) -> None: ...
