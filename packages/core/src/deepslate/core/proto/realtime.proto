@@ -396,6 +396,11 @@ message ExportChatHistoryRequest {
   // When true, wait for all in-flight async operations (e.g. transcriptions)
   // to complete before responding with the chat history.
   bool await_pending = 1;
+
+  // Whether to exclude audio data from the exported chat history. Defaults to false.
+  //
+  // Use this if you only need the transcripts and want to avoid transferring large audio data blobs.
+  bool exclude_audio = 2;
 }
 
 /*

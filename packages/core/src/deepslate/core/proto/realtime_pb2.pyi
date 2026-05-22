@@ -262,10 +262,12 @@ class TriggerInference(_message.Message):
     def __init__(self, extra_instructions: _Optional[str] = ...) -> None: ...
 
 class ExportChatHistoryRequest(_message.Message):
-    __slots__ = ("await_pending",)
+    __slots__ = ("await_pending", "exclude_audio")
     AWAIT_PENDING_FIELD_NUMBER: _ClassVar[int]
+    EXCLUDE_AUDIO_FIELD_NUMBER: _ClassVar[int]
     await_pending: bool
-    def __init__(self, await_pending: bool = ...) -> None: ...
+    exclude_audio: bool
+    def __init__(self, await_pending: bool = ..., exclude_audio: bool = ...) -> None: ...
 
 class PlaybackPositionReport(_message.Message):
     __slots__ = ("bytes_played",)

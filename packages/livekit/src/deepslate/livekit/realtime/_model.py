@@ -434,12 +434,14 @@ class DeepslateRealtimeSession(
         await self._session.send_conversation_query(query_id, prompt, instructions)
         return await fut
 
-    async def export_chat_history(self, await_pending: bool = False) -> None:
+    async def export_chat_history(
+        self, await_pending: bool = False, exclude_audio: bool = False
+    ) -> None:
         """Request the server to export the current chat history.
 
         The result is delivered via the ``chat_history_exported`` event.
         """
-        await self._session.export_chat_history(await_pending)
+        await self._session.export_chat_history(await_pending, exclude_audio)
 
     async def generate_reply(
         self,

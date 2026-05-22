@@ -27,6 +27,9 @@ class DeepslateExportChatHistoryFrame(Frame):
     await_pending: bool = False
     """When True, the server waits for all in-flight async operations (e.g. transcriptions) to complete before responding."""
 
+    exclude_audio: bool = False
+    """When True, audio data is omitted from the exported history (transcripts only)."""
+
 
 @dataclass
 class DeepslateChatHistoryFrame(Frame):
