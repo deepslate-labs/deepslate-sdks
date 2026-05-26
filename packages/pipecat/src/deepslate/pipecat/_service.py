@@ -148,7 +148,9 @@ class DeepslateRealtimeLLMService(LLMService, DeepslateSessionListener):
 
         elif isinstance(frame, DeepslateExportChatHistoryFrame):
             if self._session is not None:
-                await self._session.export_chat_history(frame.await_pending)
+                await self._session.export_chat_history(
+                    frame.await_pending, frame.exclude_audio
+                )
 
         elif isinstance(frame, DeepslateDirectSpeechFrame):
             if self._session is not None:

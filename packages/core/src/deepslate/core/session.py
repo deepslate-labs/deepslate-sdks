@@ -294,13 +294,17 @@ class DeepslateSession:
             proto.ServiceBoundMessage(direct_speech=direct_speech)
         )
 
-    async def export_chat_history(self, await_pending: bool = False) -> None:
+    async def export_chat_history(
+        self, await_pending: bool = False, exclude_audio: bool = False
+    ) -> None:
         """Request a chat history export.
 
         The result is delivered asynchronously via the ``on_chat_history``
         callback.
         """
-        req = proto.ExportChatHistoryRequest(await_pending=await_pending)
+        req = proto.ExportChatHistoryRequest(
+            await_pending=await_pending, exclude_audio=exclude_audio
+        )
         await self._enqueue_or_buffer(
             proto.ServiceBoundMessage(export_chat_history_request=req)
         )
