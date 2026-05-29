@@ -175,10 +175,10 @@ class DeepslateRealtimeLLMService(LLMService, DeepslateSessionListener):
     async def on_session_initialized(self) -> None:
         await self.push_frame(DeepslateSessionInitializedFrame())
 
-    async def on_response_begin(self) -> None:
+    async def on_response_begin(self, turn_id: int = 0) -> None:
         await self.push_frame(LLMFullResponseStartFrame())
 
-    async def on_response_end(self) -> None:
+    async def on_response_end(self, turn_id: int = 0) -> None:
         await self.push_frame(LLMFullResponseEndFrame())
 
     async def on_text_fragment(self, text: str) -> None:

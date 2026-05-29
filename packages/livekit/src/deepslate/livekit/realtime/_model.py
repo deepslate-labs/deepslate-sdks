@@ -595,11 +595,11 @@ class DeepslateRealtimeSession(
         logger.debug(f"tool call request: {name}({call_id})")
         self._close_current_generation()
 
-    async def on_response_begin(self) -> None:
+    async def on_response_begin(self, turn_id: int = 0) -> None:
         if self._current_generation is None:
             self._create_generation()
 
-    async def on_response_end(self) -> None:
+    async def on_response_end(self, turn_id: int = 0) -> None:
         self._close_current_generation()
 
     async def on_playback_buffer_clear(self) -> None:
