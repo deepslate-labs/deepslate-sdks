@@ -25,6 +25,7 @@ from deepslate.core.options import (
     ElevenLabsTtsConfig,
     HostedTtsConfig,
     HostedTtsMode,
+    HostedVoiceCloneConfig,
     VadConfig,
 )
 
@@ -39,6 +40,7 @@ __all__ = [
     "ElevenLabsTtsConfig",
     "HostedTtsConfig",
     "HostedTtsMode",
+    "HostedVoiceCloneConfig",
     "VadConfig",
     "RealtimeModel",
     "DeepslateRealtimeSession",

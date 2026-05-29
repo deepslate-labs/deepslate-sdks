@@ -46,11 +46,13 @@ from deepslate.core import (
     DeepslateSessionListener,
     ElevenLabsTtsConfig,
     HostedTtsConfig,
+    HostedVoiceCloneConfig,
     FunctionToolDict,
     TriggerMode,
     VadConfig,
 )
 from .frames import (
+    DeepslateContextTruncatedFrame,
     DeepslateExportChatHistoryFrame,
     DeepslateChatHistoryFrame,
     DeepslateDirectSpeechFrame,
@@ -59,6 +61,7 @@ from .frames import (
     DeepslateModelTranscriptionFrame,
     DeepslateConversationQueryFrame,
     DeepslateConversationQueryResultFrame,
+    DeepslateVadStateEventFrame,
 )
 
 
@@ -69,7 +72,7 @@ class DeepslateRealtimeLLMService(LLMService, DeepslateSessionListener):
         self,
         options: DeepslateOptions,
         vad_config: Optional[VadConfig] = None,
-        tts_config: Optional[ElevenLabsTtsConfig | HostedTtsConfig] = None,
+        tts_config: Optional[ElevenLabsTtsConfig | HostedTtsConfig | HostedVoiceCloneConfig] = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -229,6 +232,34 @@ class DeepslateRealtimeLLMService(LLMService, DeepslateSessionListener):
 
     async def on_conversation_query_result(self, query_id: str, text: str) -> None:
         await self.push_frame(DeepslateConversationQueryResultFrame(text=text))
+
+    async def on_vad_state_event(
+        self,
+        from_state: str,
+        to_state: str,
+        session_time_ms: int,
+        packet_id: int,
+    ) -> None:
+        await self.push_frame(
+            DeepslateVadStateEventFrame(
+                from_state=from_state,
+                to_state=to_state,
+                session_time_ms=session_time_ms,
+                packet_id=packet_id,
+            )
+        )
+
+    async def on_context_truncated(
+        self,
+        truncated_turn_ids: list[int],
+        response_turn_id: int,
+    ) -> None:
+        await self.push_frame(
+            DeepslateContextTruncatedFrame(
+                truncated_turn_ids=truncated_turn_ids,
+                response_turn_id=response_turn_id,
+            )
+        )
 
     async def on_fatal_error(self, e: Exception) -> None:
         await self.push_frame(ErrorFrame(f"Connection failed: {e}"))

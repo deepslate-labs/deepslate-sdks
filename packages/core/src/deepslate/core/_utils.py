@@ -20,7 +20,7 @@ from urllib.parse import urlparse
 from google.protobuf import json_format
 from google.protobuf.struct_pb2 import Struct
 
-from .options import ElevenLabsLocation, ElevenLabsTtsConfig, HostedTtsConfig, HostedTtsMode, VadConfig
+from .options import ElevenLabsLocation, ElevenLabsTtsConfig, HostedTtsConfig, HostedTtsMode, HostedVoiceCloneConfig, VadConfig
 from .proto import realtime_pb2 as proto
 from ._types import (
     ChatMessageDict,
@@ -180,12 +180,20 @@ def parse_chat_history(chat_history) -> list[ChatMessageDict]:
                     )
                 )
 
+        turn_id: int | None = msg.turn_id if msg.HasField("turn_id") else None
+        truncated_at: int | None = (
+            msg.truncated_at_response_turn_id
+            if msg.HasField("truncated_at_response_turn_id")
+            else None
+        )
         messages.append(
             ChatMessageDict(
                 role=proto.ChatMessageRole.Name(msg.role).lower(),
                 delivery_status=proto.ChatDeliveryStatus.Name(msg.delivery_status),
                 ephemeral=msg.ephemeral,
                 content=content_blocks,
+                turn_id=turn_id,
+                truncated_at_response_turn_id=truncated_at,
             )
         )
     return messages
@@ -196,7 +204,7 @@ def build_initialize_request(
     num_channels: int,
     vad_config: VadConfig,
     system_prompt: str,
-    tts_config: Optional[ElevenLabsTtsConfig | HostedTtsConfig] = None,
+    tts_config: Optional[ElevenLabsTtsConfig | HostedTtsConfig | HostedVoiceCloneConfig] = None,
     temperature: float = 1.0,
 ) -> proto.InitializeSessionRequest:
     """Build a proto.InitializeSessionRequest from core configuration objects.
@@ -219,6 +227,21 @@ def build_initialize_request(
     elif isinstance(tts_config, HostedTtsConfig):
         hosted_config = proto.HostedTtsConfiguration(
             voice_ref=proto.HostedVoiceRef(voice_id=tts_config.voice_id),
+            mode=HOSTED_TTS_MODE_MAP[tts_config.mode],
+        )
+        tts_proto = proto.TtsConfiguration(hosted=hosted_config)
+    elif isinstance(tts_config, HostedVoiceCloneConfig):
+        clone = proto.HostedVoiceCloneV1(
+            audio_data=tts_config.audio_data,
+            audio_format=proto.AudioLineConfiguration(
+                sample_rate=tts_config.audio_sample_rate,
+                channel_count=tts_config.audio_channels,
+                sample_format=proto.SampleFormat.SIGNED_16_BIT,
+            ),
+            ref_text=tts_config.ref_text,
+        )
+        hosted_config = proto.HostedTtsConfiguration(
+            voice_clone_v1=clone,
             mode=HOSTED_TTS_MODE_MAP[tts_config.mode],
         )
         tts_proto = proto.TtsConfiguration(hosted=hosted_config)

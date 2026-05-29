@@ -25,11 +25,13 @@ from deepslate.core.options import (
     ElevenLabsTtsConfig,
     HostedTtsConfig,
     HostedTtsMode,
+    HostedVoiceCloneConfig,
     VadConfig,
 )
 
 from ._service import DeepslateRealtimeLLMService
 from .frames import (
+    DeepslateContextTruncatedFrame,
     DeepslateExportChatHistoryFrame,
     DeepslateChatHistoryFrame,
     DeepslateDirectSpeechFrame,
@@ -38,6 +40,7 @@ from .frames import (
     DeepslateModelTranscriptionFrame,
     DeepslateConversationQueryFrame,
     DeepslateConversationQueryResultFrame,
+    DeepslateVadStateEventFrame,
 )
 
 # Backward-compatible alias — legacy code that imported DeepslateVadConfig continues to work.
@@ -53,11 +56,14 @@ __all__ = [
     "ElevenLabsTtsConfig",
     "HostedTtsConfig",
     "HostedTtsMode",
+    "HostedVoiceCloneConfig",
     "DeepslateRealtimeLLMService",
+    "DeepslateContextTruncatedFrame",
     "DeepslateExportChatHistoryFrame",
     "DeepslateChatHistoryFrame",
     "DeepslateDirectSpeechFrame",
     "DeepslateConversationQueryFrame",
     "DeepslateConversationQueryResultFrame",
     "DeepslateSessionInitializedFrame",
+    "DeepslateVadStateEventFrame",
 ]
