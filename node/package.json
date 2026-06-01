@@ -1,0 +1,15 @@
+{
+  "name": "deepslate-sdks-node",
+  "private": true,
+  "scripts": {
+    "generate": "pnpm --filter @deepslate/proto run generate",
+    "build": "pnpm -r run build"
+  },
+  "devDependencies": {
+    "@bufbuild/buf": "^1.47.2",
+    "@bufbuild/protoc-gen-es": "^2.2.3",
+    "typescript": "^5.6.3",
+    "tsx": "^4.19.2"
+  },
+  "packageManager": "pnpm@9.12.0"
+}
