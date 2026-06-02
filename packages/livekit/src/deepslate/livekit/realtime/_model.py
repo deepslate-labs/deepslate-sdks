@@ -443,14 +443,30 @@ class DeepslateRealtimeSession(
         """
         await self._session.export_chat_history(await_pending, exclude_audio)
 
-    async def generate_reply(
+    def generate_reply(
+        self,
+        *,
+        instructions: NotGivenOr[str] = NOT_GIVEN,
+        tool_choice: NotGivenOr[ToolChoice] = NOT_GIVEN,
+        tools: NotGivenOr[list[Tool]] = NOT_GIVEN,
+    ) -> asyncio.Future[GenerationCreatedEvent]:
+        """Request the model to generate a reply."""
+        return asyncio.create_task(
+            self._generate_reply(
+                instructions=instructions,
+                tool_choice=tool_choice,
+                tools=tools,
+            )
+        )
+
+    async def _generate_reply(
         self,
         *,
         instructions: NotGivenOr[str] = NOT_GIVEN,
         tool_choice: NotGivenOr[ToolChoice] = NOT_GIVEN,
         tools: NotGivenOr[list[Tool]] = NOT_GIVEN,
     ) -> GenerationCreatedEvent:
-        """Request the model to generate a reply."""
+        """Async implementation backing :meth:`generate_reply`."""
         if utils.is_given(tool_choice):
             logger.warning(
                 "tool_choice is not supported in generate_reply and will be ignored"
