@@ -135,7 +135,7 @@ class RealtimeModel(llm.RealtimeModel):
                 message_truncation=True,
                 turn_detection=True,
                 user_transcription=True,
-                auto_tool_reply_generation=True,
+                auto_tool_reply_generation=False,
                 audio_output=tts_config is not None,
                 manual_function_calls=False,
                 per_response_tool_choice=False,
@@ -685,7 +685,7 @@ class DeepslateRealtimeSession(
             asyncio.Future()
         )
         if has_audio:
-            msg_modalities.set_result(["audio", "text"])
+            msg_modalities.set_result(["audio"])
         else:
             msg_modalities.set_result(["text"])
             self._current_generation.audio_ch.close()
