@@ -196,6 +196,33 @@ class HostedTtsConfig:
 
 
 @dataclass
+class HostedVoiceCloneConfig:
+    """Deepslate-hosted TTS configuration using a custom voice clone sample.
+
+    Provide a raw audio sample to clone a voice on the fly. No pre-uploaded
+    voice ID is required. The audio sample is sent as part of the session
+    initialization request.
+
+    See Deepslate documentation for requirements on the audio sample.
+    """
+
+    audio_data: bytes
+    """Raw PCM audio data of the voice sample (20–25 seconds of speech)."""
+
+    audio_sample_rate: int
+    """Sample rate of the audio sample in Hz."""
+
+    audio_channels: int
+    """Number of audio channels in the sample."""
+
+    ref_text: str
+    """Exact transcript of the voice sample, including disfluencies and false starts."""
+
+    mode: HostedTtsMode = HostedTtsMode.HIGH_QUALITY
+    """Quality/latency mode for hosted TTS. Defaults to HIGH_QUALITY."""
+
+
+@dataclass
 class ElevenLabsTtsConfig:
     """ElevenLabs TTS configuration for Deepslate-hosted TTS.
 

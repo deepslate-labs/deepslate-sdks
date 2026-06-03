@@ -23,7 +23,7 @@ from typing import Any, Optional
 import aiohttp
 
 from .client import BaseDeepslateClient
-from .options import DeepslateOptions, ElevenLabsTtsConfig, HostedTtsConfig, VadConfig
+from .options import DeepslateOptions, ElevenLabsTtsConfig, HostedTtsConfig, HostedVoiceCloneConfig, VadConfig
 from .proto import realtime_pb2 as proto
 from ._types import DeepslateSessionListener, FunctionToolDict, TriggerMode
 from ._utils import (
@@ -47,7 +47,7 @@ class DeepslateSession:
         client: BaseDeepslateClient,
         options: DeepslateOptions,
         vad_config: Optional[VadConfig] = None,
-        tts_config: Optional[ElevenLabsTtsConfig | HostedTtsConfig] = None,
+        tts_config: Optional[ElevenLabsTtsConfig | HostedTtsConfig | HostedVoiceCloneConfig] = None,
         listener: Optional[DeepslateSessionListener] = None,
     ) -> None:
         self._client = client
@@ -124,7 +124,7 @@ class DeepslateSession:
         options: DeepslateOptions,
         *,
         vad_config: Optional[VadConfig] = None,
-        tts_config: Optional[ElevenLabsTtsConfig | HostedTtsConfig] = None,
+        tts_config: Optional[ElevenLabsTtsConfig | HostedTtsConfig | HostedVoiceCloneConfig] = None,
         user_agent: str = "DeepslateCore",
         http_session: Optional[Any] = None,
         listener: Optional[DeepslateSessionListener] = None,
@@ -221,9 +221,13 @@ class DeepslateSession:
         """
         await self._ensure_initialized(sample_rate, channels)
 
-    async def trigger_inference(self, instructions: Optional[str] = None) -> None:
+    async def trigger_inference(
+        self,
+        instructions: Optional[str] = None,
+        flush_vad: bool = False,
+    ) -> None:
         """Send a ``TriggerInference`` message to request a model reply."""
-        trigger = proto.TriggerInference()
+        trigger = proto.TriggerInference(flush_vad=flush_vad)
         if instructions is not None:
             trigger.extra_instructions = instructions
         await self._enqueue_or_buffer(
@@ -537,10 +541,14 @@ class DeepslateSession:
             await self._fire(self._listener.on_session_initialized())
 
         elif payload_type == "response_begin":
-            await self._fire(self._listener.on_response_begin())
+            await self._fire(
+                self._listener.on_response_begin(msg.response_begin.turn_id)
+            )
 
         elif payload_type == "response_end":
-            await self._fire(self._listener.on_response_end())
+            await self._fire(
+                self._listener.on_response_end(msg.response_end.turn_id)
+            )
 
         elif payload_type == "model_text_fragment":
             await self._fire(
@@ -580,7 +588,10 @@ class DeepslateSession:
             params = (
                 struct_to_dict(req.parameters) if req.HasField("parameters") else {}
             )
-            await self._fire(self._listener.on_tool_call(req.id, req.name, params))
+            turn_id: Optional[int] = req.turn_id if req.HasField("turn_id") else None
+            await self._fire(
+                self._listener.on_tool_call(req.id, req.name, params, turn_id)
+            )
 
         elif payload_type == "conversation_query_result":
             result_text = msg.conversation_query_result.text
@@ -614,6 +625,33 @@ class DeepslateSession:
             await self._fire(
                 self._listener.on_error(category_name, notification.message, trace_id)
             )
+
+        elif payload_type == "vad_state_event":
+            event = msg.vad_state_event
+            session_time_ms = (
+                event.session_time.seconds * 1000
+                + event.session_time.nanos // 1_000_000
+            )
+            await self._fire(
+                self._listener.on_vad_state_event(
+                    from_state=proto.VadState.Name(event.from_state),
+                    to_state=proto.VadState.Name(event.to_state),
+                    session_time_ms=session_time_ms,
+                    packet_id=event.packet_id,
+                )
+            )
+
+        elif payload_type == "context_truncated":
+            ct = msg.context_truncated
+            await self._fire(
+                self._listener.on_context_truncated(
+                    truncated_turn_ids=list(ct.truncated_turn_ids),
+                    response_turn_id=ct.response_turn_id,
+                )
+            )
+
+        elif payload_type == "vad_analysis_frame":
+            pass  # experimental telemetry, not surfaced to listeners by default
 
         else:
             logger.debug(f"DeepslateSession: unhandled payload type: {payload_type}")

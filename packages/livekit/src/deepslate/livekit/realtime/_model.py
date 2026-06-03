@@ -56,6 +56,7 @@ from deepslate.core import (
     DeepslateSessionListener,
     ElevenLabsTtsConfig,
     HostedTtsConfig,
+    HostedVoiceCloneConfig,
     FunctionToolDict,
     TriggerMode,
     VadConfig,
@@ -104,7 +105,7 @@ class RealtimeModel(llm.RealtimeModel):
         vad_stop_duration_ms: int = 500,
         vad_backbuffer_duration_ms: int = 1000,
         # TTS configuration
-        tts_config: ElevenLabsTtsConfig | HostedTtsConfig | None = None,
+        tts_config: ElevenLabsTtsConfig | HostedTtsConfig | HostedVoiceCloneConfig | None = None,
         http_session: aiohttp.ClientSession | None = None,
         # Internal use only - direct WebSocket URL (bypass standard auth)
         ws_url: str | None = None,
@@ -125,9 +126,11 @@ class RealtimeModel(llm.RealtimeModel):
             vad_stop_duration_ms: Duration of silence to detect end (milliseconds).
             vad_backbuffer_duration_ms: Audio buffer duration before speech detection (milliseconds).
             tts_config: TTS configuration. When provided, audio output is enabled.
-                        Use ``ElevenLabsTtsConfig`` for ElevenLabs-hosted synthesis or
-                        ``HostedTtsConfig`` for Deepslate-hosted (cloned) voices.
-                        When None (default), only text output is provided.
+                        Use ``ElevenLabsTtsConfig`` for ElevenLabs-hosted synthesis,
+                        ``HostedTtsConfig`` for Deepslate-hosted (already cloned/existing) voices,
+                        or ``HostedVoiceCloneConfig`` to clone a voice on the fly by
+                        supplying a raw audio sample. When None (default), only text
+                        output is provided.
             http_session: Optional shared aiohttp session.
         """
         super().__init__(
@@ -608,11 +611,11 @@ class DeepslateRealtimeSession(
         logger.debug(f"tool call request: {name}({call_id})")
         self._close_current_generation()
 
-    async def on_response_begin(self) -> None:
+    async def on_response_begin(self, turn_id: int = 0) -> None:
         if self._current_generation is None:
             self._create_generation()
 
-    async def on_response_end(self) -> None:
+    async def on_response_end(self, turn_id: int = 0) -> None:
         self._close_current_generation()
 
     async def on_playback_buffer_clear(self) -> None:
@@ -662,6 +665,38 @@ class DeepslateRealtimeSession(
                 label=self._realtime_model.label,
                 error=e,
                 recoverable=False,
+            ),
+        )
+
+    async def on_vad_state_event(
+        self,
+        from_state: str,
+        to_state: str,
+        session_time_ms: int,
+        packet_id: int,
+    ) -> None:
+        self.emit(
+            "deepslate_server_event_received",
+            SimpleNamespace(
+                type="vad_state_event",
+                from_state=from_state,
+                to_state=to_state,
+                session_time_ms=session_time_ms,
+                packet_id=packet_id,
+            ),
+        )
+
+    async def on_context_truncated(
+        self,
+        truncated_turn_ids: list[int],
+        response_turn_id: int,
+    ) -> None:
+        self.emit(
+            "deepslate_server_event_received",
+            SimpleNamespace(
+                type="context_truncated",
+                truncated_turn_ids=truncated_turn_ids,
+                response_turn_id=response_turn_id,
             ),
         )
 
