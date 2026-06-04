@@ -12,7 +12,7 @@ import type { JsonObject, Message } from "@bufbuild/protobuf";
  * Describes the file realtime.proto.
  */
 export const file_realtime: GenFile = /*@__PURE__*/
-  fileDesc("Cg5yZWFsdGltZS5wcm90bxIbZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxInUKDlRvb2xEZWZpbml0aW9uEgwKBG5hbWUYASABKAkSGAoLZGVzY3JpcHRpb24YAiABKAlIAIgBARIrCgpwYXJhbWV0ZXJzGAMgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdEIOCgxfZGVzY3JpcHRpb24iZQocVXBkYXRlVG9vbERlZmluaXRpb25zUmVxdWVzdBJFChB0b29sX2RlZmluaXRpb25zGAEgAygLMisuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLlRvb2xEZWZpbml0aW9uIlgKD1Rvb2xDYWxsUmVxdWVzdBIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEisKCnBhcmFtZXRlcnMYAyABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0Ii4KEFRvb2xDYWxsUmVzcG9uc2USCgoCaWQYASABKAkSDgoGcmVzdWx0GAIgASgJIioKCER1cmF0aW9uEg8KB3NlY29uZHMYASABKAQSDQoFbmFub3MYAiABKA0ihgEKFkF1ZGlvTGluZUNvbmZpZ3VyYXRpb24SEwoLc2FtcGxlX3JhdGUYASABKA0SFQoNY2hhbm5lbF9jb3VudBgCIAEoDRJACg1zYW1wbGVfZm9ybWF0GAMgASgOMikuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLlNhbXBsZUZvcm1hdCKFAgoQVmFkQ29uZmlndXJhdGlvbhIcChRjb25maWRlbmNlX3RocmVzaG9sZBgBIAEoAhISCgptaW5fdm9sdW1lGAIgASgCEj0KDnN0YXJ0X2R1cmF0aW9uGAMgASgLMiUuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLkR1cmF0aW9uEjwKDXN0b3BfZHVyYXRpb24YBCABKAsyJS5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuRHVyYXRpb24SQgoTYmFja2J1ZmZlcl9kdXJhdGlvbhgFIAEoCzIlLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5EdXJhdGlvbiJEChZJbmZlcmVuY2VDb25maWd1cmF0aW9uEhUKDXN5c3RlbV9wcm9tcHQYASABKAkSEwoLdGVtcGVyYXR1cmUYAiABKAEijAIKGkVsZXZlbkxhYnNUdHNDb25maWd1cmF0aW9uEg8KB2FwaV9rZXkYASABKAkSEAoIdm9pY2VfaWQYAiABKAkSFQoIbW9kZWxfaWQYAyABKAlIAIgBARJRCg52b2ljZV9zZXR0aW5ncxgEIAEoCzI0LmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5FbGV2ZW5MYWJzVm9pY2VTZXR0aW5nc0gBiAEBEkEKCGxvY2F0aW9uGAUgASgOMi8uZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLkVsZXZlbkxhYnNMb2NhdGlvbkILCglfbW9kZWxfaWRCEQoPX3ZvaWNlX3NldHRpbmdzIn8KF0VsZXZlbkxhYnNWb2ljZVNldHRpbmdzEhEKCXN0YWJpbGl0eRgBIAEoARIYChBzaW1pbGFyaXR5X2Jvb3N0GAIgASgBEg0KBXN0eWxlGAMgASgBEhkKEXVzZV9zcGVha2VyX2Jvb3N0GAQgASgIEg0KBXNwZWVkGAUgASgBIiIKDkhvc3RlZFZvaWNlUmVmEhAKCHZvaWNlX2lkGAEgASgJIp0BChZIb3N0ZWRUdHNDb25maWd1cmF0aW9uEkAKCXZvaWNlX3JlZhgBIAEoCzIrLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5Ib3N0ZWRWb2ljZVJlZkgAEjgKBG1vZGUYAiABKA4yKi5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuSG9zdGVkVHRzTW9kZUIHCgV2b2ljZSK1AQoQVHRzQ29uZmlndXJhdGlvbhJOCgtlbGV2ZW5fbGFicxgBIAEoCzI3LmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5FbGV2ZW5MYWJzVHRzQ29uZmlndXJhdGlvbkgAEkUKBmhvc3RlZBgCIAEoCzIzLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5Ib3N0ZWRUdHNDb25maWd1cmF0aW9uSABCCgoIcHJvdmlkZXIi4wMKGEluaXRpYWxpemVTZXNzaW9uUmVxdWVzdBJNChBpbnB1dF9hdWRpb19saW5lGAEgASgLMjMuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLkF1ZGlvTGluZUNvbmZpZ3VyYXRpb24STgoRb3V0cHV0X2F1ZGlvX2xpbmUYAiABKAsyMy5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuQXVkaW9MaW5lQ29uZmlndXJhdGlvbhJIChF2YWRfY29uZmlndXJhdGlvbhgDIAEoCzItLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5WYWRDb25maWd1cmF0aW9uElQKF2luZmVyZW5jZV9jb25maWd1cmF0aW9uGAQgASgLMjMuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLkluZmVyZW5jZUNvbmZpZ3VyYXRpb24STQoRdHRzX2NvbmZpZ3VyYXRpb24YBSABKAsyLS5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuVHRzQ29uZmlndXJhdGlvbkgAiAEBEiMKG3N1cHBvcnRzX3BsYXliYWNrX3JlcG9ydGluZxgGIAEoCEIUChJfdHRzX2NvbmZpZ3VyYXRpb24i+wEKGVJlY29uZmlndXJlU2Vzc2lvblJlcXVlc3QSUgoQaW5wdXRfYXVkaW9fbGluZRgBIAEoCzIzLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5BdWRpb0xpbmVDb25maWd1cmF0aW9uSACIAQESWQoXaW5mZXJlbmNlX2NvbmZpZ3VyYXRpb24YAiABKAsyMy5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuSW5mZXJlbmNlQ29uZmlndXJhdGlvbkgBiAEBQhMKEV9pbnB1dF9hdWRpb19saW5lQhoKGF9pbmZlcmVuY2VfY29uZmlndXJhdGlvbiIZCglBdWRpb0RhdGESDAoEZGF0YRgBIAEoDCIYCghUZXh0RGF0YRIMCgRkYXRhGAEgASgJIuIBCglVc2VySW5wdXQSEQoJcGFja2V0X2lkGAEgASgEEj8KBG1vZGUYAiABKA4yMS5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuSW5mZXJlbmNlVHJpZ2dlck1vZGUSPAoKYXVkaW9fZGF0YRgDIAEoCzImLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5BdWRpb0RhdGFIABI6Cgl0ZXh0X2RhdGEYBCABKAsyJS5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuVGV4dERhdGFIAEIHCgVpbnB1dCJKChBUcmlnZ2VySW5mZXJlbmNlEh8KEmV4dHJhX2luc3RydWN0aW9ucxgBIAEoCUgAiAEBQhUKE19leHRyYV9pbnN0cnVjdGlvbnMiSAoYRXhwb3J0Q2hhdEhpc3RvcnlSZXF1ZXN0EhUKDWF3YWl0X3BlbmRpbmcYASABKAgSFQoNZXhjbHVkZV9hdWRpbxgCIAEoCCIuChZQbGF5YmFja1Bvc2l0aW9uUmVwb3J0EhQKDGJ5dGVzX3BsYXllZBgBIAEoBCI4CgxEaXJlY3RTcGVlY2gSDAoEdGV4dBgBIAEoCRIaChJpbmNsdWRlX2luX2hpc3RvcnkYAiABKAgiXwoRQ29udmVyc2F0aW9uUXVlcnkSEwoGcHJvbXB0GAEgASgJSACIAQESGQoMaW5zdHJ1Y3Rpb25zGAIgASgJSAGIAQFCCQoHX3Byb21wdEIPCg1faW5zdHJ1Y3Rpb25zIicKF0NvbnZlcnNhdGlvblF1ZXJ5UmVzdWx0EgwKBHRleHQYASABKAki4gYKE1NlcnZpY2VCb3VuZE1lc3NhZ2USWwoaaW5pdGlhbGl6ZV9zZXNzaW9uX3JlcXVlc3QYASABKAsyNS5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuSW5pdGlhbGl6ZVNlc3Npb25SZXF1ZXN0SAASXQobcmVjb25maWd1cmVfc2Vzc2lvbl9yZXF1ZXN0GAIgASgLMjYuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLlJlY29uZmlndXJlU2Vzc2lvblJlcXVlc3RIABI8Cgp1c2VyX2lucHV0GAMgASgLMiYuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLlVzZXJJbnB1dEgAEmQKH3VwZGF0ZV90b29sX2RlZmluaXRpb25zX3JlcXVlc3QYBCABKAsyOS5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuVXBkYXRlVG9vbERlZmluaXRpb25zUmVxdWVzdEgAEksKEnRvb2xfY2FsbF9yZXNwb25zZRgFIAEoCzItLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5Ub29sQ2FsbFJlc3BvbnNlSAASSgoRdHJpZ2dlcl9pbmZlcmVuY2UYBiABKAsyLS5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuVHJpZ2dlckluZmVyZW5jZUgAElwKG2V4cG9ydF9jaGF0X2hpc3RvcnlfcmVxdWVzdBgHIAEoCzI1LmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5FeHBvcnRDaGF0SGlzdG9yeVJlcXVlc3RIABJXChhwbGF5YmFja19wb3NpdGlvbl9yZXBvcnQYCCABKAsyMy5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuUGxheWJhY2tQb3NpdGlvblJlcG9ydEgAEkIKDWRpcmVjdF9zcGVlY2gYCSABKAsyKS5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuRGlyZWN0U3BlZWNoSAASTAoSY29udmVyc2F0aW9uX3F1ZXJ5GAogASgLMi4uZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLkNvbnZlcnNhdGlvblF1ZXJ5SABCCQoHcGF5bG9hZCIhChFNb2RlbFRleHRGcmFnbWVudBIMCgR0ZXh0GAEgASgJInAKD01vZGVsQXVkaW9DaHVuaxI1CgVhdWRpbxgBIAEoCzImLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5BdWRpb0RhdGESFwoKdHJhbnNjcmlwdBgCIAEoCUgAiAEBQg0KC190cmFuc2NyaXB0IkkKC0NoYXRIaXN0b3J5EjoKCG1lc3NhZ2VzGAEgAygLMiguZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLkNoYXRNZXNzYWdlIpgCCgtDaGF0TWVzc2FnZRI6CgRyb2xlGAEgASgOMiwuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLkNoYXRNZXNzYWdlUm9sZRJACgdjb250ZW50GAIgAygLMi8uZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLkNoYXRNZXNzYWdlQ29udGVudBJICg9kZWxpdmVyeV9zdGF0dXMYAyABKA4yLy5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuQ2hhdERlbGl2ZXJ5U3RhdHVzEhEKCWVwaGVtZXJhbBgEIAEoCBIuCgpjcmVhdGVkX2F0GAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCLdAgoSQ2hhdE1lc3NhZ2VDb250ZW50EkQKDHRleHRfY29udGVudBgBIAEoCzIsLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5DaGF0VGV4dENvbnRlbnRIABJBCgtpbnB1dF9hdWRpbxgCIAEoCzIqLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5DaGF0QXVkaW9EYXRhSAASEgoIdGhvdWdodHMYAyABKAlIABJBCgl0b29sX2NhbGwYBCABKAsyLC5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuVG9vbENhbGxSZXF1ZXN0SAASRAoLdG9vbF9yZXN1bHQYBSABKAsyLS5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuVG9vbENhbGxSZXNwb25zZUgAEhYKDGluc3RydWN0aW9ucxgGIAEoCUgAQgkKB2NvbnRlbnQicQoPQ2hhdFRleHRDb250ZW50EgwKBHRleHQYASABKAkSQgoJdHRzX2F1ZGlvGAIgASgLMiouZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLkNoYXRBdWRpb0RhdGFIAIgBAUIMCgpfdHRzX2F1ZGlvIqIBCg1DaGF0QXVkaW9EYXRhEjUKBWF1ZGlvGAEgASgLMiYuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLkF1ZGlvRGF0YRJDCgZmb3JtYXQYAiABKAsyMy5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuQXVkaW9MaW5lQ29uZmlndXJhdGlvbhIVCg10cmFuc2NyaXB0aW9uGAMgASgJIhUKE1BsYXliYWNrQ2xlYXJCdWZmZXIiDwoNUmVzcG9uc2VCZWdpbiINCgtSZXNwb25zZUVuZCKUAQoYU2Vzc2lvbkVycm9yTm90aWZpY2F0aW9uEkMKCGNhdGVnb3J5GAEgASgOMjEuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLlNlc3Npb25FcnJvckNhdGVnb3J5Eg8KB21lc3NhZ2UYAiABKAkSFQoIdHJhY2VfaWQYAyABKAlIAIgBAUILCglfdHJhY2VfaWQiSgoXVXNlclRyYW5zY3JpcHRpb25SZXN1bHQSDwoHdHVybl9pZBgBIAEoDRIMCgR0ZXh0GAIgASgJEhAKCGxhbmd1YWdlGAMgASgJIg4KDFNlc3Npb25SZWFkeSLjBgoSQ2xpZW50Qm91bmRNZXNzYWdlEkkKEXRvb2xfY2FsbF9yZXF1ZXN0GAEgASgLMiwuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLlRvb2xDYWxsUmVxdWVzdEgAEk0KE21vZGVsX3RleHRfZnJhZ21lbnQYAiABKAsyLi5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuTW9kZWxUZXh0RnJhZ21lbnRIABJJChFtb2RlbF9hdWRpb19jaHVuaxgDIAEoCzIsLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5Nb2RlbEF1ZGlvQ2h1bmtIABJRChVwbGF5YmFja19jbGVhcl9idWZmZXIYBCABKAsyMC5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuUGxheWJhY2tDbGVhckJ1ZmZlckgAEkQKDnJlc3BvbnNlX2JlZ2luGAUgASgLMiouZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLlJlc3BvbnNlQmVnaW5IABJACgxyZXNwb25zZV9lbmQYBiABKAsyKC5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuUmVzcG9uc2VFbmRIABJACgxjaGF0X2hpc3RvcnkYByABKAsyKC5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuQ2hhdEhpc3RvcnlIABJGCgVlcnJvchgIIAEoCzI1LmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5TZXNzaW9uRXJyb3JOb3RpZmljYXRpb25IABJZChl1c2VyX3RyYW5zY3JpcHRpb25fcmVzdWx0GAkgASgLMjQuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLlVzZXJUcmFuc2NyaXB0aW9uUmVzdWx0SAASWQoZY29udmVyc2F0aW9uX3F1ZXJ5X3Jlc3VsdBgKIAEoCzI0LmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5Db252ZXJzYXRpb25RdWVyeVJlc3VsdEgAEkIKDXNlc3Npb25fcmVhZHkYCyABKAsyKS5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuU2Vzc2lvblJlYWR5SABCCQoHcGF5bG9hZCpsCgxTYW1wbGVGb3JtYXQSEgoOVU5TSUdORURfOF9CSVQQABIRCg1TSUdORURfMTZfQklUEAESEQoNU0lHTkVEXzMyX0JJVBACEhAKDEZMT0FUXzMyX0JJVBADEhAKDEZMT0FUXzY0X0JJVBAEKi8KEkVsZXZlbkxhYnNMb2NhdGlvbhIGCgJVUxAAEgYKAkVVEAESCQoFSU5ESUEQAioyCg1Ib3N0ZWRUdHNNb2RlEhAKDEhJR0hfUVVBTElUWRAAEg8KC0xPV19MQVRFTkNZEAEqQAoUSW5mZXJlbmNlVHJpZ2dlck1vZGUSDgoKTk9fVFJJR0dFUhAAEgkKBVFVRVVFEAESDQoJSU1NRURJQVRFEAIqNgoPQ2hhdE1lc3NhZ2VSb2xlEgoKBlNZU1RFTRAAEggKBFVTRVIQARINCglBU1NJU1RBTlQQAipfChJDaGF0RGVsaXZlcnlTdGF0dXMSGAoUREVMSVZFUllfSU5fUFJPR1JFU1MQABIVChFERUxJVkVSWV9DT01QTEVURRABEhgKFERFTElWRVJZX0lOVEVSUlVQVEVEEAIqsgEKFFNlc3Npb25FcnJvckNhdGVnb3J5EhEKDUVSUk9SX1VOS05PV04QABIRCg1FUlJPUl9TRVNTSU9OEAESFwoTRVJST1JfQ09ORklHVVJBVElPThACEhIKDkVSUk9SX1BST1RPQ09MEAMSEwoPRVJST1JfSU5GRVJFTkNFEAQSDwoLRVJST1JfQVVESU8QBRINCglFUlJPUl9UVFMQBhISCg5FUlJPUl9JTlRFUk5BTBAHYgZwcm90bzM", [file_google_protobuf_struct, file_google_protobuf_timestamp]);
+  fileDesc("Cg5yZWFsdGltZS5wcm90bxIbZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxInUKDlRvb2xEZWZpbml0aW9uEgwKBG5hbWUYASABKAkSGAoLZGVzY3JpcHRpb24YAiABKAlIAIgBARIrCgpwYXJhbWV0ZXJzGAMgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdEIOCgxfZGVzY3JpcHRpb24iZQocVXBkYXRlVG9vbERlZmluaXRpb25zUmVxdWVzdBJFChB0b29sX2RlZmluaXRpb25zGAEgAygLMisuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLlRvb2xEZWZpbml0aW9uInoKD1Rvb2xDYWxsUmVxdWVzdBIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEisKCnBhcmFtZXRlcnMYAyABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0EhQKB3R1cm5faWQYBCABKA1IAIgBAUIKCghfdHVybl9pZCIuChBUb29sQ2FsbFJlc3BvbnNlEgoKAmlkGAEgASgJEg4KBnJlc3VsdBgCIAEoCSIqCghEdXJhdGlvbhIPCgdzZWNvbmRzGAEgASgEEg0KBW5hbm9zGAIgASgNIoYBChZBdWRpb0xpbmVDb25maWd1cmF0aW9uEhMKC3NhbXBsZV9yYXRlGAEgASgNEhUKDWNoYW5uZWxfY291bnQYAiABKA0SQAoNc2FtcGxlX2Zvcm1hdBgDIAEoDjIpLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5TYW1wbGVGb3JtYXQihQIKEFZhZENvbmZpZ3VyYXRpb24SHAoUY29uZmlkZW5jZV90aHJlc2hvbGQYASABKAISEgoKbWluX3ZvbHVtZRgCIAEoAhI9Cg5zdGFydF9kdXJhdGlvbhgDIAEoCzIlLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5EdXJhdGlvbhI8Cg1zdG9wX2R1cmF0aW9uGAQgASgLMiUuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLkR1cmF0aW9uEkIKE2JhY2tidWZmZXJfZHVyYXRpb24YBSABKAsyJS5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuRHVyYXRpb24i2QEKEFZhZEFuYWx5c2lzRnJhbWUSEwoLZnJhbWVfaW5kZXgYASABKAQSOwoMc2Vzc2lvbl90aW1lGAIgASgLMiUuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLkR1cmF0aW9uEhIKCmNvbmZpZGVuY2UYAyABKAISDgoGdm9sdW1lGAQgASgCEjQKBXN0YXRlGAUgASgOMiUuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLlZhZFN0YXRlEhkKEXNvdXJjZV9wYWNrZXRfaWRzGAYgAygEItMBCg1WYWRTdGF0ZUV2ZW50EjsKDHNlc3Npb25fdGltZRgBIAEoCzIlLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5EdXJhdGlvbhI5Cgpmcm9tX3N0YXRlGAIgASgOMiUuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLlZhZFN0YXRlEjcKCHRvX3N0YXRlGAMgASgOMiUuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLlZhZFN0YXRlEhEKCXBhY2tldF9pZBgEIAEoBCJEChZJbmZlcmVuY2VDb25maWd1cmF0aW9uEhUKDXN5c3RlbV9wcm9tcHQYASABKAkSEwoLdGVtcGVyYXR1cmUYAiABKAEijAIKGkVsZXZlbkxhYnNUdHNDb25maWd1cmF0aW9uEg8KB2FwaV9rZXkYASABKAkSEAoIdm9pY2VfaWQYAiABKAkSFQoIbW9kZWxfaWQYAyABKAlIAIgBARJRCg52b2ljZV9zZXR0aW5ncxgEIAEoCzI0LmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5FbGV2ZW5MYWJzVm9pY2VTZXR0aW5nc0gBiAEBEkEKCGxvY2F0aW9uGAUgASgOMi8uZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLkVsZXZlbkxhYnNMb2NhdGlvbkILCglfbW9kZWxfaWRCEQoPX3ZvaWNlX3NldHRpbmdzIn8KF0VsZXZlbkxhYnNWb2ljZVNldHRpbmdzEhEKCXN0YWJpbGl0eRgBIAEoARIYChBzaW1pbGFyaXR5X2Jvb3N0GAIgASgBEg0KBXN0eWxlGAMgASgBEhkKEXVzZV9zcGVha2VyX2Jvb3N0GAQgASgIEg0KBXNwZWVkGAUgASgBIiIKDkhvc3RlZFZvaWNlUmVmEhAKCHZvaWNlX2lkGAEgASgJIoUBChJIb3N0ZWRWb2ljZUNsb25lVjESEgoKYXVkaW9fZGF0YRgBIAEoDBJJCgxhdWRpb19mb3JtYXQYAiABKAsyMy5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuQXVkaW9MaW5lQ29uZmlndXJhdGlvbhIQCghyZWZfdGV4dBgDIAEoCSLoAQoWSG9zdGVkVHRzQ29uZmlndXJhdGlvbhJACgl2b2ljZV9yZWYYASABKAsyKy5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuSG9zdGVkVm9pY2VSZWZIABJJCg52b2ljZV9jbG9uZV92MRgDIAEoCzIvLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5Ib3N0ZWRWb2ljZUNsb25lVjFIABI4CgRtb2RlGAIgASgOMiouZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLkhvc3RlZFR0c01vZGVCBwoFdm9pY2UitQEKEFR0c0NvbmZpZ3VyYXRpb24STgoLZWxldmVuX2xhYnMYASABKAsyNy5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuRWxldmVuTGFic1R0c0NvbmZpZ3VyYXRpb25IABJFCgZob3N0ZWQYAiABKAsyMy5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuSG9zdGVkVHRzQ29uZmlndXJhdGlvbkgAQgoKCHByb3ZpZGVyIocEChhJbml0aWFsaXplU2Vzc2lvblJlcXVlc3QSTQoQaW5wdXRfYXVkaW9fbGluZRgBIAEoCzIzLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5BdWRpb0xpbmVDb25maWd1cmF0aW9uEk4KEW91dHB1dF9hdWRpb19saW5lGAIgASgLMjMuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLkF1ZGlvTGluZUNvbmZpZ3VyYXRpb24SSAoRdmFkX2NvbmZpZ3VyYXRpb24YAyABKAsyLS5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuVmFkQ29uZmlndXJhdGlvbhJUChdpbmZlcmVuY2VfY29uZmlndXJhdGlvbhgEIAEoCzIzLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5JbmZlcmVuY2VDb25maWd1cmF0aW9uEk0KEXR0c19jb25maWd1cmF0aW9uGAUgASgLMi0uZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLlR0c0NvbmZpZ3VyYXRpb25IAIgBARIjChtzdXBwb3J0c19wbGF5YmFja19yZXBvcnRpbmcYBiABKAgSIgoaZW5hYmxlX3ZhZF9mcmFtZV90ZWxlbWV0cnkYByABKAhCFAoSX3R0c19jb25maWd1cmF0aW9uIvsBChlSZWNvbmZpZ3VyZVNlc3Npb25SZXF1ZXN0ElIKEGlucHV0X2F1ZGlvX2xpbmUYASABKAsyMy5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuQXVkaW9MaW5lQ29uZmlndXJhdGlvbkgAiAEBElkKF2luZmVyZW5jZV9jb25maWd1cmF0aW9uGAIgASgLMjMuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLkluZmVyZW5jZUNvbmZpZ3VyYXRpb25IAYgBAUITChFfaW5wdXRfYXVkaW9fbGluZUIaChhfaW5mZXJlbmNlX2NvbmZpZ3VyYXRpb24iGQoJQXVkaW9EYXRhEgwKBGRhdGEYASABKAwiGAoIVGV4dERhdGESDAoEZGF0YRgBIAEoCSLiAQoJVXNlcklucHV0EhEKCXBhY2tldF9pZBgBIAEoBBI/CgRtb2RlGAIgASgOMjEuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLkluZmVyZW5jZVRyaWdnZXJNb2RlEjwKCmF1ZGlvX2RhdGEYAyABKAsyJi5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuQXVkaW9EYXRhSAASOgoJdGV4dF9kYXRhGAQgASgLMiUuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLlRleHREYXRhSABCBwoFaW5wdXQiXQoQVHJpZ2dlckluZmVyZW5jZRIfChJleHRyYV9pbnN0cnVjdGlvbnMYASABKAlIAIgBARIRCglmbHVzaF92YWQYAiABKAhCFQoTX2V4dHJhX2luc3RydWN0aW9ucyJIChhFeHBvcnRDaGF0SGlzdG9yeVJlcXVlc3QSFQoNYXdhaXRfcGVuZGluZxgBIAEoCBIVCg1leGNsdWRlX2F1ZGlvGAIgASgIIi4KFlBsYXliYWNrUG9zaXRpb25SZXBvcnQSFAoMYnl0ZXNfcGxheWVkGAEgASgEIjgKDERpcmVjdFNwZWVjaBIMCgR0ZXh0GAEgASgJEhoKEmluY2x1ZGVfaW5faGlzdG9yeRgCIAEoCCJfChFDb252ZXJzYXRpb25RdWVyeRITCgZwcm9tcHQYASABKAlIAIgBARIZCgxpbnN0cnVjdGlvbnMYAiABKAlIAYgBAUIJCgdfcHJvbXB0Qg8KDV9pbnN0cnVjdGlvbnMiJwoXQ29udmVyc2F0aW9uUXVlcnlSZXN1bHQSDAoEdGV4dBgBIAEoCSLiBgoTU2VydmljZUJvdW5kTWVzc2FnZRJbChppbml0aWFsaXplX3Nlc3Npb25fcmVxdWVzdBgBIAEoCzI1LmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5Jbml0aWFsaXplU2Vzc2lvblJlcXVlc3RIABJdChtyZWNvbmZpZ3VyZV9zZXNzaW9uX3JlcXVlc3QYAiABKAsyNi5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuUmVjb25maWd1cmVTZXNzaW9uUmVxdWVzdEgAEjwKCnVzZXJfaW5wdXQYAyABKAsyJi5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuVXNlcklucHV0SAASZAofdXBkYXRlX3Rvb2xfZGVmaW5pdGlvbnNfcmVxdWVzdBgEIAEoCzI5LmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5VcGRhdGVUb29sRGVmaW5pdGlvbnNSZXF1ZXN0SAASSwoSdG9vbF9jYWxsX3Jlc3BvbnNlGAUgASgLMi0uZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLlRvb2xDYWxsUmVzcG9uc2VIABJKChF0cmlnZ2VyX2luZmVyZW5jZRgGIAEoCzItLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5UcmlnZ2VySW5mZXJlbmNlSAASXAobZXhwb3J0X2NoYXRfaGlzdG9yeV9yZXF1ZXN0GAcgASgLMjUuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLkV4cG9ydENoYXRIaXN0b3J5UmVxdWVzdEgAElcKGHBsYXliYWNrX3Bvc2l0aW9uX3JlcG9ydBgIIAEoCzIzLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5QbGF5YmFja1Bvc2l0aW9uUmVwb3J0SAASQgoNZGlyZWN0X3NwZWVjaBgJIAEoCzIpLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5EaXJlY3RTcGVlY2hIABJMChJjb252ZXJzYXRpb25fcXVlcnkYCiABKAsyLi5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuQ29udmVyc2F0aW9uUXVlcnlIAEIJCgdwYXlsb2FkIiEKEU1vZGVsVGV4dEZyYWdtZW50EgwKBHRleHQYASABKAkicAoPTW9kZWxBdWRpb0NodW5rEjUKBWF1ZGlvGAEgASgLMiYuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLkF1ZGlvRGF0YRIXCgp0cmFuc2NyaXB0GAIgASgJSACIAQFCDQoLX3RyYW5zY3JpcHQiSQoLQ2hhdEhpc3RvcnkSOgoIbWVzc2FnZXMYASADKAsyKC5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuQ2hhdE1lc3NhZ2UiiAMKC0NoYXRNZXNzYWdlEjoKBHJvbGUYASABKA4yLC5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuQ2hhdE1lc3NhZ2VSb2xlEkAKB2NvbnRlbnQYAiADKAsyLy5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuQ2hhdE1lc3NhZ2VDb250ZW50EkgKD2RlbGl2ZXJ5X3N0YXR1cxgDIAEoDjIvLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5DaGF0RGVsaXZlcnlTdGF0dXMSEQoJZXBoZW1lcmFsGAQgASgIEi4KCmNyZWF0ZWRfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhQKB3R1cm5faWQYBiABKA1IAIgBARIqCh10cnVuY2F0ZWRfYXRfcmVzcG9uc2VfdHVybl9pZBgHIAEoDUgBiAEBQgoKCF90dXJuX2lkQiAKHl90cnVuY2F0ZWRfYXRfcmVzcG9uc2VfdHVybl9pZCLdAgoSQ2hhdE1lc3NhZ2VDb250ZW50EkQKDHRleHRfY29udGVudBgBIAEoCzIsLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5DaGF0VGV4dENvbnRlbnRIABJBCgtpbnB1dF9hdWRpbxgCIAEoCzIqLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5DaGF0QXVkaW9EYXRhSAASEgoIdGhvdWdodHMYAyABKAlIABJBCgl0b29sX2NhbGwYBCABKAsyLC5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuVG9vbENhbGxSZXF1ZXN0SAASRAoLdG9vbF9yZXN1bHQYBSABKAsyLS5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuVG9vbENhbGxSZXNwb25zZUgAEhYKDGluc3RydWN0aW9ucxgGIAEoCUgAQgkKB2NvbnRlbnQicQoPQ2hhdFRleHRDb250ZW50EgwKBHRleHQYASABKAkSQgoJdHRzX2F1ZGlvGAIgASgLMiouZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLkNoYXRBdWRpb0RhdGFIAIgBAUIMCgpfdHRzX2F1ZGlvIqIBCg1DaGF0QXVkaW9EYXRhEjUKBWF1ZGlvGAEgASgLMiYuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLkF1ZGlvRGF0YRJDCgZmb3JtYXQYAiABKAsyMy5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuQXVkaW9MaW5lQ29uZmlndXJhdGlvbhIVCg10cmFuc2NyaXB0aW9uGAMgASgJIhUKE1BsYXliYWNrQ2xlYXJCdWZmZXIiIAoNUmVzcG9uc2VCZWdpbhIPCgd0dXJuX2lkGAEgASgNIh4KC1Jlc3BvbnNlRW5kEg8KB3R1cm5faWQYASABKA0ilAEKGFNlc3Npb25FcnJvck5vdGlmaWNhdGlvbhJDCghjYXRlZ29yeRgBIAEoDjIxLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5TZXNzaW9uRXJyb3JDYXRlZ29yeRIPCgdtZXNzYWdlGAIgASgJEhUKCHRyYWNlX2lkGAMgASgJSACIAQFCCwoJX3RyYWNlX2lkIkoKF1VzZXJUcmFuc2NyaXB0aW9uUmVzdWx0Eg8KB3R1cm5faWQYASABKA0SDAoEdGV4dBgCIAEoCRIQCghsYW5ndWFnZRgDIAEoCSIOCgxTZXNzaW9uUmVhZHkiSAoQQ29udGV4dFRydW5jYXRlZBIaChJ0cnVuY2F0ZWRfdHVybl9pZHMYASADKA0SGAoQcmVzcG9uc2VfdHVybl9pZBgCIAEoDSLDCAoSQ2xpZW50Qm91bmRNZXNzYWdlEkkKEXRvb2xfY2FsbF9yZXF1ZXN0GAEgASgLMiwuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLlRvb2xDYWxsUmVxdWVzdEgAEk0KE21vZGVsX3RleHRfZnJhZ21lbnQYAiABKAsyLi5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuTW9kZWxUZXh0RnJhZ21lbnRIABJJChFtb2RlbF9hdWRpb19jaHVuaxgDIAEoCzIsLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5Nb2RlbEF1ZGlvQ2h1bmtIABJRChVwbGF5YmFja19jbGVhcl9idWZmZXIYBCABKAsyMC5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuUGxheWJhY2tDbGVhckJ1ZmZlckgAEkQKDnJlc3BvbnNlX2JlZ2luGAUgASgLMiouZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLlJlc3BvbnNlQmVnaW5IABJACgxyZXNwb25zZV9lbmQYBiABKAsyKC5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuUmVzcG9uc2VFbmRIABJACgxjaGF0X2hpc3RvcnkYByABKAsyKC5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuQ2hhdEhpc3RvcnlIABJGCgVlcnJvchgIIAEoCzI1LmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5TZXNzaW9uRXJyb3JOb3RpZmljYXRpb25IABJZChl1c2VyX3RyYW5zY3JpcHRpb25fcmVzdWx0GAkgASgLMjQuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLlVzZXJUcmFuc2NyaXB0aW9uUmVzdWx0SAASWQoZY29udmVyc2F0aW9uX3F1ZXJ5X3Jlc3VsdBgKIAEoCzI0LmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5Db252ZXJzYXRpb25RdWVyeVJlc3VsdEgAEkIKDXNlc3Npb25fcmVhZHkYCyABKAsyKS5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuU2Vzc2lvblJlYWR5SAASSwoSdmFkX2FuYWx5c2lzX2ZyYW1lGAwgASgLMi0uZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLlZhZEFuYWx5c2lzRnJhbWVIABJFCg92YWRfc3RhdGVfZXZlbnQYDSABKAsyKi5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuVmFkU3RhdGVFdmVudEgAEkoKEWNvbnRleHRfdHJ1bmNhdGVkGA4gASgLMi0uZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLkNvbnRleHRUcnVuY2F0ZWRIAEIJCgdwYXlsb2FkKmwKDFNhbXBsZUZvcm1hdBISCg5VTlNJR05FRF84X0JJVBAAEhEKDVNJR05FRF8xNl9CSVQQARIRCg1TSUdORURfMzJfQklUEAISEAoMRkxPQVRfMzJfQklUEAMSEAoMRkxPQVRfNjRfQklUEAQqSwoIVmFkU3RhdGUSCwoHU0lMRU5DRRAAEhMKD1NQRUVDSF9TVEFSVElORxABEgoKBlNQRUVDSBACEhEKDVNQRUVDSF9FTkRJTkcQAyovChJFbGV2ZW5MYWJzTG9jYXRpb24SBgoCVVMQABIGCgJFVRABEgkKBUlORElBEAIqMgoNSG9zdGVkVHRzTW9kZRIQCgxISUdIX1FVQUxJVFkQABIPCgtMT1dfTEFURU5DWRABKkAKFEluZmVyZW5jZVRyaWdnZXJNb2RlEg4KCk5PX1RSSUdHRVIQABIJCgVRVUVVRRABEg0KCUlNTUVESUFURRACKjYKD0NoYXRNZXNzYWdlUm9sZRIKCgZTWVNURU0QABIICgRVU0VSEAESDQoJQVNTSVNUQU5UEAIqXwoSQ2hhdERlbGl2ZXJ5U3RhdHVzEhgKFERFTElWRVJZX0lOX1BST0dSRVNTEAASFQoRREVMSVZFUllfQ09NUExFVEUQARIYChRERUxJVkVSWV9JTlRFUlJVUFRFRBACKrIBChRTZXNzaW9uRXJyb3JDYXRlZ29yeRIRCg1FUlJPUl9VTktOT1dOEAASEQoNRVJST1JfU0VTU0lPThABEhcKE0VSUk9SX0NPTkZJR1VSQVRJT04QAhISCg5FUlJPUl9QUk9UT0NPTBADEhMKD0VSUk9SX0lORkVSRU5DRRAEEg8KC0VSUk9SX0FVRElPEAUSDQoJRVJST1JfVFRTEAYSEgoORVJST1JfSU5URVJOQUwQB2IGcHJvdG8z", [file_google_protobuf_struct, file_google_protobuf_timestamp]);
 
 /**
  *
@@ -120,6 +120,13 @@ export type ToolCallRequest = Message<"eu.deepslate.realtime.speeq.ToolCallReque
    * @generated from field: google.protobuf.Struct parameters = 3;
    */
   parameters?: JsonObject | undefined;
+
+  /**
+   * Session-local ID of the assistant turn that issued this tool call.
+   *
+   * @generated from field: optional uint32 turn_id = 4;
+   */
+  turnId?: number | undefined;
 };
 
 /**
@@ -280,6 +287,128 @@ export const VadConfigurationSchema: GenMessage<VadConfiguration> = /*@__PURE__*
 
 /**
  *
+ * Per-frame VAD signal. Frames are emitted at the VAD frame rate
+ * (typically 50 Hz at 20ms frames on 16 kHz audio). Only emitted when
+ * `enable_vad_frame_telemetry` is true on the InitializeSessionRequest.
+ *
+ * Frame indexing is monotonic per session and reflects the post-resampling
+ * frame stream that the VAD engine actually saw.
+ *
+ * This is experimental and may be removed or changed without a major version bump. It is primarily intended for
+ * debugging and telemetry purposes, and should not be relied on for critical functionality.
+ *
+ * @generated from message eu.deepslate.realtime.speeq.VadAnalysisFrame
+ */
+export type VadAnalysisFrame = Message<"eu.deepslate.realtime.speeq.VadAnalysisFrame"> & {
+  /**
+   * Monotonic frame index per session.
+   *
+   * @generated from field: uint64 frame_index = 1;
+   */
+  frameIndex: bigint;
+
+  /**
+   * Time elapsed since the input pipeline started, at the boundary of this
+   * frame. This is wall-clock time, not audio-stream time — useful for
+   * aligning the telemetry stream with other observations.
+   *
+   * @generated from field: eu.deepslate.realtime.speeq.Duration session_time = 2;
+   */
+  sessionTime?: Duration | undefined;
+
+  /**
+   * Raw confidence from the underlying engine (0.0..1.0).
+   *
+   * @generated from field: float confidence = 3;
+   */
+  confidence: number;
+
+  /**
+   * Raw RMS volume from the audio frame (0.0..1.0). 1.0 if the engine
+   * does not provide volume.
+   *
+   * @generated from field: float volume = 4;
+   */
+  volume: number;
+
+  /**
+   * Current state-machine state at the END of this frame.
+   *
+   * @generated from field: eu.deepslate.realtime.speeq.VadState state = 5;
+   */
+  state: VadState;
+
+  /**
+   * Packet IDs whose audio bytes (after resampling) contributed to this
+   * frame, in order of contribution. Usually a single ID; multiple at
+   * packet boundaries or when the client sent very small packets. Empty
+   * only during resampler warmup before any tagged samples reach the VAD.
+   *
+   * @generated from field: repeated uint64 source_packet_ids = 6;
+   */
+  sourcePacketIds: bigint[];
+};
+
+/**
+ * Describes the message eu.deepslate.realtime.speeq.VadAnalysisFrame.
+ * Use `create(VadAnalysisFrameSchema)` to create a new message.
+ */
+export const VadAnalysisFrameSchema: GenMessage<VadAnalysisFrame> = /*@__PURE__*/
+  messageDesc(file_realtime, 7);
+
+/**
+ *
+ * State-machine transition event.
+ *
+ * Emitted whenever the VAD state changes. Always emitted (independent of
+ * `enable_vad_frame_telemetry`) so VAD-only consumers and conversational
+ * debug clients both get turn boundaries with packet correlation.
+ *
+ * @generated from message eu.deepslate.realtime.speeq.VadStateEvent
+ */
+export type VadStateEvent = Message<"eu.deepslate.realtime.speeq.VadStateEvent"> & {
+  /**
+   * Time elapsed since the input pipeline started, at the moment of the
+   * transition.
+   *
+   * @generated from field: eu.deepslate.realtime.speeq.Duration session_time = 1;
+   */
+  sessionTime?: Duration | undefined;
+
+  /**
+   * The state the machine was in before the transition.
+   *
+   * @generated from field: eu.deepslate.realtime.speeq.VadState from_state = 2;
+   */
+  fromState: VadState;
+
+  /**
+   * The state the machine is in after the transition.
+   *
+   * @generated from field: eu.deepslate.realtime.speeq.VadState to_state = 3;
+   */
+  toState: VadState;
+
+  /**
+   * The packet_id being processed when the transition triggered. For
+   * SpeechStarted-class transitions, this is the packet whose audio caused
+   * VAD to cross the threshold. For SpeechStopped-class transitions, the
+   * most recent packet contributing to the silence-detection window.
+   *
+   * @generated from field: uint64 packet_id = 4;
+   */
+  packetId: bigint;
+};
+
+/**
+ * Describes the message eu.deepslate.realtime.speeq.VadStateEvent.
+ * Use `create(VadStateEventSchema)` to create a new message.
+ */
+export const VadStateEventSchema: GenMessage<VadStateEvent> = /*@__PURE__*/
+  messageDesc(file_realtime, 8);
+
+/**
+ *
  * Configuration for inference engine.
  *
  * @generated from message eu.deepslate.realtime.speeq.InferenceConfiguration
@@ -308,7 +437,7 @@ export type InferenceConfiguration = Message<"eu.deepslate.realtime.speeq.Infere
  * Use `create(InferenceConfigurationSchema)` to create a new message.
  */
 export const InferenceConfigurationSchema: GenMessage<InferenceConfiguration> = /*@__PURE__*/
-  messageDesc(file_realtime, 7);
+  messageDesc(file_realtime, 9);
 
 /**
  *
@@ -358,7 +487,7 @@ export type ElevenLabsTtsConfiguration = Message<"eu.deepslate.realtime.speeq.El
  * Use `create(ElevenLabsTtsConfigurationSchema)` to create a new message.
  */
 export const ElevenLabsTtsConfigurationSchema: GenMessage<ElevenLabsTtsConfiguration> = /*@__PURE__*/
-  messageDesc(file_realtime, 8);
+  messageDesc(file_realtime, 10);
 
 /**
  *
@@ -408,14 +537,12 @@ export type ElevenLabsVoiceSettings = Message<"eu.deepslate.realtime.speeq.Eleve
  * Use `create(ElevenLabsVoiceSettingsSchema)` to create a new message.
  */
 export const ElevenLabsVoiceSettingsSchema: GenMessage<ElevenLabsVoiceSettings> = /*@__PURE__*/
-  messageDesc(file_realtime, 9);
+  messageDesc(file_realtime, 11);
 
 /**
  *
- * Configuration for hosted TTS provider (voice cloning).
- *
- * The model is loaded once globally at server startup and shared across
- * all sessions. Model path and device are server-level configuration.
+ * Configuration for hosted TTS provider (voice cloning) using a deepslate
+ * provided voice.
  *
  * @generated from message eu.deepslate.realtime.speeq.HostedVoiceRef
  */
@@ -431,7 +558,49 @@ export type HostedVoiceRef = Message<"eu.deepslate.realtime.speeq.HostedVoiceRef
  * Use `create(HostedVoiceRefSchema)` to create a new message.
  */
 export const HostedVoiceRefSchema: GenMessage<HostedVoiceRef> = /*@__PURE__*/
-  messageDesc(file_realtime, 10);
+  messageDesc(file_realtime, 12);
+
+/**
+ *
+ * Configuration for hosted TTS provider (voice cloning) using a custom voice.
+ *
+ * @generated from message eu.deepslate.realtime.speeq.HostedVoiceCloneV1
+ */
+export type HostedVoiceCloneV1 = Message<"eu.deepslate.realtime.speeq.HostedVoiceCloneV1"> & {
+  /**
+   *
+   * Raw audio data for the voice sample.
+   *
+   * This should be between 20 and 25 seconds of speech. See our documentation
+   * for more information.
+   *
+   * @generated from field: bytes audio_data = 1;
+   */
+  audioData: Uint8Array;
+
+  /**
+   *
+   * Audio format for the voice sample.
+   *
+   * @generated from field: eu.deepslate.realtime.speeq.AudioLineConfiguration audio_format = 2;
+   */
+  audioFormat?: AudioLineConfiguration | undefined;
+
+  /**
+   *
+   * Exact transcript of the voice sample, including disfluencies, false starts, etc.
+   *
+   * @generated from field: string ref_text = 3;
+   */
+  refText: string;
+};
+
+/**
+ * Describes the message eu.deepslate.realtime.speeq.HostedVoiceCloneV1.
+ * Use `create(HostedVoiceCloneV1Schema)` to create a new message.
+ */
+export const HostedVoiceCloneV1Schema: GenMessage<HostedVoiceCloneV1> = /*@__PURE__*/
+  messageDesc(file_realtime, 13);
 
 /**
  * @generated from message eu.deepslate.realtime.speeq.HostedTtsConfiguration
@@ -446,6 +615,12 @@ export type HostedTtsConfiguration = Message<"eu.deepslate.realtime.speeq.Hosted
      */
     value: HostedVoiceRef;
     case: "voiceRef";
+  } | {
+    /**
+     * @generated from field: eu.deepslate.realtime.speeq.HostedVoiceCloneV1 voice_clone_v1 = 3;
+     */
+    value: HostedVoiceCloneV1;
+    case: "voiceCloneV1";
   } | { case: undefined; value?: undefined };
 
   /**
@@ -459,7 +634,7 @@ export type HostedTtsConfiguration = Message<"eu.deepslate.realtime.speeq.Hosted
  * Use `create(HostedTtsConfigurationSchema)` to create a new message.
  */
 export const HostedTtsConfigurationSchema: GenMessage<HostedTtsConfiguration> = /*@__PURE__*/
-  messageDesc(file_realtime, 11);
+  messageDesc(file_realtime, 14);
 
 /**
  *
@@ -493,7 +668,7 @@ export type TtsConfiguration = Message<"eu.deepslate.realtime.speeq.TtsConfigura
  * Use `create(TtsConfigurationSchema)` to create a new message.
  */
 export const TtsConfigurationSchema: GenMessage<TtsConfiguration> = /*@__PURE__*/
-  messageDesc(file_realtime, 12);
+  messageDesc(file_realtime, 15);
 
 /**
  *
@@ -549,6 +724,17 @@ export type InitializeSessionRequest = Message<"eu.deepslate.realtime.speeq.Init
    * @generated from field: bool supports_playback_reporting = 6;
    */
   supportsPlaybackReporting: boolean;
+
+  /**
+   * When true, the server emits per-frame VadAnalysisFrame messages
+   * (~50 Hz). Off by default for cost/bandwidth reasons. State transitions
+   * (VadStateEvent) are emitted unconditionally regardless of this flag.
+   *
+   * This flag is considered experimental and may be removed or changed without a major version bump.
+   *
+   * @generated from field: bool enable_vad_frame_telemetry = 7;
+   */
+  enableVadFrameTelemetry: boolean;
 };
 
 /**
@@ -556,7 +742,7 @@ export type InitializeSessionRequest = Message<"eu.deepslate.realtime.speeq.Init
  * Use `create(InitializeSessionRequestSchema)` to create a new message.
  */
 export const InitializeSessionRequestSchema: GenMessage<InitializeSessionRequest> = /*@__PURE__*/
-  messageDesc(file_realtime, 13);
+  messageDesc(file_realtime, 16);
 
 /**
  *
@@ -585,7 +771,7 @@ export type ReconfigureSessionRequest = Message<"eu.deepslate.realtime.speeq.Rec
  * Use `create(ReconfigureSessionRequestSchema)` to create a new message.
  */
 export const ReconfigureSessionRequestSchema: GenMessage<ReconfigureSessionRequest> = /*@__PURE__*/
-  messageDesc(file_realtime, 14);
+  messageDesc(file_realtime, 17);
 
 /**
  *
@@ -607,7 +793,7 @@ export type AudioData = Message<"eu.deepslate.realtime.speeq.AudioData"> & {
  * Use `create(AudioDataSchema)` to create a new message.
  */
 export const AudioDataSchema: GenMessage<AudioData> = /*@__PURE__*/
-  messageDesc(file_realtime, 15);
+  messageDesc(file_realtime, 18);
 
 /**
  *
@@ -629,7 +815,7 @@ export type TextData = Message<"eu.deepslate.realtime.speeq.TextData"> & {
  * Use `create(TextDataSchema)` to create a new message.
  */
 export const TextDataSchema: GenMessage<TextData> = /*@__PURE__*/
-  messageDesc(file_realtime, 16);
+  messageDesc(file_realtime, 19);
 
 /**
  * @generated from message eu.deepslate.realtime.speeq.UserInput
@@ -680,7 +866,7 @@ export type UserInput = Message<"eu.deepslate.realtime.speeq.UserInput"> & {
  * Use `create(UserInputSchema)` to create a new message.
  */
 export const UserInputSchema: GenMessage<UserInput> = /*@__PURE__*/
-  messageDesc(file_realtime, 17);
+  messageDesc(file_realtime, 20);
 
 /**
  *
@@ -709,6 +895,20 @@ export type TriggerInference = Message<"eu.deepslate.realtime.speeq.TriggerInfer
    * @generated from field: optional string extra_instructions = 1;
    */
   extraInstructions?: string | undefined;
+
+  /**
+   * When true, flush whatever the VAD pipeline currently has buffered and
+   * append it as a user audio message before triggering inference.
+   *
+   * Use this to manually commit speech the VAD has not yet released — e.g.
+   * when the trigger is driven by an external signal (push-to-talk button,
+   * wake word) rather than waiting for natural end-of-speech detection.
+   * When the buffer is empty or the deployment doesn't run a VAD pipeline,
+   * this is a no-op.
+   *
+   * @generated from field: bool flush_vad = 2;
+   */
+  flushVad: boolean;
 };
 
 /**
@@ -716,7 +916,7 @@ export type TriggerInference = Message<"eu.deepslate.realtime.speeq.TriggerInfer
  * Use `create(TriggerInferenceSchema)` to create a new message.
  */
 export const TriggerInferenceSchema: GenMessage<TriggerInference> = /*@__PURE__*/
-  messageDesc(file_realtime, 18);
+  messageDesc(file_realtime, 21);
 
 /**
  *
@@ -748,7 +948,7 @@ export type ExportChatHistoryRequest = Message<"eu.deepslate.realtime.speeq.Expo
  * Use `create(ExportChatHistoryRequestSchema)` to create a new message.
  */
 export const ExportChatHistoryRequestSchema: GenMessage<ExportChatHistoryRequest> = /*@__PURE__*/
-  messageDesc(file_realtime, 19);
+  messageDesc(file_realtime, 22);
 
 /**
  *
@@ -777,7 +977,7 @@ export type PlaybackPositionReport = Message<"eu.deepslate.realtime.speeq.Playba
  * Use `create(PlaybackPositionReportSchema)` to create a new message.
  */
 export const PlaybackPositionReportSchema: GenMessage<PlaybackPositionReport> = /*@__PURE__*/
-  messageDesc(file_realtime, 20);
+  messageDesc(file_realtime, 23);
 
 /**
  *
@@ -814,7 +1014,7 @@ export type DirectSpeech = Message<"eu.deepslate.realtime.speeq.DirectSpeech"> &
  * Use `create(DirectSpeechSchema)` to create a new message.
  */
 export const DirectSpeechSchema: GenMessage<DirectSpeech> = /*@__PURE__*/
-  messageDesc(file_realtime, 21);
+  messageDesc(file_realtime, 24);
 
 /**
  *
@@ -851,7 +1051,7 @@ export type ConversationQuery = Message<"eu.deepslate.realtime.speeq.Conversatio
  * Use `create(ConversationQuerySchema)` to create a new message.
  */
 export const ConversationQuerySchema: GenMessage<ConversationQuery> = /*@__PURE__*/
-  messageDesc(file_realtime, 22);
+  messageDesc(file_realtime, 25);
 
 /**
  *
@@ -873,7 +1073,7 @@ export type ConversationQueryResult = Message<"eu.deepslate.realtime.speeq.Conve
  * Use `create(ConversationQueryResultSchema)` to create a new message.
  */
 export const ConversationQueryResultSchema: GenMessage<ConversationQueryResult> = /*@__PURE__*/
-  messageDesc(file_realtime, 23);
+  messageDesc(file_realtime, 26);
 
 /**
  *
@@ -953,7 +1153,7 @@ export type ServiceBoundMessage = Message<"eu.deepslate.realtime.speeq.ServiceBo
  * Use `create(ServiceBoundMessageSchema)` to create a new message.
  */
 export const ServiceBoundMessageSchema: GenMessage<ServiceBoundMessage> = /*@__PURE__*/
-  messageDesc(file_realtime, 24);
+  messageDesc(file_realtime, 27);
 
 /**
  *
@@ -975,7 +1175,7 @@ export type ModelTextFragment = Message<"eu.deepslate.realtime.speeq.ModelTextFr
  * Use `create(ModelTextFragmentSchema)` to create a new message.
  */
 export const ModelTextFragmentSchema: GenMessage<ModelTextFragment> = /*@__PURE__*/
-  messageDesc(file_realtime, 25);
+  messageDesc(file_realtime, 28);
 
 /**
  *
@@ -1004,7 +1204,7 @@ export type ModelAudioChunk = Message<"eu.deepslate.realtime.speeq.ModelAudioChu
  * Use `create(ModelAudioChunkSchema)` to create a new message.
  */
 export const ModelAudioChunkSchema: GenMessage<ModelAudioChunk> = /*@__PURE__*/
-  messageDesc(file_realtime, 26);
+  messageDesc(file_realtime, 29);
 
 /**
  *
@@ -1024,7 +1224,7 @@ export type ChatHistory = Message<"eu.deepslate.realtime.speeq.ChatHistory"> & {
  * Use `create(ChatHistorySchema)` to create a new message.
  */
 export const ChatHistorySchema: GenMessage<ChatHistory> = /*@__PURE__*/
-  messageDesc(file_realtime, 27);
+  messageDesc(file_realtime, 30);
 
 /**
  *
@@ -1079,6 +1279,29 @@ export type ChatMessage = Message<"eu.deepslate.realtime.speeq.ChatMessage"> & {
    * @generated from field: google.protobuf.Timestamp created_at = 5;
    */
   createdAt?: Timestamp | undefined;
+
+  /**
+   *
+   * The turn ID. Correlates with `ResponseBegin.turn_id` / `ResponseEnd.turn_id`
+   * for assistant turns and `UserTranscriptionResult.turn_id` for user audio
+   * turns.
+   *
+   * @generated from field: optional uint32 turn_id = 6;
+   */
+  turnId?: number | undefined;
+
+  /**
+   *
+   * If this turn was truncated from the LLM's context window, the turn_id of
+   * the assistant response that was first generated without this turn in context.
+   *
+   * Absent means the turn is still in context (or was never truncated).
+   * When present, you can look up the referenced response turn's `created_at`
+   * to determine the wall-clock time of truncation.
+   *
+   * @generated from field: optional uint32 truncated_at_response_turn_id = 7;
+   */
+  truncatedAtResponseTurnId?: number | undefined;
 };
 
 /**
@@ -1086,7 +1309,7 @@ export type ChatMessage = Message<"eu.deepslate.realtime.speeq.ChatMessage"> & {
  * Use `create(ChatMessageSchema)` to create a new message.
  */
 export const ChatMessageSchema: GenMessage<ChatMessage> = /*@__PURE__*/
-  messageDesc(file_realtime, 28);
+  messageDesc(file_realtime, 31);
 
 /**
  *
@@ -1154,7 +1377,7 @@ export type ChatMessageContent = Message<"eu.deepslate.realtime.speeq.ChatMessag
  * Use `create(ChatMessageContentSchema)` to create a new message.
  */
 export const ChatMessageContentSchema: GenMessage<ChatMessageContent> = /*@__PURE__*/
-  messageDesc(file_realtime, 29);
+  messageDesc(file_realtime, 32);
 
 /**
  *
@@ -1187,7 +1410,7 @@ export type ChatTextContent = Message<"eu.deepslate.realtime.speeq.ChatTextConte
  * Use `create(ChatTextContentSchema)` to create a new message.
  */
 export const ChatTextContentSchema: GenMessage<ChatTextContent> = /*@__PURE__*/
-  messageDesc(file_realtime, 30);
+  messageDesc(file_realtime, 33);
 
 /**
  *
@@ -1231,7 +1454,7 @@ export type ChatAudioData = Message<"eu.deepslate.realtime.speeq.ChatAudioData">
  * Use `create(ChatAudioDataSchema)` to create a new message.
  */
 export const ChatAudioDataSchema: GenMessage<ChatAudioData> = /*@__PURE__*/
-  messageDesc(file_realtime, 31);
+  messageDesc(file_realtime, 34);
 
 /**
  *
@@ -1243,6 +1466,9 @@ export const ChatAudioDataSchema: GenMessage<ChatAudioData> = /*@__PURE__*/
  *
  * This might be sent multiple times if the user interrupts multiple times.
  *
+ * This is soft deprecated in favor of the more informative VadStateEvent stream, but is still sent for backward
+ * compatibility and ease of use for simple clients.
+ *
  * @generated from message eu.deepslate.realtime.speeq.PlaybackClearBuffer
  */
 export type PlaybackClearBuffer = Message<"eu.deepslate.realtime.speeq.PlaybackClearBuffer"> & {
@@ -1253,7 +1479,7 @@ export type PlaybackClearBuffer = Message<"eu.deepslate.realtime.speeq.PlaybackC
  * Use `create(PlaybackClearBufferSchema)` to create a new message.
  */
 export const PlaybackClearBufferSchema: GenMessage<PlaybackClearBuffer> = /*@__PURE__*/
-  messageDesc(file_realtime, 32);
+  messageDesc(file_realtime, 35);
 
 /**
  *
@@ -1262,6 +1488,16 @@ export const PlaybackClearBufferSchema: GenMessage<PlaybackClearBuffer> = /*@__P
  * @generated from message eu.deepslate.realtime.speeq.ResponseBegin
  */
 export type ResponseBegin = Message<"eu.deepslate.realtime.speeq.ResponseBegin"> & {
+  /**
+   *
+   * Session-local ID of the assistant turn this response begins. Matches the
+   * `ChatMessage.turn_id` for the assistant turn that gets exported with the
+   * eventual chat history. The same value is sent on the matching
+   * `ResponseEnd`.
+   *
+   * @generated from field: uint32 turn_id = 1;
+   */
+  turnId: number;
 };
 
 /**
@@ -1269,7 +1505,7 @@ export type ResponseBegin = Message<"eu.deepslate.realtime.speeq.ResponseBegin">
  * Use `create(ResponseBeginSchema)` to create a new message.
  */
 export const ResponseBeginSchema: GenMessage<ResponseBegin> = /*@__PURE__*/
-  messageDesc(file_realtime, 33);
+  messageDesc(file_realtime, 36);
 
 /**
  *
@@ -1278,6 +1514,14 @@ export const ResponseBeginSchema: GenMessage<ResponseBegin> = /*@__PURE__*/
  * @generated from message eu.deepslate.realtime.speeq.ResponseEnd
  */
 export type ResponseEnd = Message<"eu.deepslate.realtime.speeq.ResponseEnd"> & {
+  /**
+   *
+   * Session-local ID of the assistant turn this response ends. Matches the
+   * `turn_id` from the preceding `ResponseBegin`.
+   *
+   * @generated from field: uint32 turn_id = 1;
+   */
+  turnId: number;
 };
 
 /**
@@ -1285,7 +1529,7 @@ export type ResponseEnd = Message<"eu.deepslate.realtime.speeq.ResponseEnd"> & {
  * Use `create(ResponseEndSchema)` to create a new message.
  */
 export const ResponseEndSchema: GenMessage<ResponseEnd> = /*@__PURE__*/
-  messageDesc(file_realtime, 34);
+  messageDesc(file_realtime, 37);
 
 /**
  *
@@ -1325,7 +1569,7 @@ export type SessionErrorNotification = Message<"eu.deepslate.realtime.speeq.Sess
  * Use `create(SessionErrorNotificationSchema)` to create a new message.
  */
 export const SessionErrorNotificationSchema: GenMessage<SessionErrorNotification> = /*@__PURE__*/
-  messageDesc(file_realtime, 35);
+  messageDesc(file_realtime, 38);
 
 /**
  *
@@ -1365,7 +1609,7 @@ export type UserTranscriptionResult = Message<"eu.deepslate.realtime.speeq.UserT
  * Use `create(UserTranscriptionResultSchema)` to create a new message.
  */
 export const UserTranscriptionResultSchema: GenMessage<UserTranscriptionResult> = /*@__PURE__*/
-  messageDesc(file_realtime, 36);
+  messageDesc(file_realtime, 39);
 
 /**
  *
@@ -1382,7 +1626,47 @@ export type SessionReady = Message<"eu.deepslate.realtime.speeq.SessionReady"> &
  * Use `create(SessionReadySchema)` to create a new message.
  */
 export const SessionReadySchema: GenMessage<SessionReady> = /*@__PURE__*/
-  messageDesc(file_realtime, 37);
+  messageDesc(file_realtime, 40);
+
+/**
+ *
+ * Notification that messages were truncated from the LLM's context window.
+ *
+ * Sent when the inference engine removes older messages to fit the token
+ * budget. Only includes turns that were **newly** truncated in this inference
+ * cycle - turns already reported in a previous ContextTruncated event are
+ * not repeated.
+ *
+ * @generated from message eu.deepslate.realtime.speeq.ContextTruncated
+ */
+export type ContextTruncated = Message<"eu.deepslate.realtime.speeq.ContextTruncated"> & {
+  /**
+   *
+   * Turn IDs that were newly removed from the model's context window.
+   * These correspond to `ChatMessage.turn_id` values in the conversation.
+   * The model can no longer "see" these messages.
+   *
+   * @generated from field: repeated uint32 truncated_turn_ids = 1;
+   */
+  truncatedTurnIds: number[];
+
+  /**
+   *
+   * The turn_id of the assistant response that was generated with the
+   * truncated context. Correlates this truncation event with the
+   * `ResponseBegin` / `ResponseEnd` for the same inference cycle.
+   *
+   * @generated from field: uint32 response_turn_id = 2;
+   */
+  responseTurnId: number;
+};
+
+/**
+ * Describes the message eu.deepslate.realtime.speeq.ContextTruncated.
+ * Use `create(ContextTruncatedSchema)` to create a new message.
+ */
+export const ContextTruncatedSchema: GenMessage<ContextTruncated> = /*@__PURE__*/
+  messageDesc(file_realtime, 41);
 
 /**
  * @generated from message eu.deepslate.realtime.speeq.ClientBoundMessage
@@ -1457,6 +1741,24 @@ export type ClientBoundMessage = Message<"eu.deepslate.realtime.speeq.ClientBoun
      */
     value: SessionReady;
     case: "sessionReady";
+  } | {
+    /**
+     * @generated from field: eu.deepslate.realtime.speeq.VadAnalysisFrame vad_analysis_frame = 12;
+     */
+    value: VadAnalysisFrame;
+    case: "vadAnalysisFrame";
+  } | {
+    /**
+     * @generated from field: eu.deepslate.realtime.speeq.VadStateEvent vad_state_event = 13;
+     */
+    value: VadStateEvent;
+    case: "vadStateEvent";
+  } | {
+    /**
+     * @generated from field: eu.deepslate.realtime.speeq.ContextTruncated context_truncated = 14;
+     */
+    value: ContextTruncated;
+    case: "contextTruncated";
   } | { case: undefined; value?: undefined };
 };
 
@@ -1465,7 +1767,7 @@ export type ClientBoundMessage = Message<"eu.deepslate.realtime.speeq.ClientBoun
  * Use `create(ClientBoundMessageSchema)` to create a new message.
  */
 export const ClientBoundMessageSchema: GenMessage<ClientBoundMessage> = /*@__PURE__*/
-  messageDesc(file_realtime, 38);
+  messageDesc(file_realtime, 42);
 
 /**
  *
@@ -1518,6 +1820,55 @@ export const SampleFormatSchema: GenEnum<SampleFormat> = /*@__PURE__*/
 
 /**
  *
+ * State machine output of the VAD pipeline.
+ *
+ * The state machine debounces raw VAD confidence/volume signals using the
+ * `start_duration` / `stop_duration` thresholds in `VadConfiguration`.
+ *
+ * @generated from enum eu.deepslate.realtime.speeq.VadState
+ */
+export enum VadState {
+  /**
+   *
+   * No speech is detected at all.
+   *
+   * @generated from enum value: SILENCE = 0;
+   */
+  SILENCE = 0,
+
+  /**
+   *
+   * Speech is actively detected above the configured thresholds, but the `start_duration` has not yet been met.
+   *
+   * @generated from enum value: SPEECH_STARTING = 1;
+   */
+  SPEECH_STARTING = 1,
+
+  /**
+   *
+   * Speech is actively detected and the `start_duration` threshold has been met.
+   *
+   * @generated from enum value: SPEECH = 2;
+   */
+  SPEECH = 2,
+
+  /**
+   *
+   * Speech was detected but has now stopped, but the `stop_duration` threshold has not yet been met.
+   *
+   * @generated from enum value: SPEECH_ENDING = 3;
+   */
+  SPEECH_ENDING = 3,
+}
+
+/**
+ * Describes the enum eu.deepslate.realtime.speeq.VadState.
+ */
+export const VadStateSchema: GenEnum<VadState> = /*@__PURE__*/
+  enumDesc(file_realtime, 1);
+
+/**
+ *
  * Enumeration of ElevenLabs TTS service locations.
  *
  * See here: https://elevenlabs.io/docs/overview/administration/data-residency
@@ -1557,7 +1908,7 @@ export enum ElevenLabsLocation {
  * Describes the enum eu.deepslate.realtime.speeq.ElevenLabsLocation.
  */
 export const ElevenLabsLocationSchema: GenEnum<ElevenLabsLocation> = /*@__PURE__*/
-  enumDesc(file_realtime, 1);
+  enumDesc(file_realtime, 2);
 
 /**
  *
@@ -1598,7 +1949,7 @@ export enum HostedTtsMode {
  * Describes the enum eu.deepslate.realtime.speeq.HostedTtsMode.
  */
 export const HostedTtsModeSchema: GenEnum<HostedTtsMode> = /*@__PURE__*/
-  enumDesc(file_realtime, 2);
+  enumDesc(file_realtime, 3);
 
 /**
  *
@@ -1634,7 +1985,7 @@ export enum InferenceTriggerMode {
  * Describes the enum eu.deepslate.realtime.speeq.InferenceTriggerMode.
  */
 export const InferenceTriggerModeSchema: GenEnum<InferenceTriggerMode> = /*@__PURE__*/
-  enumDesc(file_realtime, 3);
+  enumDesc(file_realtime, 4);
 
 /**
  *
@@ -1672,7 +2023,7 @@ export enum ChatMessageRole {
  * Describes the enum eu.deepslate.realtime.speeq.ChatMessageRole.
  */
 export const ChatMessageRoleSchema: GenEnum<ChatMessageRole> = /*@__PURE__*/
-  enumDesc(file_realtime, 4);
+  enumDesc(file_realtime, 5);
 
 /**
  *
@@ -1707,7 +2058,7 @@ export enum ChatDeliveryStatus {
  * Describes the enum eu.deepslate.realtime.speeq.ChatDeliveryStatus.
  */
 export const ChatDeliveryStatusSchema: GenEnum<ChatDeliveryStatus> = /*@__PURE__*/
-  enumDesc(file_realtime, 5);
+  enumDesc(file_realtime, 6);
 
 /**
  *
@@ -1779,5 +2130,5 @@ export enum SessionErrorCategory {
  * Describes the enum eu.deepslate.realtime.speeq.SessionErrorCategory.
  */
 export const SessionErrorCategorySchema: GenEnum<SessionErrorCategory> = /*@__PURE__*/
-  enumDesc(file_realtime, 6);
+  enumDesc(file_realtime, 7);
 
