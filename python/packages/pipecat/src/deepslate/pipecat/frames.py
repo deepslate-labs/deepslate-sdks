@@ -144,3 +144,44 @@ class DeepslateConversationQueryResultFrame(Frame):
 
     text: str = ""
     """The LLM's complete text reply to the conversation query."""
+
+
+@dataclass
+class DeepslateVadStateEventFrame(Frame):
+    """Emitted whenever the server-side VAD state machine transitions between states.
+
+    Always emitted (independent of ``enable_vad_frame_telemetry``), so this is
+    the primary signal for speech-start and speech-end boundaries.
+
+    States: ``"SILENCE"``, ``"SPEECH_STARTING"``, ``"SPEECH"``, ``"SPEECH_ENDING"``.
+    """
+
+    from_state: str = ""
+    """The VAD state before the transition."""
+
+    to_state: str = ""
+    """The VAD state after the transition."""
+
+    session_time_ms: int = 0
+    """Wall-clock time in milliseconds since the input pipeline started."""
+
+    packet_id: int = 0
+    """Packet ID of the audio that triggered the transition."""
+
+
+@dataclass
+class DeepslateContextTruncatedFrame(Frame):
+    """Emitted when the inference engine removes older turns from the LLM context window.
+
+    Only includes turns **newly** truncated in this inference cycle.
+    """
+
+    truncated_turn_ids: list[int] = None  # type: ignore[assignment]
+    """Turn IDs that were removed from the model's context window."""
+
+    response_turn_id: int = 0
+    """The assistant turn that was generated with the truncated context."""
+
+    def __post_init__(self):
+        if self.truncated_turn_ids is None:
+            self.truncated_turn_ids = []

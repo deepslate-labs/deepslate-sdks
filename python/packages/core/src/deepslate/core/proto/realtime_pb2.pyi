@@ -16,6 +16,13 @@ class SampleFormat(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     FLOAT_32_BIT: _ClassVar[SampleFormat]
     FLOAT_64_BIT: _ClassVar[SampleFormat]
 
+class VadState(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+    __slots__ = ()
+    SILENCE: _ClassVar[VadState]
+    SPEECH_STARTING: _ClassVar[VadState]
+    SPEECH: _ClassVar[VadState]
+    SPEECH_ENDING: _ClassVar[VadState]
+
 class ElevenLabsLocation(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     __slots__ = ()
     US: _ClassVar[ElevenLabsLocation]
@@ -60,6 +67,10 @@ SIGNED_16_BIT: SampleFormat
 SIGNED_32_BIT: SampleFormat
 FLOAT_32_BIT: SampleFormat
 FLOAT_64_BIT: SampleFormat
+SILENCE: VadState
+SPEECH_STARTING: VadState
+SPEECH: VadState
+SPEECH_ENDING: VadState
 US: ElevenLabsLocation
 EU: ElevenLabsLocation
 INDIA: ElevenLabsLocation
@@ -100,14 +111,16 @@ class UpdateToolDefinitionsRequest(_message.Message):
     def __init__(self, tool_definitions: _Optional[_Iterable[_Union[ToolDefinition, _Mapping]]] = ...) -> None: ...
 
 class ToolCallRequest(_message.Message):
-    __slots__ = ("id", "name", "parameters")
+    __slots__ = ("id", "name", "parameters", "turn_id")
     ID_FIELD_NUMBER: _ClassVar[int]
     NAME_FIELD_NUMBER: _ClassVar[int]
     PARAMETERS_FIELD_NUMBER: _ClassVar[int]
+    TURN_ID_FIELD_NUMBER: _ClassVar[int]
     id: str
     name: str
     parameters: _struct_pb2.Struct
-    def __init__(self, id: _Optional[str] = ..., name: _Optional[str] = ..., parameters: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ...) -> None: ...
+    turn_id: int
+    def __init__(self, id: _Optional[str] = ..., name: _Optional[str] = ..., parameters: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., turn_id: _Optional[int] = ...) -> None: ...
 
 class ToolCallResponse(_message.Message):
     __slots__ = ("id", "result")
@@ -148,6 +161,34 @@ class VadConfiguration(_message.Message):
     stop_duration: Duration
     backbuffer_duration: Duration
     def __init__(self, confidence_threshold: _Optional[float] = ..., min_volume: _Optional[float] = ..., start_duration: _Optional[_Union[Duration, _Mapping]] = ..., stop_duration: _Optional[_Union[Duration, _Mapping]] = ..., backbuffer_duration: _Optional[_Union[Duration, _Mapping]] = ...) -> None: ...
+
+class VadAnalysisFrame(_message.Message):
+    __slots__ = ("frame_index", "session_time", "confidence", "volume", "state", "source_packet_ids")
+    FRAME_INDEX_FIELD_NUMBER: _ClassVar[int]
+    SESSION_TIME_FIELD_NUMBER: _ClassVar[int]
+    CONFIDENCE_FIELD_NUMBER: _ClassVar[int]
+    VOLUME_FIELD_NUMBER: _ClassVar[int]
+    STATE_FIELD_NUMBER: _ClassVar[int]
+    SOURCE_PACKET_IDS_FIELD_NUMBER: _ClassVar[int]
+    frame_index: int
+    session_time: Duration
+    confidence: float
+    volume: float
+    state: VadState
+    source_packet_ids: _containers.RepeatedScalarFieldContainer[int]
+    def __init__(self, frame_index: _Optional[int] = ..., session_time: _Optional[_Union[Duration, _Mapping]] = ..., confidence: _Optional[float] = ..., volume: _Optional[float] = ..., state: _Optional[_Union[VadState, str]] = ..., source_packet_ids: _Optional[_Iterable[int]] = ...) -> None: ...
+
+class VadStateEvent(_message.Message):
+    __slots__ = ("session_time", "from_state", "to_state", "packet_id")
+    SESSION_TIME_FIELD_NUMBER: _ClassVar[int]
+    FROM_STATE_FIELD_NUMBER: _ClassVar[int]
+    TO_STATE_FIELD_NUMBER: _ClassVar[int]
+    PACKET_ID_FIELD_NUMBER: _ClassVar[int]
+    session_time: Duration
+    from_state: VadState
+    to_state: VadState
+    packet_id: int
+    def __init__(self, session_time: _Optional[_Union[Duration, _Mapping]] = ..., from_state: _Optional[_Union[VadState, str]] = ..., to_state: _Optional[_Union[VadState, str]] = ..., packet_id: _Optional[int] = ...) -> None: ...
 
 class InferenceConfiguration(_message.Message):
     __slots__ = ("system_prompt", "temperature")
@@ -191,13 +232,25 @@ class HostedVoiceRef(_message.Message):
     voice_id: str
     def __init__(self, voice_id: _Optional[str] = ...) -> None: ...
 
+class HostedVoiceCloneV1(_message.Message):
+    __slots__ = ("audio_data", "audio_format", "ref_text")
+    AUDIO_DATA_FIELD_NUMBER: _ClassVar[int]
+    AUDIO_FORMAT_FIELD_NUMBER: _ClassVar[int]
+    REF_TEXT_FIELD_NUMBER: _ClassVar[int]
+    audio_data: bytes
+    audio_format: AudioLineConfiguration
+    ref_text: str
+    def __init__(self, audio_data: _Optional[bytes] = ..., audio_format: _Optional[_Union[AudioLineConfiguration, _Mapping]] = ..., ref_text: _Optional[str] = ...) -> None: ...
+
 class HostedTtsConfiguration(_message.Message):
-    __slots__ = ("voice_ref", "mode")
+    __slots__ = ("voice_ref", "voice_clone_v1", "mode")
     VOICE_REF_FIELD_NUMBER: _ClassVar[int]
+    VOICE_CLONE_V1_FIELD_NUMBER: _ClassVar[int]
     MODE_FIELD_NUMBER: _ClassVar[int]
     voice_ref: HostedVoiceRef
+    voice_clone_v1: HostedVoiceCloneV1
     mode: HostedTtsMode
-    def __init__(self, voice_ref: _Optional[_Union[HostedVoiceRef, _Mapping]] = ..., mode: _Optional[_Union[HostedTtsMode, str]] = ...) -> None: ...
+    def __init__(self, voice_ref: _Optional[_Union[HostedVoiceRef, _Mapping]] = ..., voice_clone_v1: _Optional[_Union[HostedVoiceCloneV1, _Mapping]] = ..., mode: _Optional[_Union[HostedTtsMode, str]] = ...) -> None: ...
 
 class TtsConfiguration(_message.Message):
     __slots__ = ("eleven_labs", "hosted")
@@ -208,20 +261,22 @@ class TtsConfiguration(_message.Message):
     def __init__(self, eleven_labs: _Optional[_Union[ElevenLabsTtsConfiguration, _Mapping]] = ..., hosted: _Optional[_Union[HostedTtsConfiguration, _Mapping]] = ...) -> None: ...
 
 class InitializeSessionRequest(_message.Message):
-    __slots__ = ("input_audio_line", "output_audio_line", "vad_configuration", "inference_configuration", "tts_configuration", "supports_playback_reporting")
+    __slots__ = ("input_audio_line", "output_audio_line", "vad_configuration", "inference_configuration", "tts_configuration", "supports_playback_reporting", "enable_vad_frame_telemetry")
     INPUT_AUDIO_LINE_FIELD_NUMBER: _ClassVar[int]
     OUTPUT_AUDIO_LINE_FIELD_NUMBER: _ClassVar[int]
     VAD_CONFIGURATION_FIELD_NUMBER: _ClassVar[int]
     INFERENCE_CONFIGURATION_FIELD_NUMBER: _ClassVar[int]
     TTS_CONFIGURATION_FIELD_NUMBER: _ClassVar[int]
     SUPPORTS_PLAYBACK_REPORTING_FIELD_NUMBER: _ClassVar[int]
+    ENABLE_VAD_FRAME_TELEMETRY_FIELD_NUMBER: _ClassVar[int]
     input_audio_line: AudioLineConfiguration
     output_audio_line: AudioLineConfiguration
     vad_configuration: VadConfiguration
     inference_configuration: InferenceConfiguration
     tts_configuration: TtsConfiguration
     supports_playback_reporting: bool
-    def __init__(self, input_audio_line: _Optional[_Union[AudioLineConfiguration, _Mapping]] = ..., output_audio_line: _Optional[_Union[AudioLineConfiguration, _Mapping]] = ..., vad_configuration: _Optional[_Union[VadConfiguration, _Mapping]] = ..., inference_configuration: _Optional[_Union[InferenceConfiguration, _Mapping]] = ..., tts_configuration: _Optional[_Union[TtsConfiguration, _Mapping]] = ..., supports_playback_reporting: bool = ...) -> None: ...
+    enable_vad_frame_telemetry: bool
+    def __init__(self, input_audio_line: _Optional[_Union[AudioLineConfiguration, _Mapping]] = ..., output_audio_line: _Optional[_Union[AudioLineConfiguration, _Mapping]] = ..., vad_configuration: _Optional[_Union[VadConfiguration, _Mapping]] = ..., inference_configuration: _Optional[_Union[InferenceConfiguration, _Mapping]] = ..., tts_configuration: _Optional[_Union[TtsConfiguration, _Mapping]] = ..., supports_playback_reporting: bool = ..., enable_vad_frame_telemetry: bool = ...) -> None: ...
 
 class ReconfigureSessionRequest(_message.Message):
     __slots__ = ("input_audio_line", "inference_configuration")
@@ -256,10 +311,12 @@ class UserInput(_message.Message):
     def __init__(self, packet_id: _Optional[int] = ..., mode: _Optional[_Union[InferenceTriggerMode, str]] = ..., audio_data: _Optional[_Union[AudioData, _Mapping]] = ..., text_data: _Optional[_Union[TextData, _Mapping]] = ...) -> None: ...
 
 class TriggerInference(_message.Message):
-    __slots__ = ("extra_instructions",)
+    __slots__ = ("extra_instructions", "flush_vad")
     EXTRA_INSTRUCTIONS_FIELD_NUMBER: _ClassVar[int]
+    FLUSH_VAD_FIELD_NUMBER: _ClassVar[int]
     extra_instructions: str
-    def __init__(self, extra_instructions: _Optional[str] = ...) -> None: ...
+    flush_vad: bool
+    def __init__(self, extra_instructions: _Optional[str] = ..., flush_vad: bool = ...) -> None: ...
 
 class ExportChatHistoryRequest(_message.Message):
     __slots__ = ("await_pending", "exclude_audio")
@@ -342,18 +399,22 @@ class ChatHistory(_message.Message):
     def __init__(self, messages: _Optional[_Iterable[_Union[ChatMessage, _Mapping]]] = ...) -> None: ...
 
 class ChatMessage(_message.Message):
-    __slots__ = ("role", "content", "delivery_status", "ephemeral", "created_at")
+    __slots__ = ("role", "content", "delivery_status", "ephemeral", "created_at", "turn_id", "truncated_at_response_turn_id")
     ROLE_FIELD_NUMBER: _ClassVar[int]
     CONTENT_FIELD_NUMBER: _ClassVar[int]
     DELIVERY_STATUS_FIELD_NUMBER: _ClassVar[int]
     EPHEMERAL_FIELD_NUMBER: _ClassVar[int]
     CREATED_AT_FIELD_NUMBER: _ClassVar[int]
+    TURN_ID_FIELD_NUMBER: _ClassVar[int]
+    TRUNCATED_AT_RESPONSE_TURN_ID_FIELD_NUMBER: _ClassVar[int]
     role: ChatMessageRole
     content: _containers.RepeatedCompositeFieldContainer[ChatMessageContent]
     delivery_status: ChatDeliveryStatus
     ephemeral: bool
     created_at: _timestamp_pb2.Timestamp
-    def __init__(self, role: _Optional[_Union[ChatMessageRole, str]] = ..., content: _Optional[_Iterable[_Union[ChatMessageContent, _Mapping]]] = ..., delivery_status: _Optional[_Union[ChatDeliveryStatus, str]] = ..., ephemeral: bool = ..., created_at: _Optional[_Union[_timestamp_pb2.Timestamp, _Mapping]] = ...) -> None: ...
+    turn_id: int
+    truncated_at_response_turn_id: int
+    def __init__(self, role: _Optional[_Union[ChatMessageRole, str]] = ..., content: _Optional[_Iterable[_Union[ChatMessageContent, _Mapping]]] = ..., delivery_status: _Optional[_Union[ChatDeliveryStatus, str]] = ..., ephemeral: bool = ..., created_at: _Optional[_Union[_timestamp_pb2.Timestamp, _Mapping]] = ..., turn_id: _Optional[int] = ..., truncated_at_response_turn_id: _Optional[int] = ...) -> None: ...
 
 class ChatMessageContent(_message.Message):
     __slots__ = ("text_content", "input_audio", "thoughts", "tool_call", "tool_result", "instructions")
@@ -394,12 +455,16 @@ class PlaybackClearBuffer(_message.Message):
     def __init__(self) -> None: ...
 
 class ResponseBegin(_message.Message):
-    __slots__ = ()
-    def __init__(self) -> None: ...
+    __slots__ = ("turn_id",)
+    TURN_ID_FIELD_NUMBER: _ClassVar[int]
+    turn_id: int
+    def __init__(self, turn_id: _Optional[int] = ...) -> None: ...
 
 class ResponseEnd(_message.Message):
-    __slots__ = ()
-    def __init__(self) -> None: ...
+    __slots__ = ("turn_id",)
+    TURN_ID_FIELD_NUMBER: _ClassVar[int]
+    turn_id: int
+    def __init__(self, turn_id: _Optional[int] = ...) -> None: ...
 
 class SessionErrorNotification(_message.Message):
     __slots__ = ("category", "message", "trace_id")
@@ -425,8 +490,16 @@ class SessionReady(_message.Message):
     __slots__ = ()
     def __init__(self) -> None: ...
 
+class ContextTruncated(_message.Message):
+    __slots__ = ("truncated_turn_ids", "response_turn_id")
+    TRUNCATED_TURN_IDS_FIELD_NUMBER: _ClassVar[int]
+    RESPONSE_TURN_ID_FIELD_NUMBER: _ClassVar[int]
+    truncated_turn_ids: _containers.RepeatedScalarFieldContainer[int]
+    response_turn_id: int
+    def __init__(self, truncated_turn_ids: _Optional[_Iterable[int]] = ..., response_turn_id: _Optional[int] = ...) -> None: ...
+
 class ClientBoundMessage(_message.Message):
-    __slots__ = ("tool_call_request", "model_text_fragment", "model_audio_chunk", "playback_clear_buffer", "response_begin", "response_end", "chat_history", "error", "user_transcription_result", "conversation_query_result", "session_ready")
+    __slots__ = ("tool_call_request", "model_text_fragment", "model_audio_chunk", "playback_clear_buffer", "response_begin", "response_end", "chat_history", "error", "user_transcription_result", "conversation_query_result", "session_ready", "vad_analysis_frame", "vad_state_event", "context_truncated")
     TOOL_CALL_REQUEST_FIELD_NUMBER: _ClassVar[int]
     MODEL_TEXT_FRAGMENT_FIELD_NUMBER: _ClassVar[int]
     MODEL_AUDIO_CHUNK_FIELD_NUMBER: _ClassVar[int]
@@ -438,6 +511,9 @@ class ClientBoundMessage(_message.Message):
     USER_TRANSCRIPTION_RESULT_FIELD_NUMBER: _ClassVar[int]
     CONVERSATION_QUERY_RESULT_FIELD_NUMBER: _ClassVar[int]
     SESSION_READY_FIELD_NUMBER: _ClassVar[int]
+    VAD_ANALYSIS_FRAME_FIELD_NUMBER: _ClassVar[int]
+    VAD_STATE_EVENT_FIELD_NUMBER: _ClassVar[int]
+    CONTEXT_TRUNCATED_FIELD_NUMBER: _ClassVar[int]
     tool_call_request: ToolCallRequest
     model_text_fragment: ModelTextFragment
     model_audio_chunk: ModelAudioChunk
@@ -449,4 +525,7 @@ class ClientBoundMessage(_message.Message):
     user_transcription_result: UserTranscriptionResult
     conversation_query_result: ConversationQueryResult
     session_ready: SessionReady
-    def __init__(self, tool_call_request: _Optional[_Union[ToolCallRequest, _Mapping]] = ..., model_text_fragment: _Optional[_Union[ModelTextFragment, _Mapping]] = ..., model_audio_chunk: _Optional[_Union[ModelAudioChunk, _Mapping]] = ..., playback_clear_buffer: _Optional[_Union[PlaybackClearBuffer, _Mapping]] = ..., response_begin: _Optional[_Union[ResponseBegin, _Mapping]] = ..., response_end: _Optional[_Union[ResponseEnd, _Mapping]] = ..., chat_history: _Optional[_Union[ChatHistory, _Mapping]] = ..., error: _Optional[_Union[SessionErrorNotification, _Mapping]] = ..., user_transcription_result: _Optional[_Union[UserTranscriptionResult, _Mapping]] = ..., conversation_query_result: _Optional[_Union[ConversationQueryResult, _Mapping]] = ..., session_ready: _Optional[_Union[SessionReady, _Mapping]] = ...) -> None: ...
+    vad_analysis_frame: VadAnalysisFrame
+    vad_state_event: VadStateEvent
+    context_truncated: ContextTruncated
+    def __init__(self, tool_call_request: _Optional[_Union[ToolCallRequest, _Mapping]] = ..., model_text_fragment: _Optional[_Union[ModelTextFragment, _Mapping]] = ..., model_audio_chunk: _Optional[_Union[ModelAudioChunk, _Mapping]] = ..., playback_clear_buffer: _Optional[_Union[PlaybackClearBuffer, _Mapping]] = ..., response_begin: _Optional[_Union[ResponseBegin, _Mapping]] = ..., response_end: _Optional[_Union[ResponseEnd, _Mapping]] = ..., chat_history: _Optional[_Union[ChatHistory, _Mapping]] = ..., error: _Optional[_Union[SessionErrorNotification, _Mapping]] = ..., user_transcription_result: _Optional[_Union[UserTranscriptionResult, _Mapping]] = ..., conversation_query_result: _Optional[_Union[ConversationQueryResult, _Mapping]] = ..., session_ready: _Optional[_Union[SessionReady, _Mapping]] = ..., vad_analysis_frame: _Optional[_Union[VadAnalysisFrame, _Mapping]] = ..., vad_state_event: _Optional[_Union[VadStateEvent, _Mapping]] = ..., context_truncated: _Optional[_Union[ContextTruncated, _Mapping]] = ...) -> None: ...

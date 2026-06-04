@@ -80,6 +80,9 @@ message ToolCallRequest {
 
   // Parameters to pass to the tool.
   google.protobuf.Struct parameters = 3;
+
+  // Session-local ID of the assistant turn that issued this tool call.
+  optional uint32 turn_id = 4;
 }
 
 /*
@@ -141,6 +144,96 @@ message VadConfiguration {
   //
   // Recommended duration is 1 second.
   Duration backbuffer_duration = 5;
+}
+
+/*
+ * State machine output of the VAD pipeline.
+ *
+ * The state machine debounces raw VAD confidence/volume signals using the
+ * `start_duration` / `stop_duration` thresholds in `VadConfiguration`.
+ */
+enum VadState {
+  /*
+   * No speech is detected at all.
+   */
+  SILENCE = 0;
+
+  /*
+   * Speech is actively detected above the configured thresholds, but the `start_duration` has not yet been met.
+   */
+  SPEECH_STARTING = 1;
+
+  /*
+   * Speech is actively detected and the `start_duration` threshold has been met.
+   */
+  SPEECH = 2;
+
+  /*
+   * Speech was detected but has now stopped, but the `stop_duration` threshold has not yet been met.
+   */
+  SPEECH_ENDING = 3;
+}
+
+/*
+ * Per-frame VAD signal. Frames are emitted at the VAD frame rate
+ * (typically 50 Hz at 20ms frames on 16 kHz audio). Only emitted when
+ * `enable_vad_frame_telemetry` is true on the InitializeSessionRequest.
+ *
+ * Frame indexing is monotonic per session and reflects the post-resampling
+ * frame stream that the VAD engine actually saw.
+ *
+ * This is experimental and may be removed or changed without a major version bump. It is primarily intended for
+ * debugging and telemetry purposes, and should not be relied on for critical functionality.
+ */
+message VadAnalysisFrame {
+  // Monotonic frame index per session.
+  uint64 frame_index = 1;
+
+  // Time elapsed since the input pipeline started, at the boundary of this
+  // frame. This is wall-clock time, not audio-stream time — useful for
+  // aligning the telemetry stream with other observations.
+  Duration session_time = 2;
+
+  // Raw confidence from the underlying engine (0.0..1.0).
+  float confidence = 3;
+
+  // Raw RMS volume from the audio frame (0.0..1.0). 1.0 if the engine
+  // does not provide volume.
+  float volume = 4;
+
+  // Current state-machine state at the END of this frame.
+  VadState state = 5;
+
+  // Packet IDs whose audio bytes (after resampling) contributed to this
+  // frame, in order of contribution. Usually a single ID; multiple at
+  // packet boundaries or when the client sent very small packets. Empty
+  // only during resampler warmup before any tagged samples reach the VAD.
+  repeated uint64 source_packet_ids = 6;
+}
+
+/*
+ * State-machine transition event.
+ *
+ * Emitted whenever the VAD state changes. Always emitted (independent of
+ * `enable_vad_frame_telemetry`) so VAD-only consumers and conversational
+ * debug clients both get turn boundaries with packet correlation.
+ */
+message VadStateEvent {
+  // Time elapsed since the input pipeline started, at the moment of the
+  // transition.
+  Duration session_time = 1;
+
+  // The state the machine was in before the transition.
+  VadState from_state = 2;
+
+  // The state the machine is in after the transition.
+  VadState to_state = 3;
+
+  // The packet_id being processed when the transition triggered. For
+  // SpeechStarted-class transitions, this is the packet whose audio caused
+  // VAD to cross the threshold. For SpeechStopped-class transitions, the
+  // most recent packet contributing to the silence-detection window.
+  uint64 packet_id = 4;
 }
 
 /*
@@ -220,13 +313,34 @@ enum ElevenLabsLocation {
 }
 
 /*
- * Configuration for hosted TTS provider (voice cloning).
- *
- * The model is loaded once globally at server startup and shared across
- * all sessions. Model path and device are server-level configuration.
+ * Configuration for hosted TTS provider (voice cloning) using a deepslate
+ * provided voice.
  */
 message HostedVoiceRef {
   string voice_id = 1;
+}
+
+/*
+ * Configuration for hosted TTS provider (voice cloning) using a custom voice.
+ */
+message HostedVoiceCloneV1 {
+  /*
+   * Raw audio data for the voice sample.
+   *
+   * This should be between 20 and 25 seconds of speech. See our documentation
+   * for more information.
+   */
+  bytes audio_data = 1;
+
+  /*
+   * Audio format for the voice sample.
+   */
+  AudioLineConfiguration audio_format = 2;
+
+  /*
+   * Exact transcript of the voice sample, including disfluencies, false starts, etc.
+   */
+  string ref_text = 3;
 }
 
 /*
@@ -258,6 +372,7 @@ enum HostedTtsMode {
 message HostedTtsConfiguration {
   oneof voice {
     HostedVoiceRef voice_ref = 1;
+    HostedVoiceCloneV1 voice_clone_v1 = 3;
   }
   HostedTtsMode mode = 2;
 }
@@ -301,6 +416,13 @@ message InitializeSessionRequest {
   // with precise playback position data. When false (default), the
   // server uses elapsed-time estimation for context truncation.
   bool supports_playback_reporting = 6;
+
+  // When true, the server emits per-frame VadAnalysisFrame messages
+  // (~50 Hz). Off by default for cost/bandwidth reasons. State transitions
+  // (VadStateEvent) are emitted unconditionally regardless of this flag.
+  //
+  // This flag is considered experimental and may be removed or changed without a major version bump.
+  bool enable_vad_frame_telemetry = 7;
 }
 
 /*
@@ -387,6 +509,16 @@ message TriggerInference {
   // This can be used to provide context or specific directives
   // to the model for this inference trigger.
   optional string extra_instructions = 1;
+
+  // When true, flush whatever the VAD pipeline currently has buffered and
+  // append it as a user audio message before triggering inference.
+  //
+  // Use this to manually commit speech the VAD has not yet released — e.g.
+  // when the trigger is driven by an external signal (push-to-talk button,
+  // wake word) rather than waiting for natural end-of-speech detection.
+  // When the buffer is empty or the deployment doesn't run a VAD pipeline,
+  // this is a no-op.
+  bool flush_vad = 2;
 }
 
 /*
@@ -577,6 +709,23 @@ message ChatMessage {
    * When this message was started (turn creation time).
    */
   google.protobuf.Timestamp created_at = 5;
+
+  /*
+   * The turn ID. Correlates with `ResponseBegin.turn_id` / `ResponseEnd.turn_id`
+   * for assistant turns and `UserTranscriptionResult.turn_id` for user audio
+   * turns.
+   */
+  optional uint32 turn_id = 6;
+
+  /*
+   * If this turn was truncated from the LLM's context window, the turn_id of
+   * the assistant response that was first generated without this turn in context.
+   *
+   * Absent means the turn is still in context (or was never truncated).
+   * When present, you can look up the referenced response turn's `created_at`
+   * to determine the wall-clock time of truncation.
+   */
+  optional uint32 truncated_at_response_turn_id = 7;
 }
 
 /*
@@ -649,18 +798,35 @@ message ChatAudioData {
  * sent pro-actively to ensure that any ongoing playback is stopped.
  *
  * This might be sent multiple times if the user interrupts multiple times.
+ *
+ * This is soft deprecated in favor of the more informative VadStateEvent stream, but is still sent for backward
+ * compatibility and ease of use for simple clients.
  */
 message PlaybackClearBuffer {}
 
 /*
  * Notification that the model has begun its response.
  */
-message ResponseBegin {}
+message ResponseBegin {
+  /*
+   * Session-local ID of the assistant turn this response begins. Matches the
+   * `ChatMessage.turn_id` for the assistant turn that gets exported with the
+   * eventual chat history. The same value is sent on the matching
+   * `ResponseEnd`.
+   */
+  uint32 turn_id = 1;
+}
 
 /*
  * Notification that the model has finished its response.
  */
-message ResponseEnd {}
+message ResponseEnd {
+  /*
+   * Session-local ID of the assistant turn this response ends. Matches the
+   * `turn_id` from the preceding `ResponseBegin`.
+   */
+  uint32 turn_id = 1;
+}
 
 /*
  * Error category for client-facing error notifications.
@@ -735,6 +901,30 @@ message UserTranscriptionResult {
  */
 message SessionReady {}
 
+/*
+ * Notification that messages were truncated from the LLM's context window.
+ *
+ * Sent when the inference engine removes older messages to fit the token
+ * budget. Only includes turns that were **newly** truncated in this inference
+ * cycle - turns already reported in a previous ContextTruncated event are
+ * not repeated.
+ */
+message ContextTruncated {
+  /*
+   * Turn IDs that were newly removed from the model's context window.
+   * These correspond to `ChatMessage.turn_id` values in the conversation.
+   * The model can no longer "see" these messages.
+   */
+  repeated uint32 truncated_turn_ids = 1;
+
+  /*
+   * The turn_id of the assistant response that was generated with the
+   * truncated context. Correlates this truncation event with the
+   * `ResponseBegin` / `ResponseEnd` for the same inference cycle.
+   */
+  uint32 response_turn_id = 2;
+}
+
 message ClientBoundMessage {
   oneof payload {
     ToolCallRequest tool_call_request = 1;
@@ -748,5 +938,8 @@ message ClientBoundMessage {
     UserTranscriptionResult user_transcription_result = 9;
     ConversationQueryResult conversation_query_result = 10;
     SessionReady session_ready = 11;
+    VadAnalysisFrame vad_analysis_frame = 12;
+    VadStateEvent vad_state_event = 13;
+    ContextTruncated context_truncated = 14;
   }
 }

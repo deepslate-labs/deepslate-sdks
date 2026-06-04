@@ -93,6 +93,8 @@ class ChatMessageDict(TypedDict):
     delivery_status: str
     ephemeral: bool
     content: list[ContentBlockDict]
+    turn_id: Optional[int]
+    truncated_at_response_turn_id: Optional[int]
 
 
 class DeepslateSessionListener:
@@ -110,7 +112,13 @@ class DeepslateSessionListener:
     ) -> None:
         pass
 
-    async def on_tool_call(self, call_id: str, name: str, params: dict) -> None:
+    async def on_tool_call(
+        self,
+        call_id: str,
+        name: str,
+        params: dict,
+        turn_id: Optional[int] = None,
+    ) -> None:
         pass
 
     async def on_error(
@@ -118,10 +126,10 @@ class DeepslateSessionListener:
     ) -> None:
         pass
 
-    async def on_response_begin(self) -> None:
+    async def on_response_begin(self, turn_id: int = 0) -> None:
         pass
 
-    async def on_response_end(self) -> None:
+    async def on_response_end(self, turn_id: int = 0) -> None:
         pass
 
     async def on_user_transcription(
@@ -142,4 +150,32 @@ class DeepslateSessionListener:
         pass
 
     async def on_fatal_error(self, e: Exception) -> None:
+        pass
+
+    async def on_vad_state_event(
+        self,
+        from_state: str,
+        to_state: str,
+        session_time_ms: int,
+        packet_id: int,
+    ) -> None:
+        """Called when the VAD state machine transitions between states.
+
+        States: ``"SILENCE"``, ``"SPEECH_STARTING"``, ``"SPEECH"``, ``"SPEECH_ENDING"``.
+        ``session_time_ms`` is wall-clock time since the input pipeline started.
+        ``packet_id`` is the last packet that contributed to the transition.
+        Always emitted regardless of ``enable_vad_frame_telemetry``.
+        """
+        pass
+
+    async def on_context_truncated(
+        self,
+        truncated_turn_ids: list[int],
+        response_turn_id: int,
+    ) -> None:
+        """Called when the inference engine removes older turns from the LLM context.
+
+        ``truncated_turn_ids`` contains the turn IDs newly removed in this cycle.
+        ``response_turn_id`` is the assistant turn that was generated without them.
+        """
         pass
