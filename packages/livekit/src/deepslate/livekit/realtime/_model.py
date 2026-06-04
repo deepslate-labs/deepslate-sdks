@@ -618,14 +618,6 @@ class DeepslateRealtimeSession(
     async def on_response_end(self, turn_id: int = 0) -> None:
         self._close_current_generation()
 
-    async def on_playback_buffer_clear(self) -> None:
-        # Barge-in signal. Emit unconditionally: response_end usually closes the
-        # generation before the buffered audio finishes playing, so guarding on
-        # _current_generation would drop interrupts during the audio tail.
-        # _close_current_generation is a no-op when no generation is active.
-        self.emit("input_speech_started", InputSpeechStartedEvent())
-        self._close_current_generation()
-
     async def on_user_transcription(
         self, text: str, language: str | None, turn_id: int
     ) -> None:
@@ -678,6 +670,15 @@ class DeepslateRealtimeSession(
         session_time_ms: int,
         packet_id: int,
     ) -> None:
+        # The SPEECH_STARTING -> SPEECH transition is the server's confirmed
+        # user-speech signal and is the sole interruption trigger. Emitting
+        # input_speech_started makes livekit-agents flush the playout buffer and
+        # interrupt the current turn — and unlike playback_clear_buffer it only
+        # fires when the user is genuinely speaking, never at turn start.
+        if from_state == "SPEECH_STARTING" and to_state == "SPEECH":
+            self.emit("input_speech_started", InputSpeechStartedEvent())
+            self._close_current_generation()
+
         self.emit(
             "deepslate_server_event_received",
             SimpleNamespace(
