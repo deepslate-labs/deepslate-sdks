@@ -619,9 +619,12 @@ class DeepslateRealtimeSession(
         self._close_current_generation()
 
     async def on_playback_buffer_clear(self) -> None:
-        if self._current_generation is not None:
-            self.emit("input_speech_started", InputSpeechStartedEvent())
-            self._close_current_generation()
+        # Barge-in signal. Emit unconditionally: response_end usually closes the
+        # generation before the buffered audio finishes playing, so guarding on
+        # _current_generation would drop interrupts during the audio tail.
+        # _close_current_generation is a no-op when no generation is active.
+        self.emit("input_speech_started", InputSpeechStartedEvent())
+        self._close_current_generation()
 
     async def on_user_transcription(
         self, text: str, language: str | None, turn_id: int
