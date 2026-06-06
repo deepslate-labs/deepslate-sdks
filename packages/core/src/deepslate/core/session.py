@@ -68,6 +68,12 @@ class DeepslateSession:
         self._channels: Optional[int] = None
         self._packet_id_counter = 0
         self._pending_before_init: list[proto.ServiceBoundMessage] = []
+        # Set True on the first successful session_ready. Until then (first
+        # connect and any retries), _reset_state() preserves control messages
+        # (e.g. a trigger_inference from an early "speak first" generate_reply)
+        # queued before the socket connected, instead of dropping them like
+        # stale reconnect data. After a successful session, reconnects clear.
+        self._ever_initialized = False
 
         self._send_queue: asyncio.Queue[Optional[proto.ServiceBoundMessage]] = (
             asyncio.Queue()
@@ -357,7 +363,23 @@ class DeepslateSession:
         self._sample_rate = None
         self._channels = None
         self._packet_id_counter = 0
-        self._pending_before_init.clear()
+        if self._ever_initialized:
+            # Reconnect after a prior successful session: drop the stale
+            # per-connection buffer (e.g. audio queued mid-disconnect).
+            self._pending_before_init.clear()
+        else:
+            # Not yet successfully initialized (first connect, incl. retries):
+            # keep deliberate control messages (e.g. a trigger_inference from a
+            # "speak first" generate_reply) queued before the socket connected —
+            # they flush on session_ready. Drop buffered audio/text user_input:
+            # it's the stream head and its packet ids would collide with
+            # post-connect frames. Without this, an early generate_reply is
+            # silently lost (no reply ever arrives).
+            self._pending_before_init = [
+                m
+                for m in self._pending_before_init
+                if m.WhichOneof("payload") != "user_input"
+            ]
         self._pending_query_ids.clear()
         # Replace with a fresh queue; the previous send loop has already been
         # cancelled before _run_ws is called again.
@@ -457,6 +479,15 @@ class DeepslateSession:
         closing = False
         logger.info("DeepslateSession: connected to Deepslate Realtime API")
 
+        # If control messages (e.g. a "speak first" trigger_inference from an
+        # early generate_reply) were queued before the socket connected, make
+        # sure the session initializes even when no audio is being streamed.
+        # Otherwise session_ready never arrives and the buffered messages never
+        # flush. Idempotent via _init_request_sent: a later send_audio won't
+        # re-init, and a differing audio format is handled by a reconfigure.
+        if self._pending_before_init and not self._init_request_sent:
+            await self._ensure_initialized(self._sample_rate or 24000, self._channels or 1)
+
         async def _send_loop() -> None:
             nonlocal closing
             while True:
@@ -538,6 +569,7 @@ class DeepslateSession:
                 await self._send_queue.put(pending)
             self._pending_before_init.clear()
             self._session_initialized = True
+            self._ever_initialized = True
             await self._fire(self._listener.on_session_initialized())
 
         elif payload_type == "response_begin":
