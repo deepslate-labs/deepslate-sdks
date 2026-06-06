@@ -596,7 +596,12 @@ class DeepslateRealtimeSession(
             self._current_generation.audio_transcript += transcript
             self.emit("audio_transcript", transcript)
 
-    async def on_tool_call(self, call_id: str, name: str, params: dict) -> None:
+    async def on_tool_call(
+        self, call_id: str, name: str, params: dict, turn_id: int | None = None
+    ) -> None:
+        # turn_id must be accepted: deepslate-core calls this listener method with
+        # four positional args. Without it the call raises TypeError, which the
+        # core's _fire() swallows — silently dropping every tool call.
         if self._current_generation is None:
             self._create_generation()
         if self._current_generation is None:
