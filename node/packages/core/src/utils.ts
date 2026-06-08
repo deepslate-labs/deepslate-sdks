@@ -251,9 +251,11 @@ export function parseChatHistory(chatHistory: ChatHistory): ChatMessage[] {
       }
     }
 
+    const roleName = ChatMessageRole[msg.role] ?? "UNKNOWN";
+    const deliveryName = ChatDeliveryStatus[msg.deliveryStatus] ?? "UNKNOWN";
     messages.push({
-      role: ChatMessageRole[msg.role].toLowerCase(),
-      deliveryStatus: ChatDeliveryStatus[msg.deliveryStatus],
+      role: roleName.toLowerCase(),
+      deliveryStatus: deliveryName,
       ephemeral: msg.ephemeral,
       content,
     });

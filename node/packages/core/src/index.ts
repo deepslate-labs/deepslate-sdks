@@ -59,6 +59,9 @@ export type {
 export { TypedEventEmitter } from "./events.js";
 export type { DeepslateSessionEvents } from "./events.js";
 
+export { setLogger, consoleLogger } from "./log.js";
+export type { Logger } from "./log.js";
+
 export {
   buildWsUrl,
   durationFromMs,

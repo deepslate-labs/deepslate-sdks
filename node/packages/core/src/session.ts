@@ -77,6 +77,8 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
   private initRequestSent = false;
   private sampleRateValue: number | null = null;
   private channelsValue: number | null = null;
+  private initSampleRate: number | null = null;
+  private initChannels: number | null = null;
   private packetIdCounter = 0;
   private pendingBeforeInit: ServiceBoundMessage[] = [];
   private pendingQueryIds: string[] = [];
@@ -139,6 +141,7 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
   async close(): Promise<void> {
     this.shouldStop = true;
     this.closing = true;
+    this.client.requestShutdown();
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.close();
     }
@@ -234,12 +237,24 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
     });
   }
 
-  /** Persist tool definitions and sync them to the server. */
+  /**
+   * Persist tool definitions and sync them to the server. Passing an empty
+   * array is valid and clears all server-side tools.
+   */
   async updateTools(tools: FunctionTool[]): Promise<void> {
     this.currentTools = tools;
-    if (!this.sessionInitializedFlag) return;
     const msg = this.buildUpdateToolsMessage(tools);
-    if (msg) this.send(msg);
+
+    if (this.sessionInitializedFlag) {
+      this.send(msg);
+      return;
+    }
+    if (this.initRequestSent) {
+      this.pendingBeforeInit = this.pendingBeforeInit.filter(
+        (m) => m.payload.case !== "updateToolDefinitionsRequest",
+      );
+      this.pendingBeforeInit.push(msg);
+    }
   }
 
   async reconfigure(
@@ -324,6 +339,8 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
     this.sampleRateValue = sampleRate;
     this.channelsValue = channels;
     this.initRequestSent = true;
+    this.initSampleRate = sampleRate;
+    this.initChannels = channels;
 
     const initRequest = buildInitializeRequestFromOptions(
       this.options,
@@ -342,8 +359,7 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
     );
 
     if (this.currentTools.length > 0) {
-      const toolsMsg = this.buildUpdateToolsMessage(this.currentTools);
-      if (toolsMsg) this.send(toolsMsg);
+      this.send(this.buildUpdateToolsMessage(this.currentTools));
     }
   }
 
@@ -367,8 +383,7 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
 
   private buildUpdateToolsMessage(
     tools: FunctionTool[],
-  ): ServiceBoundMessage | null {
-    if (tools.length === 0) return null;
+  ): ServiceBoundMessage {
     const toolDefinitions = tools.map((tool) => ({
       name: tool.function.name ?? "",
       description: tool.function.description ?? "",
@@ -406,6 +421,10 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
       this.ws = ws;
       let settled = false;
       logger.info("DeepslateSession: connected to Deepslate Realtime API");
+
+      if (this.initSampleRate !== null && this.initChannels !== null) {
+        this.ensureInitialized(this.initSampleRate, this.initChannels);
+      }
 
       const cleanup = () => {
         ws.off("message", onMessage);

@@ -40,7 +40,7 @@ This is a polyglot monorepo. Both languages share a single wire contract — [`p
 
 ## Repository structure
 
-```
+```text
 deepslate-sdks/
 ├── proto/
 │   └── realtime.proto       # single wire-contract source of truth (both languages)

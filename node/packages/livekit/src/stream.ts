@@ -37,6 +37,10 @@ export function createPushable<T>(): Pushable<T> {
       pending.length = 0;
       if (closed) c.close();
     },
+    cancel() {
+      closed = true;
+      controller = undefined;
+    },
   });
 
   return {

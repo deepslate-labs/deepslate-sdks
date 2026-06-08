@@ -12,19 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-const PREFIX = "[deepslate.livekit]";
+// Logs through LiveKit's own logger (from @livekit/agents) and routes
+// @deepslate/core's logs through it too, rather than writing to stdout directly.
+import { format } from "node:util";
 
-export const logger = {
-  debug(...args: unknown[]): void {
-    if (process.env.DEEPSLATE_DEBUG) console.debug(PREFIX, ...args);
-  },
-  info(...args: unknown[]): void {
-    console.info(PREFIX, ...args);
-  },
-  warn(...args: unknown[]): void {
-    console.warn(PREFIX, ...args);
-  },
-  error(...args: unknown[]): void {
-    console.error(PREFIX, ...args);
-  },
+import { log } from "@livekit/agents";
+import { setLogger, type Logger } from "@deepslate/core";
+
+type Level = "debug" | "info" | "warn" | "error";
+
+function emit(level: Level, args: unknown[]): void {
+  try {
+    log()[level](format(...args));
+  } catch {
+    // log() throws until the framework runs initializeLogger(); drop until then.
+  }
+}
+
+export const logger: Logger = {
+  debug: (...args) => emit("debug", args),
+  info: (...args) => emit("info", args),
+  warn: (...args) => emit("warn", args),
+  error: (...args) => emit("error", args),
 };
+
+setLogger(logger);

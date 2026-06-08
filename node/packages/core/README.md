@@ -12,9 +12,8 @@ Shared core library for [Deepslate's](https://deepslate.eu/) realtime voice AI S
 > automatically. This package is for developers building **custom Deepslate integrations** outside of
 > LiveKit.
 
-This is the TypeScript port of the Python [`deepslate-core`](../../../python/packages/core/README.md)
-package. The main API difference: where Python uses a `DeepslateSessionListener` base class, the
-TypeScript `DeepslateSession` is a **typed `EventEmitter`** — you subscribe with `session.on(event, …)`.
+`DeepslateSession` is a typed `EventEmitter` — you subscribe to server events with
+`session.on(event, …)`.
 
 ---
 

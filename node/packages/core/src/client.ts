@@ -37,19 +37,66 @@ export interface RunWithRetryHandlers {
   onFatalError: (err: Error) => void | Promise<void>;
 }
 
-const sleep = (ms: number): Promise<void> =>
-  new Promise((resolve) => setTimeout(resolve, ms));
+/** Max time to wait for the WebSocket handshake before aborting the attempt. */
+const HANDSHAKE_TIMEOUT_MS = 10_000;
 
 /**
  * Manages WebSocket connectivity to the Deepslate Realtime API: URL
  * construction, auth headers, and exponential-backoff reconnection. Used by
  * DeepslateSession via composition so all transport logic lives in one place.
+ *
+ * A client backs a single session run loop. Call `requestShutdown()` to make an
+ * in-flight `connect()` / backoff `sleep()` return promptly during shutdown.
  */
 export class BaseDeepslateClient {
+  /** Socket created by connect() that hasn't opened yet (still CONNECTING). */
+  private pendingWs: WebSocket | null = null;
+  /** Set once shutdown has been requested; unblocks connect()/sleep(). */
+  private aborted = false;
+  /** Callbacks that wake any in-flight backoff sleep on shutdown. */
+  private readonly abortListeners = new Set<() => void>();
+
   constructor(
     private readonly opts: ResolvedDeepslateOptions,
     private readonly userAgent: string,
   ) {}
+
+  /**
+   * Request shutdown: abort an in-flight CONNECTING handshake and wake any
+   * pending backoff sleep so `runWithRetry()` can exit promptly.
+   */
+  requestShutdown(): void {
+    this.aborted = true;
+    if (this.pendingWs) {
+      try {
+        this.pendingWs.terminate();
+      } catch {
+        // best effort
+      }
+      this.pendingWs = null;
+    }
+    for (const wake of this.abortListeners) wake();
+    this.abortListeners.clear();
+  }
+
+  /** Sleep that resolves early when shutdown is requested. */
+  private abortableSleep(ms: number): Promise<void> {
+    return new Promise((resolve) => {
+      if (this.aborted) {
+        resolve();
+        return;
+      }
+      const timer = setTimeout(() => {
+        this.abortListeners.delete(wake);
+        resolve();
+      }, ms);
+      const wake = () => {
+        clearTimeout(timer);
+        resolve();
+      };
+      this.abortListeners.add(wake);
+    });
+  }
 
   private buildWsUrl(): string {
     if (this.opts.wsUrl) return this.opts.wsUrl;
@@ -73,14 +120,22 @@ export class BaseDeepslateClient {
     logger.debug(`connecting to Deepslate: ${url}`);
 
     return new Promise<WebSocket>((resolve, reject) => {
-      const ws = new WebSocket(url, { headers });
+      if (this.aborted) {
+        reject(new RetriableError("connection aborted: client shutting down"));
+        return;
+      }
+      const ws = new WebSocket(url, { headers, handshakeTimeout: HANDSHAKE_TIMEOUT_MS });
+      this.pendingWs = ws;
       const onOpen = () => {
+        this.pendingWs = null;
         ws.off("error", onError);
         resolve(ws);
       };
       const onError = (err: Error) => {
+        this.pendingWs = null;
         ws.off("open", onOpen);
-        // Connection-time failures are retriable.
+        // Connection-time failures (incl. handshake timeout and shutdown abort)
+        // are retriable; runWithRetry() decides whether to stop.
         reject(new RetriableError(err.message));
       };
       ws.once("open", onOpen);
@@ -105,13 +160,16 @@ export class BaseDeepslateClient {
     let numRetries = 0;
     const maxRetries = this.opts.maxRetries;
 
-    while (shouldContinue()) {
+    while (shouldContinue() && !this.aborted) {
       try {
         const ws = await this.connect();
         await runSession(ws);
         numRetries = 0; // reset on clean exit
       } catch (err) {
         const error = err instanceof Error ? err : new Error(String(err));
+
+        // Shutdown requested while connecting/running — exit without retrying.
+        if (this.aborted || !shouldContinue()) return;
 
         if (!(error instanceof RetriableError)) {
           logger.error(`unexpected error in Deepslate session: ${error.message}`);
@@ -131,13 +189,13 @@ export class BaseDeepslateClient {
           `connection failed (attempt ${numRetries}/${maxRetries}), ` +
             `retrying in ${retryInterval}s: ${error.message}`,
         );
-        await sleep(retryInterval * 1000);
+        await this.abortableSleep(retryInterval * 1000);
       }
     }
   }
 
-  /** No shared resources to release in the ws-based client. */
+  /** No shared resources to release; ensure shutdown is signalled. */
   async aclose(): Promise<void> {
-    // intentionally empty
+    this.requestShutdown();
   }
 }

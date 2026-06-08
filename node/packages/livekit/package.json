@@ -30,6 +30,6 @@
     "@livekit/agents": "^1.0.7",
     "@livekit/rtc-node": "^0.13.27",
     "dotenv": "^16.4.5",
-    "zod": "^4.0.0"
+    "zod": "^4.1.8"
   }
 }

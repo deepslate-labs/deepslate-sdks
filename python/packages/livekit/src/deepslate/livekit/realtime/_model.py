@@ -107,7 +107,6 @@ class RealtimeModel(llm.RealtimeModel):
         # TTS configuration
         tts_config: ElevenLabsTtsConfig | HostedTtsConfig | HostedVoiceCloneConfig | None = None,
         http_session: aiohttp.ClientSession | None = None,
-        # Internal use only - direct WebSocket URL (bypass standard auth)
         ws_url: str | None = None,
     ):
         """Initialize a Deepslate RealtimeModel.

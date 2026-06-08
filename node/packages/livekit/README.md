@@ -11,11 +11,6 @@ Node framework, enabling seamless integration with Deepslate's unified voice AI 
 speech-to-speech streaming, server-side VAD, LLM inference, and optional ElevenLabs TTS, all in a single
 WebSocket connection.
 
-> This is the TypeScript port of the Python [`deepslate-livekit`](../../../python/packages/livekit/README.md)
-> package. The Node `@livekit/agents` API differs from the Python one (e.g. the realtime classes live
-> under the `llm` namespace, audio frames come from `@livekit/rtc-node`), so the usage below is written
-> against the Node framework.
-
 ---
 
 ## Features

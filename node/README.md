@@ -24,7 +24,7 @@ This is a [pnpm](https://pnpm.io/) workspace containing three packages:
 
 ### Repository structure
 
-```
+```text
 node/
 ├── package.json            # private workspace root (scripts + dev tooling)
 ├── pnpm-workspace.yaml

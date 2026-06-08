@@ -12,21 +12,39 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Minimal namespaced logger. Debug output is gated behind the DEEPSLATE_DEBUG
-// env var to stay quiet by default.
-const PREFIX = "[deepslate.core]";
+/** Logging sink for the SDK. Methods mirror `console`. */
+export interface Logger {
+  debug(...args: unknown[]): void;
+  info(...args: unknown[]): void;
+  warn(...args: unknown[]): void;
+  error(...args: unknown[]): void;
+}
 
-export const logger = {
-  debug(...args: unknown[]): void {
-    if (process.env.DEEPSLATE_DEBUG) console.debug(PREFIX, ...args);
-  },
-  info(...args: unknown[]): void {
-    console.info(PREFIX, ...args);
-  },
-  warn(...args: unknown[]): void {
-    console.warn(PREFIX, ...args);
-  },
-  error(...args: unknown[]): void {
-    console.error(PREFIX, ...args);
-  },
+const noop = (): void => {};
+
+const SILENT_LOGGER: Logger = { debug: noop, info: noop, warn: noop, error: noop };
+
+/** Console logger. Opt in with `setLogger(consoleLogger)`. */
+export const consoleLogger: Logger = {
+  debug: (...args) => console.debug("[deepslate.core]", ...args),
+  info: (...args) => console.info("[deepslate.core]", ...args),
+  warn: (...args) => console.warn("[deepslate.core]", ...args),
+  error: (...args) => console.error("[deepslate.core]", ...args),
+};
+
+let active: Logger = SILENT_LOGGER;
+
+/**
+ * Install a logger for the SDK. The SDK is silent by default; pass
+ * `undefined`/`null` to reset back to silent.
+ */
+export function setLogger(custom?: Logger | null): void {
+  active = custom ?? SILENT_LOGGER;
+}
+
+export const logger: Logger = {
+  debug: (...args) => active.debug(...args),
+  info: (...args) => active.info(...args),
+  warn: (...args) => active.warn(...args),
+  error: (...args) => active.error(...args),
 };
