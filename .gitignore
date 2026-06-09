@@ -8,6 +8,9 @@ wheels/
 
 # NodeJS stuff
 node_modules/
+*.tsbuildinfo
+
+.env
 
 # Virtual environments
 .venv

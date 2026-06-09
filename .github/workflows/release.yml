@@ -50,11 +50,14 @@ jobs:
           echo "prerelease=${IS_PRE}"  >> "$GITHUB_OUTPUT"
           echo "Resolved: ${PEP440}  (pre-release: ${IS_PRE})"
 
-  build:
+  build-python:
     needs: parse-tag
     runs-on: ubuntu-latest
     env:
       VERSION: ${{ needs.parse-tag.outputs.version }}
+    defaults:
+      run:
+        working-directory: python
     steps:
       - uses: actions/checkout@v4
 
@@ -107,11 +110,11 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: dist
-          path: dist/
+          path: python/dist/
           retention-days: 1
 
   publish-pypi:
-    needs: [parse-tag, build]
+    needs: [parse-tag, build-python]
     runs-on: ubuntu-latest
     environment:
       name: pypi

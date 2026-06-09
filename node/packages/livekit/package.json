@@ -1,0 +1,35 @@
+{
+  "name": "@deepslate/livekit",
+  "version": "0.1.0",
+  "description": "LiveKit Agents plugin for deepslate.eu (TypeScript)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@deepslate/core": "workspace:*"
+  },
+  "peerDependencies": {
+    "@livekit/agents": "^1.0.7",
+    "@livekit/rtc-node": "^0.13.27"
+  },
+  "devDependencies": {
+    "@livekit/agents": "^1.0.7",
+    "@livekit/rtc-node": "^0.13.27",
+    "dotenv": "^16.4.5",
+    "zod": "^4.1.8"
+  }
+}
