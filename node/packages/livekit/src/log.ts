@@ -16,17 +16,16 @@
 // @deepslate/core's logs through it too, rather than writing to stdout directly.
 import { format } from "node:util";
 
-import { log } from "@livekit/agents";
+import { log, loggerOptions } from "@livekit/agents";
 import { setLogger, type Logger } from "@deepslate/core";
 
 type Level = "debug" | "info" | "warn" | "error";
 
 function emit(level: Level, args: unknown[]): void {
-  try {
-    log()[level](format(...args));
-  } catch {
-    // log() throws until the framework runs initializeLogger(); drop until then.
-  }
+  // LiveKit's logger only exists once the framework has run initializeLogger()
+  // (cli.runApp does this on startup); stay silent until then.
+  if (loggerOptions() === undefined) return;
+  log()[level](format(...args));
 }
 
 export const logger: Logger = {
