@@ -1,4 +1,4 @@
-# @deepslate/livekit
+# @deepslate-labs/livekit
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Documentation](https://img.shields.io/badge/docs-deepslate.eu-green)](https://docs.deepslate.eu/)
@@ -6,7 +6,7 @@
 
 LiveKit Agents plugin for [Deepslate's](https://deepslate.eu/) realtime voice AI API (TypeScript).
 
-`@deepslate/livekit` provides a `RealtimeModel` implementation for the [LiveKit Agents](https://github.com/livekit/agents)
+`@deepslate-labs/livekit` provides a `RealtimeModel` implementation for the [LiveKit Agents](https://github.com/livekit/agents)
 Node framework, enabling seamless integration with Deepslate's unified voice AI infrastructure —
 speech-to-speech streaming, server-side VAD, LLM inference, and optional ElevenLabs TTS, all in a single
 WebSocket connection.
@@ -26,7 +26,7 @@ WebSocket connection.
 ## Installation
 
 ```bash
-npm install @deepslate/livekit
+npm install @deepslate-labs/livekit
 ```
 
 ### Requirements
@@ -42,7 +42,7 @@ npm install @deepslate/livekit
 npm install @livekit/agents @livekit/rtc-node
 ```
 
-`@deepslate/core` is pulled in automatically.
+`@deepslate-labs/core` is pulled in automatically.
 
 ---
 
@@ -78,7 +78,7 @@ ELEVENLABS_MODEL_ID=eleven_turbo_v2  # optional
 ```ts
 import { fileURLToPath } from "node:url";
 import { type JobContext, ServerOptions, cli, defineAgent, voice } from "@livekit/agents";
-import { RealtimeModel, elevenLabsConfigFromEnv } from "@deepslate/livekit";
+import { RealtimeModel, elevenLabsConfigFromEnv } from "@deepslate-labs/livekit";
 
 export default defineAgent({
   entry: async (ctx: JobContext) => {
@@ -126,7 +126,7 @@ The constructor takes a single options object (`RealtimeModelOptions`):
 ### VAD Configuration
 
 ```ts
-import { RealtimeModel } from "@deepslate/livekit";
+import { RealtimeModel } from "@deepslate-labs/livekit";
 
 const model = new RealtimeModel({
   vad: {
@@ -149,7 +149,7 @@ const model = new RealtimeModel({
 Use a voice cloned and hosted within Deepslate. No external TTS credentials required.
 
 ```ts
-import { RealtimeModel, HostedTtsMode } from "@deepslate/livekit";
+import { RealtimeModel, HostedTtsMode } from "@deepslate-labs/livekit";
 
 const model = new RealtimeModel({
   ttsConfig: {
@@ -163,7 +163,7 @@ const model = new RealtimeModel({
 ### `ElevenLabsTtsConfig`
 
 ```ts
-import { RealtimeModel, ElevenLabsLocation, elevenLabsConfigFromEnv } from "@deepslate/livekit";
+import { RealtimeModel, ElevenLabsLocation, elevenLabsConfigFromEnv } from "@deepslate-labs/livekit";
 
 // Load from environment variables
 const model = new RealtimeModel({ ttsConfig: elevenLabsConfigFromEnv() });

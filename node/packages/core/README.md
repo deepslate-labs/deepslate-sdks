@@ -1,4 +1,4 @@
-# @deepslate/core
+# @deepslate-labs/core
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Documentation](https://img.shields.io/badge/docs-deepslate.eu-green)](https://docs.deepslate.eu/)
@@ -8,7 +8,7 @@ Shared core library for [Deepslate's](https://deepslate.eu/) realtime voice AI S
 
 > **You probably don't need to install this directly.**
 >
-> Install [`@deepslate/livekit`](../livekit/README.md) instead — it pulls in `@deepslate/core`
+> Install [`@deepslate-labs/livekit`](../livekit/README.md) instead — it pulls in `@deepslate-labs/core`
 > automatically. This package is for developers building **custom Deepslate integrations** outside of
 > LiveKit.
 
@@ -19,7 +19,7 @@ Shared core library for [Deepslate's](https://deepslate.eu/) realtime voice AI S
 
 ## What's Inside
 
-`@deepslate/core` provides everything needed to connect to the Deepslate Realtime API from any Node application:
+`@deepslate-labs/core` provides everything needed to connect to the Deepslate Realtime API from any Node application:
 
 - **`DeepslateSession`** — High-level session that manages the full WebSocket lifecycle, protobuf framing, session initialization, reconnection, and event dispatch. A typed `EventEmitter`. The primary building block for custom integrations.
 - **`DeepslateOptions`** — API credentials and connection configuration, with `resolveOptions()` / `optionsFromEnv()` normalizers.
@@ -27,14 +27,14 @@ Shared core library for [Deepslate's](https://deepslate.eu/) realtime voice AI S
 - **`HostedTtsConfig` / `HostedTtsMode`** — Deepslate-hosted (cloned) voice TTS configuration.
 - **`ElevenLabsTtsConfig` / `ElevenLabsLocation`** — ElevenLabs TTS configuration (`elevenLabsConfigFromEnv()` loads from env).
 - **`BaseDeepslateClient`** — Low-level WebSocket client with exponential-backoff reconnection (used internally by `DeepslateSession`).
-- **Protobuf bindings** — re-exported via [`@deepslate/proto`](../proto/README.md) for the Deepslate realtime wire protocol.
+- **Protobuf bindings** — re-exported via [`@deepslate-labs/proto`](../proto/README.md) for the Deepslate realtime wire protocol.
 
 ---
 
 ## Installation
 
 ```bash
-npm install @deepslate/core
+npm install @deepslate-labs/core
 ```
 
 ### Requirements
@@ -44,7 +44,7 @@ npm install @deepslate/core
 ### Dependencies
 
 - `ws` — WebSocket client
-- `@deepslate/proto` — generated protobuf bindings (protobuf-es v2)
+- `@deepslate-labs/proto` — generated protobuf bindings (protobuf-es v2)
 
 ---
 
@@ -55,7 +55,7 @@ npm install @deepslate/core
 ### Credentials
 
 ```ts
-import { optionsFromEnv, resolveOptions } from "@deepslate/core";
+import { optionsFromEnv, resolveOptions } from "@deepslate-labs/core";
 
 // Load from environment variables (recommended)
 const opts = optionsFromEnv();
@@ -84,7 +84,7 @@ Two TTS providers are supported. Pass either config as `ttsConfig` to `Deepslate
 **Deepslate-hosted (cloned) voice** — no external provider credentials required:
 
 ```ts
-import { HostedTtsMode, type HostedTtsConfig } from "@deepslate/core";
+import { HostedTtsMode, type HostedTtsConfig } from "@deepslate-labs/core";
 
 const tts: HostedTtsConfig = {
   provider: "hosted",
@@ -96,7 +96,7 @@ const tts: HostedTtsConfig = {
 **ElevenLabs:**
 
 ```ts
-import { elevenLabsConfigFromEnv, ElevenLabsLocation } from "@deepslate/core";
+import { elevenLabsConfigFromEnv, ElevenLabsLocation } from "@deepslate-labs/core";
 
 // Load from environment variables
 const tts = elevenLabsConfigFromEnv();
@@ -121,7 +121,7 @@ Use `DeepslateSession.create()` when your code owns the connection: it creates i
 `BaseDeepslateClient` and closes it automatically when `close()` is called.
 
 ```ts
-import { DeepslateSession, optionsFromEnv, elevenLabsConfigFromEnv } from "@deepslate/core";
+import { DeepslateSession, optionsFromEnv, elevenLabsConfigFromEnv } from "@deepslate-labs/core";
 
 const session = DeepslateSession.create(
   optionsFromEnv({ systemPrompt: "You are a helpful assistant." }),

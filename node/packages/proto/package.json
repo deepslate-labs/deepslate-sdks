@@ -1,5 +1,5 @@
 {
-  "name": "@deepslate/proto",
+  "name": "@deepslate-labs/proto",
   "version": "0.1.0",
   "description": "Generated TypeScript protobuf bindings for the Deepslate realtime API",
   "type": "module",

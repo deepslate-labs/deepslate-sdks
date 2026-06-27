@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Public API for @deepslate/livekit.
+// Public API for @deepslate-labs/livekit.
 export {
   RealtimeModel,
   DeepslateRealtimeSession,
@@ -25,11 +25,11 @@ export {
   ElevenLabsLocation,
   HostedTtsMode,
   elevenLabsConfigFromEnv,
-} from "@deepslate/core";
+} from "@deepslate-labs/core";
 export type {
   DeepslateOptions,
   VadConfig,
   TtsConfig,
   ElevenLabsTtsConfig,
   HostedTtsConfig,
-} from "@deepslate/core";
+} from "@deepslate-labs/core";

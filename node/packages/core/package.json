@@ -1,5 +1,5 @@
 {
-  "name": "@deepslate/core",
+  "name": "@deepslate-labs/core",
   "version": "0.1.0",
   "description": "Shared core library for Deepslate SDK integrations (TypeScript)",
   "type": "module",
@@ -21,7 +21,7 @@
   },
   "dependencies": {
     "@bufbuild/protobuf": "^2.2.3",
-    "@deepslate/proto": "workspace:*",
+    "@deepslate-labs/proto": "workspace:*",
     "ws": "^8.18.0"
   },
   "devDependencies": {

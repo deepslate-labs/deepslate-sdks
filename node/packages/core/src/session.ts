@@ -29,7 +29,7 @@ import {
   ServiceBoundMessageSchema,
   SampleFormat,
   SessionErrorCategory,
-} from "@deepslate/proto";
+} from "@deepslate-labs/proto";
 import WebSocket from "ws";
 
 import { BaseDeepslateClient, RetriableError } from "./client.js";

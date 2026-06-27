@@ -1,5 +1,5 @@
 {
-  "name": "@deepslate/livekit",
+  "name": "@deepslate-labs/livekit",
   "version": "0.1.0",
   "description": "LiveKit Agents plugin for deepslate.eu (TypeScript)",
   "type": "module",
@@ -20,7 +20,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@deepslate/core": "workspace:*"
+    "@deepslate-labs/core": "workspace:*"
   },
   "peerDependencies": {
     "@livekit/agents": "^1.0.7",

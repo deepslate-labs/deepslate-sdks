@@ -26,7 +26,7 @@ importers:
       '@bufbuild/protobuf':
         specifier: ^2.2.3
         version: 2.12.0
-      '@deepslate/proto':
+      '@deepslate-labs/proto':
         specifier: workspace:*
         version: link:../proto
       ws:
@@ -39,7 +39,7 @@ importers:
 
   packages/livekit:
     dependencies:
-      '@deepslate/core':
+      '@deepslate-labs/core':
         specifier: workspace:*
         version: link:../core
     devDependencies:
