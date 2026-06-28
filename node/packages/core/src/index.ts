@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Public API surface for @deepslate/core.
+// Public API surface for @deepslate-labs/core.
 
 export { BaseDeepslateClient, RetriableError } from "./client.js";
 export type { RunWithRetryHandlers } from "./client.js";

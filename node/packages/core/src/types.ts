@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // Plain serializable shapes surfaced to callers. These intentionally avoid any
-// generated protobuf types so consumers never touch @deepslate/proto.
+// generated protobuf types so consumers never touch @deepslate-labs/proto.
 
 /** A tool the model may call. */
 export interface FunctionDefinition {

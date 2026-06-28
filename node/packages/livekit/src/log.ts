@@ -13,11 +13,11 @@
 // limitations under the License.
 
 // Logs through LiveKit's own logger (from @livekit/agents) and routes
-// @deepslate/core's logs through it too, rather than writing to stdout directly.
+// @deepslate-labs/core's logs through it too, rather than writing to stdout directly.
 import { format } from "node:util";
 
 import { log, loggerOptions } from "@livekit/agents";
-import { setLogger, type Logger } from "@deepslate/core";
+import { setLogger, type Logger } from "@deepslate-labs/core";
 
 type Level = "debug" | "info" | "warn" | "error";
 

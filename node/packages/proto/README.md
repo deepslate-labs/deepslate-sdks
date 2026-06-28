@@ -1,10 +1,10 @@
-# @deepslate/proto
+# @deepslate-labs/proto
 
 Generated TypeScript protobuf bindings for the Deepslate realtime wire protocol.
 
 > **Internal package.** You should not depend on this directly — it is consumed by
-> [`@deepslate/core`](../core/README.md), which owns all proto construction and parsing. Downstream SDKs
-> (e.g. [`@deepslate/livekit`](../livekit/README.md)) never touch these bindings.
+> [`@deepslate-labs/core`](../core/README.md), which owns all proto construction and parsing. Downstream SDKs
+> (e.g. [`@deepslate-labs/livekit`](../livekit/README.md)) never touch these bindings.
 
 The bindings are generated from the single shared wire contract at
 [`proto/realtime.proto`](../../../proto/realtime.proto) (package `eu.deepslate.realtime.speeq`) — the
@@ -19,7 +19,7 @@ Run from the `node/` workspace root:
 
 ```bash
 pnpm run generate
-# equivalent to: pnpm --filter @deepslate/proto run generate
+# equivalent to: pnpm --filter @deepslate-labs/proto run generate
 # → buf generate ../../../proto --template ../../buf.gen.yaml
 #   writes src/gen/realtime_pb.ts
 ```
@@ -27,7 +27,7 @@ pnpm run generate
 Then rebuild:
 
 ```bash
-pnpm --filter @deepslate/proto run build
+pnpm --filter @deepslate-labs/proto run build
 ```
 
 > When changing the wire protocol, edit [`proto/realtime.proto`](../../../proto/realtime.proto) and

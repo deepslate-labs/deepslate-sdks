@@ -28,7 +28,7 @@ import {
   HostedTtsMode as ProtoHostedTtsMode,
   InferenceTriggerMode,
   SampleFormat,
-} from "@deepslate/proto";
+} from "@deepslate-labs/proto";
 
 import {
   type ResolvedDeepslateOptions,

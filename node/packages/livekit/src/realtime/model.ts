@@ -16,7 +16,7 @@
 //
 // RealtimeModel resolves core options; DeepslateRealtimeSession subscribes to the
 // core DeepslateSession events and translates each into the framework's
-// generation/stream primitives. All protobuf details stay in @deepslate/core.
+// generation/stream primitives. All protobuf details stay in @deepslate-labs/core.
 import { AudioFrame } from "@livekit/rtc-node";
 // The realtime API is exposed under the `llm` namespace of @livekit/agents, so
 // we re-bind the names this module uses. (Values are destructured; the
@@ -40,7 +40,7 @@ import {
   type ResolvedDeepslateOptions,
   type TtsConfig,
   type VadConfig,
-} from "@deepslate/core";
+} from "@deepslate-labs/core";
 
 import { logger } from "../log.js";
 import { createPushable, type Pushable } from "../stream.js";

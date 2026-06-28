@@ -2,7 +2,7 @@
   "name": "deepslate-sdks-node",
   "private": true,
   "scripts": {
-    "generate": "pnpm --filter @deepslate/proto run generate",
+    "generate": "pnpm --filter @deepslate-labs/proto run generate",
     "build": "pnpm -r run build"
   },
   "devDependencies": {

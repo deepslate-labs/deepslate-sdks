@@ -18,9 +18,9 @@ This is a [pnpm](https://pnpm.io/) workspace containing three packages:
 
 | Package | npm | Description |
 |---|---|---|
-| [`@deepslate/livekit`](packages/livekit/README.md) | `npm install @deepslate/livekit` | `RealtimeModel` plugin for [LiveKit Agents](https://github.com/livekit/agents) (Node) |
-| [`@deepslate/core`](packages/core/README.md) | `npm install @deepslate/core` | Shared implementation for integrations — prefer a higher-level package |
-| [`@deepslate/proto`](packages/proto/README.md) | (internal) | Generated protobuf bindings; consumed by `@deepslate/core` only |
+| [`@deepslate-labs/livekit`](packages/livekit/README.md) | `npm install @deepslate-labs/livekit` | `RealtimeModel` plugin for [LiveKit Agents](https://github.com/livekit/agents) (Node) |
+| [`@deepslate-labs/core`](packages/core/README.md) | `npm install @deepslate-labs/core` | Shared implementation for integrations — prefer a higher-level package |
+| [`@deepslate-labs/proto`](packages/proto/README.md) | (internal) | Generated protobuf bindings; consumed by `@deepslate-labs/core` only |
 
 ### Repository structure
 
@@ -31,21 +31,21 @@ node/
 ├── tsconfig.base.json       # shared compiler options, extended by each package
 ├── buf.gen.yaml             # protobuf-es codegen config
 └── packages/
-    ├── proto/               # @deepslate/proto   — generated TS from ../../proto
-    ├── core/                # @deepslate/core    — transport + session
-    └── livekit/             # @deepslate/livekit — LiveKit Agents plugin
+    ├── proto/               # @deepslate-labs/proto   — generated TS from ../../proto
+    ├── core/                # @deepslate-labs/core    — transport + session
+    └── livekit/             # @deepslate-labs/livekit — LiveKit Agents plugin
 ```
 
 ---
 
 ## Installation
 
-Install only the package you need. Each plugin brings in `@deepslate/core` automatically.
+Install only the package you need. Each plugin brings in `@deepslate-labs/core` automatically.
 
 **For LiveKit Agents projects:**
 
 ```bash
-npm install @deepslate/livekit
+npm install @deepslate-labs/livekit
 # plus the framework peers:
 npm install @livekit/agents @livekit/rtc-node
 ```
@@ -95,9 +95,9 @@ pnpm install
 Common workspace scripts:
 
 ```bash
-pnpm run generate      # regenerate @deepslate/proto from ../proto/realtime.proto
+pnpm run generate      # regenerate @deepslate-labs/proto from ../proto/realtime.proto
 pnpm -r run build      # build every package (proto → core → livekit)
-pnpm --filter @deepslate/core run test   # run the core unit tests (vitest)
+pnpm --filter @deepslate-labs/core run test   # run the core unit tests (vitest)
 ```
 
 > **Regenerating protobuf bindings:** the proto is shared with Python. See

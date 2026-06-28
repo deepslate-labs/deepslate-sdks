@@ -40,7 +40,7 @@ import {
 import { config as loadEnv } from "dotenv";
 import { z } from "zod";
 
-import { RealtimeModel, elevenLabsConfigFromEnv } from "@deepslate/livekit";
+import { RealtimeModel, elevenLabsConfigFromEnv } from "@deepslate-labs/livekit";
 
 loadEnv();
 
