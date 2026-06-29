@@ -276,6 +276,7 @@ class DeepslateRealtimeSession(
         # Tool state
         self._tools_dicts: list[FunctionToolDict] = []
         self._tool_choice: ToolChoice | None = None
+        self._tool_tasks: set[asyncio.Task[None]] = set()
 
         # Core session — owns the WebSocket lifecycle
         self._session = DeepslateSession(
@@ -355,15 +356,26 @@ class DeepslateRealtimeSession(
             f"updated tools: {[t.get('function', {}).get('name') for t in tools_dicts]}"
         )
 
-    async def update_options(
+    def update_options(
         self, *, tool_choice: NotGivenOr[ToolChoice | None] = NOT_GIVEN
     ) -> None:
-        """Apply a tool_choice constraint."""
-        if not utils.is_given(tool_choice):
-            logger.warning("Tool choice constraint not given")
+        """Apply a tool_choice constraint.
+
+        The base ``RealtimeSession.update_options`` is synchronous and called
+        fire-and-forget, so the server sync runs as a tracked background task
+        rather than being awaited.
+        """
+        if not utils.is_given(tool_choice) or tool_choice == self._tool_choice:
             return
         self._tool_choice = tool_choice
-        await self._sync_tool_choice()
+        task = asyncio.create_task(self._sync_tool_choice())
+        self._tool_tasks.add(task)
+        task.add_done_callback(self._tool_tasks.discard)
+        task.add_done_callback(self._on_tool_task_done)
+
+    def _on_tool_task_done(self, task: asyncio.Task[None]) -> None:
+        if not task.cancelled() and (exc := task.exception()) is not None:
+            logger.error("tool_choice sync failed", exc_info=exc)
 
     def _effective_tools_dicts(self) -> list[FunctionToolDict]:
         """Return the tools list filtered by the current tool_choice."""
@@ -541,6 +553,9 @@ class DeepslateRealtimeSession(
 
     async def aclose(self) -> None:
         """Close the session."""
+        for task in self._tool_tasks:
+            task.cancel()
+
         if self._current_generation:
             with contextlib.suppress(asyncio.InvalidStateError):
                 self._current_generation.done_fut.set_result(None)
