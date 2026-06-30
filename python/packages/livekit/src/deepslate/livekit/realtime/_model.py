@@ -378,6 +378,12 @@ class DeepslateRealtimeSession(
         task.add_done_callback(self._on_tool_task_done)
 
     def _on_tool_task_done(self, task: asyncio.Task[None]) -> None:
+        """Surface failures from a background tool-choice sync task.
+
+        Tool syncs are scheduled fire-and-forget by :meth:`update_options`, so
+        their exceptions would otherwise be swallowed. Logs any non-cancellation
+        error; cancellations (e.g. during :meth:`aclose`) are ignored.
+        """
         if not task.cancelled() and (exc := task.exception()) is not None:
             logger.error("tool_choice sync failed", exc_info=exc)
 
@@ -776,6 +782,12 @@ class DeepslateRealtimeSession(
         self._response_created_futures.clear()
 
     def _close_current_generation(self) -> None:
+        """Close the active generation's channels and mark it complete.
+
+        Closes the text, audio, function and message channels for the current
+        generation (if any) and resolves its done future. Called on response
+        end, tool calls, and interruptions.
+        """
         if self._current_generation is None:
             return
         # In TTS mode the server streams audio with no transcript, so text_ch
