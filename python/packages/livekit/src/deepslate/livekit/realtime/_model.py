@@ -774,7 +774,15 @@ class DeepslateRealtimeSession(
     def _close_current_generation(self) -> None:
         if self._current_generation is None:
             return
-        self._current_generation.text_ch.close()
+        # In TTS mode the server streams audio with no transcript, so text_ch
+        # never receives data and the transcription synchronizer's text segment
+        # is left unterminated (it logs "playback_finished called before
+        # text/audio input is done"). Emit an empty fragment so end_text_input
+        # fires and the text segment is closed in step with the audio.
+        if not self._current_generation.text_ch.closed:
+            if self._current_generation.audio_transcript == "":
+                self._current_generation.text_ch.send_nowait("")
+            self._current_generation.text_ch.close()
         self._current_generation.audio_ch.close()
         self._current_generation.function_ch.close()
         self._current_generation.message_ch.close()
