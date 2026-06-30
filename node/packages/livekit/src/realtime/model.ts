@@ -70,6 +70,9 @@ interface ResponseGeneration {
   audioStream: Pushable<AudioFrame>;
   responseId: string;
   firstTokenAt?: number;
+  // Accumulated text fragments + audio transcripts. Used to detect audio-only
+  // turns so the text segment can be closed in step with the audio.
+  audioTranscript: string;
 }
 
 let responseCounter = 0;
@@ -87,10 +90,11 @@ export class RealtimeModel extends llm.RealtimeModel {
       messageTruncation: true,
       turnDetection: true,
       userTranscription: true,
-      // Deepslate auto-generates a reply after a ToolCallResponse, so the
-      // framework must NOT also call generateReply() (that would send a
-      // duplicate TriggerInference).
-      autoToolReplyGeneration: false,
+      // Deepslate auto-generates the reply after a tool call
+      // (handle_tool_call_response -> dispatch_inference). Must be true,
+      // otherwise @livekit/agents interrupts and fires a competing reply
+      // that truncates the server's auto-reply.
+      autoToolReplyGeneration: true,
       audioOutput,
       manualFunctionCalls: false,
       perResponseToolChoice: false,
@@ -143,6 +147,10 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
   private replyWaiters: Array<(ev: GenerationCreatedEvent) => void> = [];
 
   private audioChain: Promise<unknown> = Promise.resolve();
+
+  // Serializes tool-choice syncs so overlapping updates reach the server in
+  // call order, and stays awaitable so close() can drain any in-flight sync.
+  private toolSyncChain: Promise<void> = Promise.resolve();
 
   // queryId → settlers for in-flight side-channel conversation queries.
   private readonly pendingQueries = new Map<
@@ -306,6 +314,9 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
 
   override async close(): Promise<void> {
     this.closeCurrentGeneration();
+    // Drain any in-flight tool-choice sync before tearing down the transport
+    // (the chain never rejects, so no need to guard).
+    await this.toolSyncChain;
     for (const waiter of this.pendingQueries.values()) {
       waiter.reject(new Error("session closed"));
     }
@@ -354,6 +365,7 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
     this.session.on("textFragment", (text) => {
       const gen = this.ensureGeneration();
       gen.textStream.push(text);
+      gen.audioTranscript += text;
       gen.firstTokenAt ??= Date.now();
     });
 
@@ -367,7 +379,10 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
         new AudioFrame(int16, sampleRate, channels, samplesPerChannel),
       );
       gen.firstTokenAt ??= Date.now();
-      if (transcript) this.emit("audio_transcript", transcript);
+      if (transcript) {
+        gen.audioTranscript += transcript;
+        this.emit("audio_transcript", transcript);
+      }
     });
 
     this.session.on("toolCall", (callId, name, params) => {
@@ -459,8 +474,18 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
     return this.toolsDicts;
   }
 
-  private async syncToolChoice(): Promise<void> {
-    await this.session.updateTools(this.effectiveToolsDicts());
+  private syncToolChoice(): Promise<void> {
+    // Chain onto the previous sync so updates are serialized in call order.
+    const next = this.toolSyncChain.then(() =>
+      this.session.updateTools(this.effectiveToolsDicts()),
+    );
+    // Keep the tracked chain non-rejecting so a failed sync neither breaks
+    // serialization nor leaves an unhandled rejection when fired-and-forgotten
+    // by updateOptions(). Direct awaiters of `next` still observe the error.
+    this.toolSyncChain = next.catch((err) => {
+      logger.error("tool_choice sync failed:", err);
+    });
+    return next;
   }
 
   private ensureGeneration(): ResponseGeneration {
@@ -481,6 +506,7 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
       textStream: createPushable<string>(),
       audioStream: createPushable<AudioFrame>(),
       responseId,
+      audioTranscript: "",
     };
     this.currentGeneration = gen;
 
@@ -516,6 +542,11 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
     const gen = this.currentGeneration;
     if (!gen) return;
     this.currentGeneration = null;
+    // In TTS mode the server streams audio with no transcript, so textStream
+    // never receives data and the transcription synchronizer's text segment is
+    // left unterminated. Emit an empty fragment so the text segment closes in
+    // step with the audio.
+    if (gen.audioTranscript === "") gen.textStream.push("");
     gen.textStream.close();
     gen.audioStream.close();
     gen.functionStream.close();
