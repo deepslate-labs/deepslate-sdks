@@ -137,7 +137,11 @@ class RealtimeModel(llm.RealtimeModel):
                 message_truncation=True,
                 turn_detection=True,
                 user_transcription=True,
-                auto_tool_reply_generation=False,
+                # Corvidae auto-generates the reply after a tool call
+                # (handle_tool_call_response -> dispatch_inference). Must be True,
+                # otherwise livekit-agents interrupts and fires a competing reply
+                # that truncates the server's auto-reply.
+                auto_tool_reply_generation=True,
                 audio_output=tts_config is not None,
                 manual_function_calls=False,
                 per_response_tool_choice=False,
