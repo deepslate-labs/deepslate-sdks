@@ -137,7 +137,11 @@ class RealtimeModel(llm.RealtimeModel):
                 message_truncation=True,
                 turn_detection=True,
                 user_transcription=True,
-                auto_tool_reply_generation=False,
+                # Corvidae auto-generates the reply after a tool call
+                # (handle_tool_call_response -> dispatch_inference). Must be True,
+                # otherwise livekit-agents interrupts and fires a competing reply
+                # that truncates the server's auto-reply.
+                auto_tool_reply_generation=True,
                 audio_output=tts_config is not None,
                 manual_function_calls=False,
                 per_response_tool_choice=False,
@@ -201,6 +205,7 @@ class RealtimeModel(llm.RealtimeModel):
 
     @property
     def provider(self) -> str:
+        """Return the provider identifier for this model."""
         return "deepslate"
 
     def session(self) -> "DeepslateRealtimeSession":
@@ -226,6 +231,7 @@ class RealtimeModel(llm.RealtimeModel):
             self._opts.temperature = temperature
 
     async def aclose(self) -> None:
+        """Close the model and release the underlying HTTP client."""
         await self._client.aclose()
 
 
@@ -250,6 +256,7 @@ class DeepslateRealtimeSession(
     """
 
     def __init__(self, realtime_model: RealtimeModel):
+        """Initialize the session and start the underlying core session."""
         super().__init__(realtime_model)
         self._realtime_model = realtime_model
         self._opts = realtime_model._opts
@@ -276,6 +283,8 @@ class DeepslateRealtimeSession(
         # Tool state
         self._tools_dicts: list[FunctionToolDict] = []
         self._tool_choice: ToolChoice | None = None
+        self._tool_tasks: set[asyncio.Task[None]] = set()
+        self._tool_sync_lock = asyncio.Lock()
 
         # Core session — owns the WebSocket lifecycle
         self._session = DeepslateSession(
@@ -289,10 +298,12 @@ class DeepslateRealtimeSession(
 
     @property
     def chat_ctx(self) -> llm.ChatContext:
+        """Return a copy of the current chat context."""
         return self._chat_ctx.copy()
 
     @property
     def tools(self) -> ToolContext:
+        """Return a copy of the current tool context."""
         return self._tools.copy()
 
     async def update_instructions(self, instructions: str) -> None:
@@ -355,15 +366,32 @@ class DeepslateRealtimeSession(
             f"updated tools: {[t.get('function', {}).get('name') for t in tools_dicts]}"
         )
 
-    async def update_options(
+    def update_options(
         self, *, tool_choice: NotGivenOr[ToolChoice | None] = NOT_GIVEN
     ) -> None:
-        """Apply a tool_choice constraint."""
-        if not utils.is_given(tool_choice):
-            logger.warning("Tool choice constraint not given")
+        """Apply a tool_choice constraint.
+
+        The base ``RealtimeSession.update_options`` is synchronous and called
+        fire-and-forget, so the server sync runs as a tracked background task
+        rather than being awaited.
+        """
+        if not utils.is_given(tool_choice) or tool_choice == self._tool_choice:
             return
         self._tool_choice = tool_choice
-        await self._sync_tool_choice()
+        task = asyncio.create_task(self._sync_tool_choice())
+        self._tool_tasks.add(task)
+        task.add_done_callback(self._tool_tasks.discard)
+        task.add_done_callback(self._on_tool_task_done)
+
+    def _on_tool_task_done(self, task: asyncio.Task[None]) -> None:
+        """Surface failures from a background tool-choice sync task.
+
+        Tool syncs are scheduled fire-and-forget by :meth:`update_options`, so
+        their exceptions would otherwise be swallowed. Logs any non-cancellation
+        error; cancellations (e.g. during :meth:`aclose`) are ignored.
+        """
+        if not task.cancelled() and (exc := task.exception()) is not None:
+            logger.error("tool_choice sync failed", exc_info=exc)
 
     def _effective_tools_dicts(self) -> list[FunctionToolDict]:
         """Return the tools list filtered by the current tool_choice."""
@@ -381,8 +409,14 @@ class DeepslateRealtimeSession(
         return self._tools_dicts
 
     async def _sync_tool_choice(self) -> None:
-        """Push the effective tool list (after applying tool_choice) to the server."""
-        await self._session.update_tools(self._effective_tools_dicts())
+        """Push the effective tool list (after applying tool_choice) to the server.
+
+        Holds ``_tool_sync_lock`` so overlapping syncs (a direct
+        :meth:`update_tools` and a background :meth:`update_options` task) are
+        serialized and the server's final tool list reflects the latest update.
+        """
+        async with self._tool_sync_lock:
+            await self._session.update_tools(self._effective_tools_dicts())
 
     def push_audio(self, frame: rtc.AudioFrame) -> None:
         """Push an audio frame to Deepslate."""
@@ -541,6 +575,12 @@ class DeepslateRealtimeSession(
 
     async def aclose(self) -> None:
         """Close the session."""
+        tool_tasks = tuple(self._tool_tasks)
+        for task in tool_tasks:
+            task.cancel()
+        if tool_tasks:
+            await asyncio.gather(*tool_tasks, return_exceptions=True)
+
         if self._current_generation:
             with contextlib.suppress(asyncio.InvalidStateError):
                 self._current_generation.done_fut.set_result(None)
@@ -556,9 +596,11 @@ class DeepslateRealtimeSession(
         await self._session.close()
 
     async def on_session_initialized(self) -> None:
+        """Emit ``session_initialized`` once the core session is ready."""
         self.emit("session_initialized", None)
 
     async def on_text_fragment(self, text: str) -> None:
+        """Stream a text fragment into the current generation's text channel."""
         if self._current_generation is None:
             self._create_generation()
         if self._current_generation is None:
@@ -575,6 +617,7 @@ class DeepslateRealtimeSession(
         channels: int,
         transcript: str | None,
     ) -> None:
+        """Stream an audio chunk (and any transcript) into the current generation."""
         if self._current_generation is None:
             self._create_generation()
         if self._current_generation is None:
@@ -598,6 +641,7 @@ class DeepslateRealtimeSession(
     async def on_tool_call(
         self, call_id: str, name: str, params: dict, turn_id: int | None = None
     ) -> None:
+        """Forward a server tool-call request and close the current generation."""
         # turn_id must be accepted: deepslate-core calls this listener method with
         # four positional args. Without it the call raises TypeError, which the
         # core's _fire() swallows — silently dropping every tool call.
@@ -616,24 +660,29 @@ class DeepslateRealtimeSession(
         self._close_current_generation()
 
     async def on_response_begin(self, turn_id: int = 0) -> None:
+        """Start a new generation at the beginning of a server response."""
         if self._current_generation is None:
             self._create_generation()
 
     async def on_response_end(self, turn_id: int = 0) -> None:
+        """Close the current generation when the server response ends."""
         self._close_current_generation()
 
     async def on_user_transcription(
         self, text: str, language: str | None, turn_id: int
     ) -> None:
+        """Emit a user-transcription event for the recognized speech."""
         self.emit(
             "user_transcription",
             SimpleNamespace(text=text, language=language or ""),
         )
 
     async def on_chat_history(self, messages) -> None:
+        """Emit the exported chat history to listeners."""
         self.emit("chat_history_exported", messages)
 
     async def on_conversation_query_result(self, query_id: str, text: str) -> None:
+        """Resolve the pending future for a conversation query result."""
         fut = self._pending_queries.pop(query_id, None)
         if fut is not None and not fut.done():
             fut.set_result(text)
@@ -643,6 +692,7 @@ class DeepslateRealtimeSession(
             )
 
     async def on_error(self, category: str, message: str, trace_id: str | None) -> None:
+        """Log a server error and emit a recoverable=False error event."""
         trace_suffix = f" (trace_id={trace_id})" if trace_id else ""
         error_msg = f"[Deepslate] {category}: {message}{trace_suffix}"
         logger.error(error_msg)
@@ -657,6 +707,7 @@ class DeepslateRealtimeSession(
         )
 
     async def on_fatal_error(self, e: Exception) -> None:
+        """Emit an error event for an unrecoverable session failure."""
         self.emit(
             "error",
             llm.RealtimeModelError(
@@ -674,6 +725,7 @@ class DeepslateRealtimeSession(
         session_time_ms: int,
         packet_id: int,
     ) -> None:
+        """Handle a VAD state transition, interrupting on confirmed user speech."""
         # The SPEECH_STARTING -> SPEECH transition is the server's confirmed
         # user-speech signal and is the sole interruption trigger. Emitting
         # input_speech_started makes livekit-agents flush the playout buffer and
@@ -699,6 +751,7 @@ class DeepslateRealtimeSession(
         truncated_turn_ids: list[int],
         response_turn_id: int,
     ) -> None:
+        """Emit a context-truncation event reported by the server."""
         self.emit(
             "deepslate_server_event_received",
             SimpleNamespace(
@@ -709,6 +762,7 @@ class DeepslateRealtimeSession(
         )
 
     def _create_generation(self) -> None:
+        """Create a new response generation and emit ``generation_created``."""
         is_user_initiated = self._pending_user_generation
         self._pending_user_generation = False
 
@@ -757,9 +811,23 @@ class DeepslateRealtimeSession(
         self._response_created_futures.clear()
 
     def _close_current_generation(self) -> None:
+        """Close the active generation's channels and mark it complete.
+
+        Closes the text, audio, function and message channels for the current
+        generation (if any) and resolves its done future. Called on response
+        end, tool calls, and interruptions.
+        """
         if self._current_generation is None:
             return
-        self._current_generation.text_ch.close()
+        # In TTS mode the server streams audio with no transcript, so text_ch
+        # never receives data and the transcription synchronizer's text segment
+        # is left unterminated (it logs "playback_finished called before
+        # text/audio input is done"). Emit an empty fragment so end_text_input
+        # fires and the text segment is closed in step with the audio.
+        if not self._current_generation.text_ch.closed:
+            if self._current_generation.audio_transcript == "":
+                self._current_generation.text_ch.send_nowait("")
+            self._current_generation.text_ch.close()
         self._current_generation.audio_ch.close()
         self._current_generation.function_ch.close()
         self._current_generation.message_ch.close()
