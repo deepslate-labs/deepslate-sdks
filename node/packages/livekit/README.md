@@ -209,18 +209,43 @@ const agent = new voice.Agent({
 
 ## Sending a Welcome Message
 
-`DeepslateRealtimeSession` emits a `"session_initialized"` event once the WebSocket session is fully
-initialized and ready to accept messages. Listen for it (and use the `speakDirect()` helper) to send a
-welcome message instead of relying on a fixed delay:
+To greet the user, speak directly the moment the agent becomes active. Subclass `voice.Agent`, override
+`onEnter()`, and call `speakDirect()` on the realtime session that the `AgentSession` created for you —
+reachable via `getActivityOrThrow().realtimeLLMSession`:
 
 ```ts
-const model = new RealtimeModel({ ttsConfig: elevenLabsConfigFromEnv() });
-const session = model.session();
+import { voice } from "@livekit/agents";
+import { RealtimeModel, DeepslateRealtimeSession, elevenLabsConfigFromEnv } from "@deepslate-labs/livekit";
 
-session.on("session_initialized", () => {
-  void session.speakDirect("Hello! How can I help you today?");
+class Assistant extends voice.Agent {
+  constructor() {
+    super({ instructions: "You are a helpful voice AI assistant." });
+  }
+
+  async onEnter(): Promise<void> {
+    // This is the SAME session AgentSession is driving, so its audio is wired
+    // to the room. speakDirect() initializes the session if needed and buffers
+    // the utterance until it is ready - no fixed delay and no
+    // "session_initialized" event handling required.
+    const session = this.getActivityOrThrow().realtimeLLMSession as DeepslateRealtimeSession;
+    // The third argument (uninterruptable) is set to true so the greeting is
+    // spoken in full even if the user starts talking over it. The second
+    // argument (includeInHistory) keeps its default of true.
+    await session.speakDirect("Hello! How can I help you today?", true, true);
+  }
+}
+
+const session = new voice.AgentSession({
+  llm: new RealtimeModel({ ttsConfig: elevenLabsConfigFromEnv() }),
 });
+await session.start({ agent: new Assistant(), room: ctx.room });
 ```
+
+> **Do not call `model.session()` yourself here.** `AgentSession.start()` internally calls
+> `model.session()` to create the realtime session it connects to the room. Calling `model.session()`
+> again opens a *second, independent* WebSocket session whose audio is never routed to the room - your
+> welcome message would be spoken into the void while a duplicate session runs in parallel. Always reach
+> the active session through `getActivityOrThrow().realtimeLLMSession`.
 
 ---
 
