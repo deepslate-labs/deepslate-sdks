@@ -333,12 +333,14 @@ class PlaybackPositionReport(_message.Message):
     def __init__(self, bytes_played: _Optional[int] = ...) -> None: ...
 
 class DirectSpeech(_message.Message):
-    __slots__ = ("text", "include_in_history")
+    __slots__ = ("text", "include_in_history", "uninterruptable")
     TEXT_FIELD_NUMBER: _ClassVar[int]
     INCLUDE_IN_HISTORY_FIELD_NUMBER: _ClassVar[int]
+    UNINTERRUPTABLE_FIELD_NUMBER: _ClassVar[int]
     text: str
     include_in_history: bool
-    def __init__(self, text: _Optional[str] = ..., include_in_history: bool = ...) -> None: ...
+    uninterruptable: bool
+    def __init__(self, text: _Optional[str] = ..., include_in_history: bool = ..., uninterruptable: bool = ...) -> None: ...
 
 class ConversationQuery(_message.Message):
     __slots__ = ("prompt", "instructions")

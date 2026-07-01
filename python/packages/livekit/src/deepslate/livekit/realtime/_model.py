@@ -448,10 +448,17 @@ class DeepslateRealtimeSession(
         await self._session.initialize()
         await self._session.send_text(text, trigger=mode)
 
-    async def speak_direct(self, text: str, include_in_history: bool = True) -> None:
+    async def speak_direct(
+        self,
+        text: str,
+        include_in_history: bool = True,
+        uninterruptable: bool = False,
+    ) -> None:
         """Bypass the LLM and speak text directly via TTS."""
         await self._session.initialize()
-        await self._session.send_direct_speech(text, include_in_history)
+        await self._session.send_direct_speech(
+            text, include_in_history, uninterruptable
+        )
 
     async def query_conversation(
         self,

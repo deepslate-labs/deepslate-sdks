@@ -276,7 +276,7 @@ Factory that creates a session together with its own `BaseDeepslateClient`. The 
 | `await session.send_tool_response(call_id, result)` | Return a tool result to the server |
 | `await session.update_tools(tools)` | Sync tool definitions (persisted across reconnects) |
 | `await session.reconfigure(system_prompt=None, temperature=None)` | Live-update inference settings |
-| `await session.send_direct_speech(text, include_in_history=True)` | Speak text directly via TTS, bypassing the LLM |
+| `await session.send_direct_speech(text, include_in_history=True, uninterruptable=False)` | Speak text directly via TTS, bypassing the LLM |
 | `await session.export_chat_history(await_pending=False, exclude_audio=False)` | Request a history export; result delivered via `on_chat_history`. Set `exclude_audio=True` to omit audio blobs (transcripts only) |
 | `await session.send_conversation_query(query_id, prompt, instructions)` | Side-channel inference; at least one of `prompt`/`instructions` required; result via `on_conversation_query_result` |
 | `await session.report_playback_position(bytes_played)` | Report audio playback position for server-side truncation |

@@ -222,7 +222,7 @@ and closes it when `close()` is called.
 | `session.sendToolResponse(callId, result)` | Return a tool result to the server |
 | `session.updateTools(tools)` | Sync tool definitions (persisted across reconnects) |
 | `session.reconfigure(systemPrompt?, temperature?)` | Live-update inference settings |
-| `session.sendDirectSpeech(text, includeInHistory?)` | Speak text directly via TTS, bypassing the LLM |
+| `session.sendDirectSpeech(text, includeInHistory?, uninterruptable?)` | Speak text directly via TTS, bypassing the LLM |
 | `session.exportChatHistory(awaitPending?, excludeAudio?)` | Request a history export; result via the `chatHistory` event |
 | `session.sendConversationQuery(queryId, prompt?, instructions?)` | Side-channel inference; result via the `conversationQueryResult` event |
 

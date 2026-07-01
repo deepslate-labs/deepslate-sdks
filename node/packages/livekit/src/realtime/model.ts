@@ -335,9 +335,13 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
     await this.session.sendText(text, mode);
   }
 
-  async speakDirect(text: string, includeInHistory = true): Promise<void> {
+  async speakDirect(
+    text: string,
+    includeInHistory = true,
+    uninterruptable = false,
+  ): Promise<void> {
     await this.session.initialize();
-    await this.session.sendDirectSpeech(text, includeInHistory);
+    await this.session.sendDirectSpeech(text, includeInHistory, uninterruptable);
   }
 
   /**
