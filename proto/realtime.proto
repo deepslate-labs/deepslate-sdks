@@ -567,6 +567,12 @@ message DirectSpeech {
   // but the LLM doesn't know that it was spoken. The message will be marked
   // as ephemeral in the chat history.
   bool include_in_history = 2;
+
+  // When true, the user cannot interrupt this utterance: it plays to
+  // completion and overlapping user speech is ignored until playback
+  // finishes. Used for compliance announcements (e.g. notifying the user
+  // they are speaking with an AI). Defaults to false (interruptible).
+  bool uninterruptable = 3;
 }
 
 /*

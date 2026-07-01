@@ -100,10 +100,14 @@ class DeepslateDirectSpeechFrame(Frame):
             an assistant message in the chat history so the LLM is aware of it.
             When False, the text is spoken ephemerally and the LLM has no
             knowledge that it was said.
+        uninterruptable: When True, the utterance plays to completion and
+            overlapping user speech is ignored until playback finishes (e.g. for
+            compliance announcements). Defaults to False (interruptible).
     """
 
     text: str
     include_in_history: bool = True
+    uninterruptable: bool = False
 
 
 @dataclass
