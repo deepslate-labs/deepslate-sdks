@@ -209,17 +209,34 @@ const agent = new voice.Agent({
 
 ## Sending a Welcome Message
 
-`DeepslateRealtimeSession` emits a `"session_initialized"` event once the WebSocket session is fully
-initialized and ready to accept messages. Listen for it (and use the `speakDirect()` helper) to send a
-welcome message instead of relying on a fixed delay:
+To greet the user, speak directly the moment the agent becomes active. Subclass `voice.Agent`, override
+`onEnter()`, and call `speakDirect()` on the realtime session that the `AgentSession` created for you —
+reachable via `getActivityOrThrow().realtimeLLMSession`. `speakDirect()` buffers the utterance until the
+session is ready, so no fixed delay or event handling is needed:
 
 ```ts
-const model = new RealtimeModel({ ttsConfig: elevenLabsConfigFromEnv() });
-const session = model.session();
+import { voice } from "@livekit/agents";
+import { RealtimeModel, DeepslateRealtimeSession, elevenLabsConfigFromEnv } from "@deepslate-labs/livekit";
 
-session.on("session_initialized", () => {
-  void session.speakDirect("Hello! How can I help you today?");
+class Assistant extends voice.Agent {
+  constructor() {
+    super({ instructions: "You are a helpful voice AI assistant." });
+  }
+
+  async onEnter(): Promise<void> {
+    const session = this.getActivityOrThrow().realtimeLLMSession as DeepslateRealtimeSession;
+    await session.speakDirect(
+      "Please note that this call is handled by an AI and may be recorded.",
+      /* includeInHistory */ true,
+      /* uninterruptable */ true,
+    );
+  }
+}
+
+const session = new voice.AgentSession({
+  llm: new RealtimeModel({ ttsConfig: elevenLabsConfigFromEnv() }),
 });
+await session.start({ agent: new Assistant(), room: ctx.room });
 ```
 
 ---

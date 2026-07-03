@@ -158,7 +158,7 @@ class DeepslateRealtimeLLMService(LLMService, DeepslateSessionListener):
         elif isinstance(frame, DeepslateDirectSpeechFrame):
             if self._session is not None:
                 await self._session.send_direct_speech(
-                    frame.text, frame.include_in_history
+                    frame.text, frame.include_in_history, frame.uninterruptable
                 )
 
         elif isinstance(frame, DeepslateConversationQueryFrame):

@@ -294,11 +294,16 @@ class DeepslateSession:
         )
 
     async def send_direct_speech(
-        self, text: str, include_in_history: bool = True
+        self,
+        text: str,
+        include_in_history: bool = True,
+        uninterruptable: bool = False,
     ) -> None:
         """Bypass the LLM and speak ``text`` directly via TTS."""
         direct_speech = proto.DirectSpeech(
-            text=text, include_in_history=include_in_history
+            text=text,
+            include_in_history=include_in_history,
+            uninterruptable=uninterruptable,
         )
         await self._enqueue_or_buffer(
             proto.ServiceBoundMessage(direct_speech=direct_speech)

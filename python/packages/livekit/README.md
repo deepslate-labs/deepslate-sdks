@@ -214,19 +214,35 @@ class Assistant(Agent):
 
 ## Sending a Welcome Message
 
-`DeepslateRealtimeSession` emits a `"session_initialized"` event once the WebSocket session is fully initialized and ready to accept messages. Listen for this event to send a welcome message instead of relying on a fixed delay:
+To greet the user, speak directly the moment the agent becomes active. Override
+`Agent.on_enter()` and call `speak_direct()` on the realtime session that the
+`AgentSession` created for you — reachable via `self.realtime_llm_session`.
+`speak_direct()` buffers the utterance until the session is ready, so no fixed
+delay or event handling is needed:
 
 ```python
+from typing import cast
+
+from livekit.agents import Agent
+from deepslate.livekit import DeepslateRealtimeSession
+
+
+class Assistant(Agent):
+    def __init__(self) -> None:
+        super().__init__(instructions="You are a helpful voice AI assistant.")
+
+    async def on_enter(self) -> None:
+        session = cast(DeepslateRealtimeSession, self.realtime_llm_session)
+        await session.speak_direct(
+            "Please note that this call is handled by an AI and may be recorded.",
+            uninterruptable=True,
+        )
+
+
 @server.rtc_session()
 async def my_agent(ctx: agents.JobContext):
     model = RealtimeModel(tts_config=ElevenLabsTtsConfig.from_env())
     session = AgentSession(llm=model)
-
-    deepslate_session = model.session()
-    deepslate_session.on("session_initialized", lambda _: asyncio.create_task(
-        deepslate_session.speak_direct("Hello! How can I help you today?")
-    ))
-
     await session.start(room=ctx.room, agent=Assistant())
 ```
 

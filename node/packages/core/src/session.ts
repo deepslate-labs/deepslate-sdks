@@ -271,9 +271,16 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
     });
   }
 
-  async sendDirectSpeech(text: string, includeInHistory = true): Promise<void> {
+  async sendDirectSpeech(
+    text: string,
+    includeInHistory = true,
+    uninterruptable = false,
+  ): Promise<void> {
     this.enqueueOrBuffer({
-      payload: { case: "directSpeech", value: { text, includeInHistory } },
+      payload: {
+        case: "directSpeech",
+        value: { text, includeInHistory, uninterruptable },
+      },
     });
   }
 
