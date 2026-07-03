@@ -73,6 +73,7 @@ interface ResponseGeneration {
   // Accumulated text fragments + audio transcripts. Used to detect audio-only
   // turns so the text segment can be closed in step with the audio.
   audioTranscript: string;
+  uninterruptable: boolean;
 }
 
 let responseCounter = 0;
@@ -144,6 +145,7 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
   private currentGeneration: ResponseGeneration | null = null;
   private pendingUserText: string | null = null;
   private pendingUserGeneration = false;
+  private pendingUninterruptable = false;
   private replyWaiters: Array<(ev: GenerationCreatedEvent) => void> = [];
 
   private audioChain: Promise<unknown> = Promise.resolve();
@@ -341,6 +343,9 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
     uninterruptable = false,
   ): Promise<void> {
     await this.session.initialize();
+    // Consumed by the next createGeneration() so the playbackBufferClear
+    // handler can tell this generation apart from a normal, barge-in-able one.
+    this.pendingUninterruptable = uninterruptable;
     await this.session.sendDirectSpeech(text, includeInHistory, uninterruptable);
   }
 
@@ -407,7 +412,13 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
     });
 
     this.session.on("playbackBufferClear", () => {
-      if (this.currentGeneration) {
+      // An uninterruptable generation (speakDirect(..., uninterruptable=true))
+      // keeps streaming audio from the server regardless of user speech;
+      // closing it here would just make ensureGeneration() spin up a new
+      // generation for the remaining audio, causing livekit-agents to restart
+      // playout mid-utterance (audible stutter) instead of leaving the one
+      // continuous stream alone.
+      if (this.currentGeneration && !this.currentGeneration.uninterruptable) {
         this.emit("input_speech_started", {});
         this.closeCurrentGeneration();
       }
@@ -500,6 +511,8 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
   private createGeneration(): ResponseGeneration {
     const userInitiated = this.pendingUserGeneration;
     this.pendingUserGeneration = false;
+    const uninterruptable = this.pendingUninterruptable;
+    this.pendingUninterruptable = false;
 
     const responseId = shortId("resp_");
     const hasAudio = this.model.ttsConfig != null;
@@ -511,6 +524,7 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
       audioStream: createPushable<AudioFrame>(),
       responseId,
       audioTranscript: "",
+      uninterruptable,
     };
     this.currentGeneration = gen;
 

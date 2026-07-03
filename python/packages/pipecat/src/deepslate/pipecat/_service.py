@@ -83,6 +83,12 @@ class DeepslateRealtimeLLMService(LLMService, DeepslateSessionListener):
         self._session: Optional[DeepslateSession] = None
         self._tools: List[FunctionToolDict] = []
 
+        # Set right before send_direct_speech() and consumed by the next
+        # on_response_begin(), so on_playback_buffer_clear() can tell an
+        # uninterruptable turn apart from a normal, barge-in-able one.
+        self._pending_uninterruptable: bool = False
+        self._current_turn_uninterruptable: bool = False
+
     async def start(self, frame: StartFrame):
         """Starts the Pipecat service and opens the Deepslate connection."""
         await super().start(frame)
@@ -157,6 +163,7 @@ class DeepslateRealtimeLLMService(LLMService, DeepslateSessionListener):
 
         elif isinstance(frame, DeepslateDirectSpeechFrame):
             if self._session is not None:
+                self._pending_uninterruptable = frame.uninterruptable
                 await self._session.send_direct_speech(
                     frame.text, frame.include_in_history, frame.uninterruptable
                 )
@@ -176,9 +183,12 @@ class DeepslateRealtimeLLMService(LLMService, DeepslateSessionListener):
         await self.push_frame(DeepslateSessionInitializedFrame())
 
     async def on_response_begin(self, turn_id: int = 0) -> None:
+        self._current_turn_uninterruptable = self._pending_uninterruptable
+        self._pending_uninterruptable = False
         await self.push_frame(LLMFullResponseStartFrame())
 
     async def on_response_end(self, turn_id: int = 0) -> None:
+        self._current_turn_uninterruptable = False
         await self.push_frame(LLMFullResponseEndFrame())
 
     async def on_text_fragment(self, text: str) -> None:
@@ -225,7 +235,12 @@ class DeepslateRealtimeLLMService(LLMService, DeepslateSessionListener):
         )
 
     async def on_playback_buffer_clear(self) -> None:
-        await self.push_frame(InterruptionFrame())
+        # Pushing InterruptionFrame makes pipecat's output transport cancel and
+        # restart its audio task, clearing whatever is buffered — the right
+        # behavior for a normal barge-in, but it would chop up an uninterruptable
+        # turn's audio even though the server keeps streaming it to completion.
+        if not self._current_turn_uninterruptable:
+            await self.push_frame(InterruptionFrame())
 
     async def on_chat_history(self, messages) -> None:
         await self.push_frame(DeepslateChatHistoryFrame(messages=messages))

@@ -80,6 +80,7 @@ class _ResponseGeneration:
     created_timestamp: float
     first_token_timestamp: float | None = None
     audio_transcript: str = ""
+    uninterruptable: bool = False
 
 
 class RealtimeModel(llm.RealtimeModel):
@@ -275,6 +276,7 @@ class DeepslateRealtimeSession(
             str, asyncio.Future[GenerationCreatedEvent]
         ] = {}
         self._pending_user_generation: bool = False
+        self._pending_uninterruptable: bool = False
         self._pending_user_text: str | None = None
 
         # Conversation query tracking: query_id → Future[str]
@@ -456,6 +458,9 @@ class DeepslateRealtimeSession(
     ) -> None:
         """Bypass the LLM and speak text directly via TTS."""
         await self._session.initialize()
+        # Consumed by the next _create_generation() so on_vad_state_event can
+        # tell this generation apart from a normal, barge-in-able one.
+        self._pending_uninterruptable = uninterruptable
         await self._session.send_direct_speech(
             text, include_in_history, uninterruptable
         )
@@ -738,9 +743,16 @@ class DeepslateRealtimeSession(
         # input_speech_started makes livekit-agents flush the playout buffer and
         # interrupt the current turn — and unlike playback_clear_buffer it only
         # fires when the user is genuinely speaking, never at turn start.
+        # An uninterruptable generation (speak_direct(..., uninterruptable=True))
+        # keeps streaming audio from the server regardless of user speech; closing
+        # it here would just make on_audio_chunk spin up a new generation for the
+        # remaining audio, causing livekit-agents to restart playout mid-utterance
+        # (audible stutter) instead of leaving the one continuous stream alone.
+        gen = self._current_generation
         if from_state == "SPEECH_STARTING" and to_state == "SPEECH":
-            self.emit("input_speech_started", InputSpeechStartedEvent())
-            self._close_current_generation()
+            if gen is None or not gen.uninterruptable:
+                self.emit("input_speech_started", InputSpeechStartedEvent())
+                self._close_current_generation()
 
         self.emit(
             "deepslate_server_event_received",
@@ -772,6 +784,8 @@ class DeepslateRealtimeSession(
         """Create a new response generation and emit ``generation_created``."""
         is_user_initiated = self._pending_user_generation
         self._pending_user_generation = False
+        is_uninterruptable = self._pending_uninterruptable
+        self._pending_uninterruptable = False
 
         response_id = utils.shortuuid("resp_")
         self._current_generation = _ResponseGeneration(
@@ -782,6 +796,7 @@ class DeepslateRealtimeSession(
             done_fut=asyncio.Future(),
             response_id=response_id,
             created_timestamp=time.time(),
+            uninterruptable=is_uninterruptable,
         )
 
         has_audio = self._realtime_model._tts_config is not None
