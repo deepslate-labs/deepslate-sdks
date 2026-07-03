@@ -211,7 +211,8 @@ const agent = new voice.Agent({
 
 To greet the user, speak directly the moment the agent becomes active. Subclass `voice.Agent`, override
 `onEnter()`, and call `speakDirect()` on the realtime session that the `AgentSession` created for you —
-reachable via `getActivityOrThrow().realtimeLLMSession`:
+reachable via `getActivityOrThrow().realtimeLLMSession`. `speakDirect()` buffers the utterance until the
+session is ready, so no fixed delay or event handling is needed:
 
 ```ts
 import { voice } from "@livekit/agents";
@@ -223,15 +224,12 @@ class Assistant extends voice.Agent {
   }
 
   async onEnter(): Promise<void> {
-    // This is the SAME session AgentSession is driving, so its audio is wired
-    // to the room. speakDirect() initializes the session if needed and buffers
-    // the utterance until it is ready - no fixed delay and no
-    // "session_initialized" event handling required.
     const session = this.getActivityOrThrow().realtimeLLMSession as DeepslateRealtimeSession;
-    // The third argument (uninterruptable) is set to true so the greeting is
-    // spoken in full even if the user starts talking over it. The second
-    // argument (includeInHistory) keeps its default of true.
-    await session.speakDirect("Hello! How can I help you today?", true, true);
+    await session.speakDirect(
+      "Please note that this call is handled by an AI and may be recorded.",
+      /* includeInHistory */ true,
+      /* uninterruptable */ true,
+    );
   }
 }
 
@@ -240,12 +238,6 @@ const session = new voice.AgentSession({
 });
 await session.start({ agent: new Assistant(), room: ctx.room });
 ```
-
-> **Do not call `model.session()` yourself here.** `AgentSession.start()` internally calls
-> `model.session()` to create the realtime session it connects to the room. Calling `model.session()`
-> again opens a *second, independent* WebSocket session whose audio is never routed to the room - your
-> welcome message would be spoken into the void while a duplicate session runs in parallel. Always reach
-> the active session through `getActivityOrThrow().realtimeLLMSession`.
 
 ---
 

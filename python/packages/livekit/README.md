@@ -216,7 +216,9 @@ class Assistant(Agent):
 
 To greet the user, speak directly the moment the agent becomes active. Override
 `Agent.on_enter()` and call `speak_direct()` on the realtime session that the
-`AgentSession` created for you — reachable via `self.realtime_llm_session`:
+`AgentSession` created for you — reachable via `self.realtime_llm_session`.
+`speak_direct()` buffers the utterance until the session is ready, so no fixed
+delay or event handling is needed:
 
 ```python
 from typing import cast
@@ -230,15 +232,10 @@ class Assistant(Agent):
         super().__init__(instructions="You are a helpful voice AI assistant.")
 
     async def on_enter(self) -> None:
-        # self.realtime_llm_session is the SAME session AgentSession is driving,
-        # so its audio is wired to the room. speak_direct() initializes the
-        # session if needed and buffers the utterance until it is ready - no
-        # fixed delay and no "session_initialized" event handling required.
         session = cast(DeepslateRealtimeSession, self.realtime_llm_session)
-        # uninterruptable=True ensures the greeting is spoken in full even if the
-        # user starts talking over it.
         await session.speak_direct(
-            "Hello! How can I help you today?", uninterruptable=True
+            "Please note that this call is handled by an AI and may be recorded.",
+            uninterruptable=True,
         )
 
 
@@ -248,13 +245,6 @@ async def my_agent(ctx: agents.JobContext):
     session = AgentSession(llm=model)
     await session.start(room=ctx.room, agent=Assistant())
 ```
-
-> **Do not call `model.session()` yourself here.** `AgentSession.start()`
-> internally calls `model.session()` to create the realtime session it connects
-> to the room. Calling `model.session()` again opens a *second, independent*
-> WebSocket session whose audio is never routed to the room - your welcome
-> message would be spoken into the void while a duplicate session runs in
-> parallel. Always reach the active session through `self.realtime_llm_session`.
 
 ---
 
