@@ -428,7 +428,9 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
       this.resetState();
       this.ws = ws;
       let settled = false;
-      logger.info("DeepslateSession: connected to Deepslate Realtime API");
+      logger.info(
+        `DeepslateSession: connected to Deepslate Realtime API (${this.client.userAgent})`,
+      );
 
       if (this.initSampleRate !== null && this.initChannels !== null) {
         this.ensureInitialized(this.initSampleRate, this.initChannels);

@@ -485,7 +485,9 @@ class DeepslateSession:
         self._reset_state()
         self._ws = ws
         closing = False
-        logger.info("DeepslateSession: connected to Deepslate Realtime API")
+        logger.info(
+            f"DeepslateSession: connected to Deepslate Realtime API ({self._client.user_agent})"
+        )
 
         # If control messages (e.g. a "speak first" trigger_inference from an
         # early generate_reply) were queued before the socket connected, make
