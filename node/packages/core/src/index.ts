@@ -63,6 +63,13 @@ export { setLogger, consoleLogger } from "./log.js";
 export type { Logger } from "./log.js";
 
 export {
+  buildUserAgent,
+  ownPackageVersion,
+  dependencyVersion,
+} from "./userAgent.js";
+export type { UserAgentProduct } from "./userAgent.js";
+
+export {
   buildWsUrl,
   durationFromMs,
   parseChatHistory,

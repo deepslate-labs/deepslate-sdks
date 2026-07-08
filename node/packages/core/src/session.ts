@@ -49,6 +49,7 @@ import {
   buildInitializeRequestFromOptions,
   parseChatHistory,
 } from "./utils.js";
+import { buildUserAgent } from "./userAgent.js";
 
 type ServiceBoundInit = MessageInitShape<typeof ServiceBoundMessageSchema>;
 
@@ -102,7 +103,7 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
     const resolved = resolveOptions(options);
     const client = new BaseDeepslateClient(
       resolved,
-      opts.userAgent ?? "DeepslateCore",
+      opts.userAgent ?? buildUserAgent(),
     );
     const session = new DeepslateSession(
       client,
