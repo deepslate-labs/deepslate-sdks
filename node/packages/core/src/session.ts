@@ -332,17 +332,14 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
     this.ws = null;
     this.sessionInitializedFlag = false;
     this.initRequestSent = false;
-    this.sampleRateValue = null;
-    this.channelsValue = null;
     this.packetIdCounter = 0;
     if (this.everInitialized) {
-      this.pendingBeforeInit = [];
-    } else {
+      this.sampleRateValue = null;
+      this.channelsValue = null;
       this.pendingBeforeInit = this.pendingBeforeInit.filter(
         (m) => m.payload.case !== "userInput",
       );
     }
-    this.pendingQueryIds = [];
     this.closing = false;
   }
 
