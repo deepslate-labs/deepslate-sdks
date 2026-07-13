@@ -82,6 +82,7 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
   private packetIdCounter = 0;
   private pendingBeforeInit: ServiceBoundMessage[] = [];
   private pendingQueryIds: string[] = [];
+  private everInitialized = false;
 
   private mainPromise: Promise<void> | undefined;
 
@@ -331,11 +332,14 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
     this.ws = null;
     this.sessionInitializedFlag = false;
     this.initRequestSent = false;
-    this.sampleRateValue = null;
-    this.channelsValue = null;
     this.packetIdCounter = 0;
-    this.pendingBeforeInit = [];
-    this.pendingQueryIds = [];
+    if (this.everInitialized) {
+      this.sampleRateValue = null;
+      this.channelsValue = null;
+      this.pendingBeforeInit = this.pendingBeforeInit.filter(
+        (m) => m.payload.case !== "userInput",
+      );
+    }
     this.closing = false;
   }
 
@@ -431,6 +435,8 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
 
       if (this.initSampleRate !== null && this.initChannels !== null) {
         this.ensureInitialized(this.initSampleRate, this.initChannels);
+      } else if (this.pendingBeforeInit.length > 0) {
+        this.ensureInitialized(this.sampleRateValue ?? 24000, this.channelsValue ?? 1);
       }
 
       const cleanup = () => {
@@ -487,6 +493,7 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
         for (const pending of this.pendingBeforeInit) this.send(pending);
         this.pendingBeforeInit = [];
         this.sessionInitializedFlag = true;
+        this.everInitialized = true;
         this.fire("sessionInitialized");
         break;
       }
