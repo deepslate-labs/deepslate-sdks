@@ -26,6 +26,7 @@ from .client import BaseDeepslateClient
 from .options import DeepslateOptions, ElevenLabsTtsConfig, HostedTtsConfig, HostedVoiceCloneConfig, VadConfig
 from .proto import realtime_pb2 as proto
 from ._types import DeepslateSessionListener, FunctionToolDict, TriggerMode
+from ._user_agent import build_user_agent
 from ._utils import (
     build_initialize_request,
     dict_to_struct,
@@ -131,7 +132,7 @@ class DeepslateSession:
         *,
         vad_config: Optional[VadConfig] = None,
         tts_config: Optional[ElevenLabsTtsConfig | HostedTtsConfig | HostedVoiceCloneConfig] = None,
-        user_agent: str = "DeepslateCore",
+        user_agent: Optional[str] = None,
         http_session: Optional[Any] = None,
         listener: Optional[DeepslateSessionListener] = None,
     ) -> "DeepslateSession":
@@ -142,7 +143,9 @@ class DeepslateSession:
         and closes it automatically when :meth:`close` is called.
         """
         client = BaseDeepslateClient(
-            opts=options, user_agent=user_agent, http_session=http_session
+            opts=options,
+            user_agent=user_agent or build_user_agent(),
+            http_session=http_session,
         )
         session = cls(
             client=client,
@@ -482,7 +485,9 @@ class DeepslateSession:
         self._reset_state()
         self._ws = ws
         closing = False
-        logger.info("DeepslateSession: connected to Deepslate Realtime API")
+        logger.info(
+            f"DeepslateSession: connected to Deepslate Realtime API ({self._client.user_agent})"
+        )
 
         # If control messages (e.g. a "speak first" trigger_inference from an
         # early generate_reply) were queued before the socket connected, make

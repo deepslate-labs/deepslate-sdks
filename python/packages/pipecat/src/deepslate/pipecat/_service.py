@@ -50,6 +50,7 @@ from deepslate.core import (
     FunctionToolDict,
     TriggerMode,
     VadConfig,
+    build_user_agent,
 )
 from .frames import (
     DeepslateContextTruncatedFrame,
@@ -90,7 +91,7 @@ class DeepslateRealtimeLLMService(LLMService, DeepslateSessionListener):
             self._opts,
             vad_config=self._vad_config,
             tts_config=self._tts_config,
-            user_agent="PipecatDeepslate/1.0",
+            user_agent=build_user_agent("deepslate-pipecat", "pipecat-ai"),
             listener=self,
         )
         self._session.start()

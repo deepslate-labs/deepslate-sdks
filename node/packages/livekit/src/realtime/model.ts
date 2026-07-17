@@ -35,7 +35,10 @@ type ToolContext = llm.ToolContext;
 import {
   DeepslateSession,
   TriggerMode,
+  buildUserAgent,
+  dependencyVersion,
   optionsFromEnv,
+  ownPackageVersion,
   type FunctionTool as DeepslateFunctionTool,
   type ResolvedDeepslateOptions,
   type TtsConfig,
@@ -179,7 +182,16 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
       {
         vadConfig: model.vad,
         ttsConfig: model.ttsConfig,
-        userAgent: "DeepslateLiveKit",
+        userAgent: buildUserAgent({
+          product: {
+            name: "@deepslate-labs/livekit",
+            version: ownPackageVersion(import.meta.url),
+          },
+          framework: {
+            name: "@livekit/agents",
+            version: dependencyVersion("@livekit/agents", import.meta.url),
+          },
+        }),
       },
     );
 

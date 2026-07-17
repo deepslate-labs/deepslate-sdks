@@ -48,6 +48,11 @@ class BaseDeepslateClient:
         self._http_session = http_session
         self._http_session_owned = http_session is None
 
+    @property
+    def user_agent(self) -> str:
+        """The User-Agent string sent on realtime connections."""
+        return self._user_agent
+
     def _ensure_http_session(self) -> aiohttp.ClientSession:
         if self._http_session is None:
             self._http_session = aiohttp.ClientSession()

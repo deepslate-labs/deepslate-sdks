@@ -49,6 +49,7 @@ import {
   buildInitializeRequestFromOptions,
   parseChatHistory,
 } from "./utils.js";
+import { buildUserAgent } from "./userAgent.js";
 
 type ServiceBoundInit = MessageInitShape<typeof ServiceBoundMessageSchema>;
 
@@ -103,7 +104,7 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
     const resolved = resolveOptions(options);
     const client = new BaseDeepslateClient(
       resolved,
-      opts.userAgent ?? "DeepslateCore",
+      opts.userAgent ?? buildUserAgent(),
     );
     const session = new DeepslateSession(
       client,
@@ -431,7 +432,9 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
       this.resetState();
       this.ws = ws;
       let settled = false;
-      logger.info("DeepslateSession: connected to Deepslate Realtime API");
+      logger.info(
+        `DeepslateSession: connected to Deepslate Realtime API (${this.client.userAgent})`,
+      );
 
       if (this.initSampleRate !== null && this.initChannels !== null) {
         this.ensureInitialized(this.initSampleRate, this.initChannels);
