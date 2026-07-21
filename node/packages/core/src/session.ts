@@ -29,6 +29,7 @@ import {
   ServiceBoundMessageSchema,
   SampleFormat,
   SessionErrorCategory,
+  VadState,
 } from "@deepslate-labs/proto";
 import WebSocket from "ws";
 
@@ -532,6 +533,21 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
       case "playbackClearBuffer":
         this.fire("playbackBufferClear");
         break;
+      case "vadStateEvent": {
+        const event = msg.payload.value;
+        const sessionTimeMs = event.sessionTime
+          ? Number(event.sessionTime.seconds) * 1000 +
+            Math.floor(event.sessionTime.nanos / 1_000_000)
+          : 0;
+        this.fire(
+          "vadStateEvent",
+          VadState[event.fromState] ?? String(event.fromState),
+          VadState[event.toState] ?? String(event.toState),
+          sessionTimeMs,
+          Number(event.packetId),
+        );
+        break;
+      }
       case "toolCallRequest": {
         const req = msg.payload.value;
         const params = (req.parameters as Record<string, unknown>) ?? {};

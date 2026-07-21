@@ -46,6 +46,12 @@ export type DeepslateSessionEvents = {
   ) => void;
   /** The playback buffer should be cleared (user started speaking). */
   playbackBufferClear: () => void;
+  vadStateEvent: (
+    fromState: string,
+    toState: string,
+    sessionTimeMs: number,
+    packetId: number,
+  ) => void;
   /** An exported chat history arrived. */
   chatHistory: (messages: ChatMessage[]) => void;
   /** A side-channel conversation query completed. */

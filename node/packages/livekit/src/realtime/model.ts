@@ -218,13 +218,13 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
     const dicts: DeepslateFunctionTool[] = [];
     for (const [name, tool] of Object.entries(tools)) {
       if (!isFunctionTool(tool)) continue;
-      const schema = toJsonSchema(tool);
+      const parameters = toJsonSchema(tool.parameters ?? {});
       dicts.push({
         type: "function",
         function: {
-          name: schema.name ?? name,
-          description: schema.description ?? "",
-          parameters: schema.parameters ?? {},
+          name,
+          description: tool.description ?? "",
+          parameters,
         },
       });
     }
@@ -409,6 +409,15 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
 
     this.session.on("responseEnd", () => {
       this.closeCurrentGeneration();
+    });
+
+    this.session.on("vadStateEvent", (fromState, toState) => {
+      if (fromState === "SPEECH_STARTING" && toState === "SPEECH") {
+        if (!this.currentGeneration || !this.currentGeneration.uninterruptable) {
+          this.emit("input_speech_started", {});
+          this.closeCurrentGeneration();
+        }
+      }
     });
 
     this.session.on("playbackBufferClear", () => {
