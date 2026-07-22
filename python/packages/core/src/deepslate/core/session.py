@@ -124,6 +124,9 @@ class DeepslateSession:
             with contextlib.suppress(asyncio.CancelledError):
                 await self._main_task
         self._main_task = None
+        self._fail_pending_chat_history(
+            ConnectionError("DeepslateSession: session closed before chat history export completed")
+        )
         if self._owns_client:
             await self._client.aclose()
 
@@ -379,6 +382,12 @@ class DeepslateSession:
             # Reconnect after a prior successful session: drop the stale
             # per-connection buffer (e.g. audio queued mid-disconnect).
             self._pending_before_init.clear()
+            self._fail_pending_chat_history(
+                ConnectionError(
+                    "DeepslateSession: connection reset before chat "
+                    "history export completed"
+                )
+            )
         else:
             # Not yet successfully initialized (first connect, incl. retries):
             # keep deliberate control messages (e.g. a trigger_inference from a
@@ -393,18 +402,16 @@ class DeepslateSession:
                 if m.WhichOneof("payload") != "user_input"
             ]
         self._pending_query_ids.clear()
-        while self._pending_chat_history:
-            fut = self._pending_chat_history.popleft()
-            if not fut.done():
-                fut.set_exception(
-                    ConnectionError(
-                        "DeepslateSession: connection reset before chat "
-                        "history export completed"
-                    )
-                )
         # Replace with a fresh queue; the previous send loop has already been
         # cancelled before _run_ws is called again.
         self._send_queue = asyncio.Queue()
+
+    def _fail_pending_chat_history(self, exc: Exception) -> None:
+        """Settle any outstanding export_chat_history() futures with ``exc``."""
+        while self._pending_chat_history:
+            fut = self._pending_chat_history.popleft()
+            if not fut.done():
+                fut.set_exception(exc)
 
     async def _ensure_initialized(self, sample_rate: int, channels: int) -> None:
         """Idempotent session initialization."""
@@ -485,6 +492,7 @@ class DeepslateSession:
         )
 
     async def _on_fatal_error(self, e: Exception) -> None:
+        self._fail_pending_chat_history(e)
         await self._fire(self._listener.on_fatal_error(e))
 
     async def _run_ws(self, ws: aiohttp.ClientWebSocketResponse) -> None:
