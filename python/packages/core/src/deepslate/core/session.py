@@ -25,7 +25,7 @@ import aiohttp
 from .client import BaseDeepslateClient
 from .options import DeepslateOptions, ElevenLabsTtsConfig, HostedTtsConfig, HostedVoiceCloneConfig, VadConfig
 from .proto import realtime_pb2 as proto
-from ._types import DeepslateSessionListener, FunctionToolDict, TriggerMode
+from ._types import ChatMessageDict, DeepslateSessionListener, FunctionToolDict, TriggerMode
 from ._utils import (
     build_initialize_request,
     dict_to_struct,
@@ -79,6 +79,9 @@ class DeepslateSession:
             asyncio.Queue()
         )
         self._pending_query_ids: deque[str] = deque()
+        self._pending_chat_history: deque[asyncio.Future[list[ChatMessageDict]]] = (
+            deque()
+        )
 
         self._main_task: Optional[asyncio.Task] = None
 
@@ -311,18 +314,22 @@ class DeepslateSession:
 
     async def export_chat_history(
         self, await_pending: bool = False, exclude_audio: bool = False
-    ) -> None:
-        """Request a chat history export.
+    ) -> list[ChatMessageDict]:
+        """Request a chat history export and wait for the result.
 
-        The result is delivered asynchronously via the ``on_chat_history``
-        callback.
+        Also delivered asynchronously via the ``on_chat_history`` callback.
         """
+        fut: asyncio.Future[list[ChatMessageDict]] = (
+            asyncio.get_event_loop().create_future()
+        )
+        self._pending_chat_history.append(fut)
         req = proto.ExportChatHistoryRequest(
             await_pending=await_pending, exclude_audio=exclude_audio
         )
         await self._enqueue_or_buffer(
             proto.ServiceBoundMessage(export_chat_history_request=req)
         )
+        return await fut
 
     async def send_conversation_query(
         self,
@@ -386,6 +393,15 @@ class DeepslateSession:
                 if m.WhichOneof("payload") != "user_input"
             ]
         self._pending_query_ids.clear()
+        while self._pending_chat_history:
+            fut = self._pending_chat_history.popleft()
+            if not fut.done():
+                fut.set_exception(
+                    ConnectionError(
+                        "DeepslateSession: connection reset before chat "
+                        "history export completed"
+                    )
+                )
         # Replace with a fresh queue; the previous send loop has already been
         # cancelled before _run_ws is called again.
         self._send_queue = asyncio.Queue()
@@ -646,6 +662,10 @@ class DeepslateSession:
 
         elif payload_type == "chat_history":
             messages = parse_chat_history(msg.chat_history)
+            if self._pending_chat_history:
+                fut = self._pending_chat_history.popleft()
+                if not fut.done():
+                    fut.set_result(messages)
             await self._fire(self._listener.on_chat_history(messages))
 
         elif payload_type == "error":

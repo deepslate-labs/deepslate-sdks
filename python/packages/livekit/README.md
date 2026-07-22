@@ -248,6 +248,49 @@ async def my_agent(ctx: agents.JobContext):
 
 ---
 
+## Exporting Chat History
+
+Call `export_chat_history()` on the realtime session to request the current
+conversation from the server. It returns the exported messages directly, and
+also emits a `chat_history_exported` event for listeners that prefer the
+event-based style:
+
+```python
+from typing import cast
+
+from deepslate.livekit import DeepslateRealtimeSession
+
+
+rt = cast(DeepslateRealtimeSession, session.current_agent.realtime_llm_session)
+
+history = await rt.export_chat_history(
+    await_pending=True,   # wait for any in-flight turn to settle first
+    exclude_audio=True,   # omit tts_audio/input_audio bytes, transcripts only
+)
+
+# Option 1: inspect the raw content blocks (text, tool_call, tool_result, ...)
+for msg in history:
+    print(msg["role"], msg["content"])
+
+# Option 2: print just the text portions of each message
+for msg in history:
+    text = " ".join(c["text"] for c in msg["content"] if c["type"] == "text")
+    print(f"[{msg['role']}] {text}")
+```
+
+Each item is a `ChatMessageDict` (importable from `deepslate.core`) with:
+
+| Field | Description                                                                                                                              |
+|---|------------------------------------------------------------------------------------------------------------------------------------------|
+| `role` | `"system"` \| `"user"` \| `"assistant"`                                                                                                  |
+| `delivery_status` | `DELIVERY_COMPLETE` \| `DELIVERY_IN_PROGRESS` \| `DELIVERY_INTERRUPTED`                                                                  |
+| `ephemeral` | `true` when the message was spoken via `DirectSpeech` with `include_in_history: false`. Audible to the user but not in the LLM’s context |
+| `content` | Ordered content blocks: `text` (with optional `tts_audio`), `input_audio`, `tool_call`, `tool_result`, `thoughts`, `instructions`        |
+| `turn_id` | The model turn this message belongs to, or `None`                                                                                        |
+| `truncated_at_response_turn_id` | Set if this message was cut off by a later interruption                                                                                  |
+
+---
+
 ## Examples
 
 The [`examples/`](examples/) directory contains a ready-to-run agent you can use as a starting point.
