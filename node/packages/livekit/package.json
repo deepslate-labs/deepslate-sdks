@@ -27,8 +27,8 @@
     "@livekit/rtc-node": "^0.13.27"
   },
   "devDependencies": {
-    "@livekit/agents": "^1.0.7",
-    "@livekit/rtc-node": "^0.13.27",
+    "@livekit/agents": "^1.5.3",
+    "@livekit/rtc-node": "^0.13.31",
     "dotenv": "^16.4.5",
     "zod": "^4.1.8"
   }
