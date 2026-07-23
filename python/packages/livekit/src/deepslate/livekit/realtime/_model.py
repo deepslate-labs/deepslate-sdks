@@ -51,6 +51,7 @@ except importlib.metadata.PackageNotFoundError:
 
 from deepslate.core import (
     BaseDeepslateClient,
+    ChatMessageDict,
     DeepslateOptions,
     DeepslateSession,
     DeepslateSessionListener,
@@ -484,12 +485,12 @@ class DeepslateRealtimeSession(
 
     async def export_chat_history(
         self, await_pending: bool = False, exclude_audio: bool = False
-    ) -> None:
-        """Request the server to export the current chat history.
+    ) -> list[ChatMessageDict]:
+        """Request the server to export the current chat history and return it.
 
-        The result is delivered via the ``chat_history_exported`` event.
+        Also emitted via the ``chat_history_exported`` event.
         """
-        await self._session.export_chat_history(await_pending, exclude_audio)
+        return await self._session.export_chat_history(await_pending, exclude_audio)
 
     def generate_reply(
         self,

@@ -25,7 +25,7 @@ import aiohttp
 from .client import BaseDeepslateClient
 from .options import DeepslateOptions, ElevenLabsTtsConfig, HostedTtsConfig, HostedVoiceCloneConfig, VadConfig
 from .proto import realtime_pb2 as proto
-from ._types import DeepslateSessionListener, FunctionToolDict, TriggerMode
+from ._types import ChatMessageDict, DeepslateSessionListener, FunctionToolDict, TriggerMode
 from ._utils import (
     build_initialize_request,
     dict_to_struct,
@@ -79,6 +79,9 @@ class DeepslateSession:
             asyncio.Queue()
         )
         self._pending_query_ids: deque[str] = deque()
+        self._pending_chat_history: deque[asyncio.Future[list[ChatMessageDict]]] = (
+            deque()
+        )
 
         self._main_task: Optional[asyncio.Task] = None
 
@@ -121,6 +124,9 @@ class DeepslateSession:
             with contextlib.suppress(asyncio.CancelledError):
                 await self._main_task
         self._main_task = None
+        self._fail_pending_chat_history(
+            ConnectionError("DeepslateSession: session closed before chat history export completed")
+        )
         if self._owns_client:
             await self._client.aclose()
 
@@ -311,18 +317,22 @@ class DeepslateSession:
 
     async def export_chat_history(
         self, await_pending: bool = False, exclude_audio: bool = False
-    ) -> None:
-        """Request a chat history export.
+    ) -> list[ChatMessageDict]:
+        """Request a chat history export and wait for the result.
 
-        The result is delivered asynchronously via the ``on_chat_history``
-        callback.
+        Also delivered asynchronously via the ``on_chat_history`` callback.
         """
+        fut: asyncio.Future[list[ChatMessageDict]] = (
+            asyncio.get_event_loop().create_future()
+        )
+        self._pending_chat_history.append(fut)
         req = proto.ExportChatHistoryRequest(
             await_pending=await_pending, exclude_audio=exclude_audio
         )
         await self._enqueue_or_buffer(
             proto.ServiceBoundMessage(export_chat_history_request=req)
         )
+        return await fut
 
     async def send_conversation_query(
         self,
@@ -372,6 +382,12 @@ class DeepslateSession:
             # Reconnect after a prior successful session: drop the stale
             # per-connection buffer (e.g. audio queued mid-disconnect).
             self._pending_before_init.clear()
+            self._fail_pending_chat_history(
+                ConnectionError(
+                    "DeepslateSession: connection reset before chat "
+                    "history export completed"
+                )
+            )
         else:
             # Not yet successfully initialized (first connect, incl. retries):
             # keep deliberate control messages (e.g. a trigger_inference from a
@@ -389,6 +405,13 @@ class DeepslateSession:
         # Replace with a fresh queue; the previous send loop has already been
         # cancelled before _run_ws is called again.
         self._send_queue = asyncio.Queue()
+
+    def _fail_pending_chat_history(self, exc: Exception) -> None:
+        """Settle any outstanding export_chat_history() futures with ``exc``."""
+        while self._pending_chat_history:
+            fut = self._pending_chat_history.popleft()
+            if not fut.done():
+                fut.set_exception(exc)
 
     async def _ensure_initialized(self, sample_rate: int, channels: int) -> None:
         """Idempotent session initialization."""
@@ -469,6 +492,7 @@ class DeepslateSession:
         )
 
     async def _on_fatal_error(self, e: Exception) -> None:
+        self._fail_pending_chat_history(e)
         await self._fire(self._listener.on_fatal_error(e))
 
     async def _run_ws(self, ws: aiohttp.ClientWebSocketResponse) -> None:
@@ -646,6 +670,10 @@ class DeepslateSession:
 
         elif payload_type == "chat_history":
             messages = parse_chat_history(msg.chat_history)
+            if self._pending_chat_history:
+                fut = self._pending_chat_history.popleft()
+                if not fut.done():
+                    fut.set_result(messages)
             await self._fire(self._listener.on_chat_history(messages))
 
         elif payload_type == "error":
