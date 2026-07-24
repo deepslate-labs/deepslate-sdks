@@ -30,6 +30,7 @@ from livekit.agents.llm import (
     FunctionCall,
     GenerationCreatedEvent,
     InputSpeechStartedEvent,
+    InputSpeechStoppedEvent,
     MessageGeneration,
     RawFunctionTool,
     Tool,
@@ -783,6 +784,13 @@ class DeepslateRealtimeSession(
             if gen is None or not gen.uninterruptable:
                 self.emit("input_speech_started", InputSpeechStartedEvent())
                 self._close_current_generation(cancelled=True, interrupted=True)
+        elif from_state == "SPEECH_ENDING" and to_state == "SILENCE":
+            self.emit(
+                "input_speech_stopped",
+                InputSpeechStoppedEvent(
+                    user_transcription_enabled=self._realtime_model.capabilities.user_transcription
+                ),
+            )
 
         self.emit(
             "deepslate_server_event_received",
