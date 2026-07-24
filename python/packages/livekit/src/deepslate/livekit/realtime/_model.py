@@ -41,6 +41,8 @@ from livekit.agents.llm.tool_context import (
     is_function_tool,
     is_raw_function_tool,
 )
+from livekit.agents.metrics import InterruptionMetrics, RealtimeModelMetrics, TTSMetrics
+from livekit.agents.metrics.base import Metadata
 
 import importlib.metadata
 
@@ -82,6 +84,9 @@ class _ResponseGeneration:
     first_token_timestamp: float | None = None
     audio_transcript: str = ""
     uninterruptable: bool = False
+    audio_bytes: int = 0
+    audio_sample_rate: int | None = None
+    audio_channels: int = 1
 
 
 class RealtimeModel(llm.RealtimeModel):
@@ -210,6 +215,11 @@ class RealtimeModel(llm.RealtimeModel):
         """Return the provider identifier for this model."""
         return "deepslate"
 
+    @property
+    def model(self) -> str:
+        """Return the model identifier used in emitted usage/metrics metadata."""
+        return "opal"
+
     def session(self) -> "DeepslateRealtimeSession":
         """Create a new Deepslate real-time session."""
         return DeepslateRealtimeSession(realtime_model=self)
@@ -257,11 +267,19 @@ class DeepslateRealtimeSession(
     contains only LiveKit-specific logic.
     """
 
+    _USAGE_HEARTBEAT_INTERVAL_S = 20.0
+
     def __init__(self, realtime_model: RealtimeModel):
         """Initialize the session and start the underlying core session."""
         super().__init__(realtime_model)
         self._realtime_model = realtime_model
         self._opts = realtime_model._opts
+
+        self._session_start_time = time.time()
+        self._last_usage_report_time = self._session_start_time
+        self._connection_acquire_reported = False
+        self._num_interruptions = 0
+        self._usage_heartbeat_task = asyncio.create_task(self._usage_heartbeat())
 
         self._audio_ch = utils.aio.Chan[rtc.AudioFrame]()
         self._audio_task = asyncio.create_task(self._audio_worker())
@@ -573,7 +591,7 @@ class DeepslateRealtimeSession(
     def interrupt(self) -> None:
         """Interrupt the current generation."""
         if self._current_generation:
-            self._close_current_generation()
+            self._close_current_generation(cancelled=True)
 
     def truncate(
         self,
@@ -588,6 +606,10 @@ class DeepslateRealtimeSession(
 
     async def aclose(self) -> None:
         """Close the session."""
+        self._usage_heartbeat_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await self._usage_heartbeat_task
+
         tool_tasks = tuple(self._tool_tasks)
         for task in tool_tasks:
             task.cancel()
@@ -595,8 +617,7 @@ class DeepslateRealtimeSession(
             await asyncio.gather(*tool_tasks, return_exceptions=True)
 
         if self._current_generation:
-            with contextlib.suppress(asyncio.InvalidStateError):
-                self._current_generation.done_fut.set_result(None)
+            self._close_current_generation(cancelled=True)
 
         # Close channel to break the async for-loop in the worker
         if not self._audio_ch.closed:
@@ -606,10 +627,15 @@ class DeepslateRealtimeSession(
         with contextlib.suppress(asyncio.CancelledError):
             await self._audio_task
 
+        self._report_session_duration()
+
         await self._session.close()
 
     async def on_session_initialized(self) -> None:
         """Emit ``session_initialized`` once the core session is ready."""
+        if not self._connection_acquire_reported:
+            self._connection_acquire_reported = True
+            self._report_connection_acquired(time.time() - self._session_start_time)
         self.emit("session_initialized", None)
 
     async def on_text_fragment(self, text: str) -> None:
@@ -643,6 +669,9 @@ class DeepslateRealtimeSession(
             samples_per_channel=len(pcm_bytes) // 2,
         )
         self._current_generation.audio_ch.send_nowait(frame)
+        self._current_generation.audio_bytes += len(pcm_bytes)
+        self._current_generation.audio_sample_rate = sample_rate
+        self._current_generation.audio_channels = channels
 
         if self._current_generation.first_token_timestamp is None:
             self._current_generation.first_token_timestamp = time.time()
@@ -753,7 +782,7 @@ class DeepslateRealtimeSession(
         if from_state == "SPEECH_STARTING" and to_state == "SPEECH":
             if gen is None or not gen.uninterruptable:
                 self.emit("input_speech_started", InputSpeechStartedEvent())
-                self._close_current_generation()
+                self._close_current_generation(cancelled=True, interrupted=True)
 
         self.emit(
             "deepslate_server_event_received",
@@ -833,27 +862,129 @@ class DeepslateRealtimeSession(
                 fut.set_result(generation_ev)
         self._response_created_futures.clear()
 
-    def _close_current_generation(self) -> None:
+    def _close_current_generation(
+        self, *, cancelled: bool = False, interrupted: bool = False
+    ) -> None:
         """Close the active generation's channels and mark it complete.
 
         Closes the text, audio, function and message channels for the current
         generation (if any) and resolves its done future. Called on response
         end, tool calls, and interruptions.
         """
-        if self._current_generation is None:
+        gen = self._current_generation
+        if gen is None:
             return
         # In TTS mode the server streams audio with no transcript, so text_ch
         # never receives data and the transcription synchronizer's text segment
         # is left unterminated (it logs "playback_finished called before
         # text/audio input is done"). Emit an empty fragment so end_text_input
         # fires and the text segment is closed in step with the audio.
-        if not self._current_generation.text_ch.closed:
-            if self._current_generation.audio_transcript == "":
-                self._current_generation.text_ch.send_nowait("")
-            self._current_generation.text_ch.close()
-        self._current_generation.audio_ch.close()
-        self._current_generation.function_ch.close()
-        self._current_generation.message_ch.close()
+        if not gen.text_ch.closed:
+            if gen.audio_transcript == "":
+                gen.text_ch.send_nowait("")
+            gen.text_ch.close()
+        gen.audio_ch.close()
+        gen.function_ch.close()
+        gen.message_ch.close()
         with contextlib.suppress(asyncio.InvalidStateError):
-            self._current_generation.done_fut.set_result(None)
+            gen.done_fut.set_result(None)
         self._current_generation = None
+        self._emit_generation_metrics(gen, cancelled=cancelled, interrupted=interrupted)
+
+    def _emit_generation_metrics(
+        self, gen: _ResponseGeneration, *, cancelled: bool, interrupted: bool
+    ) -> None:
+        """Emit latency and TTS-usage metrics for a just-closed generation."""
+        now = time.time()
+        duration = now - gen.created_timestamp
+        ttft = (
+            gen.first_token_timestamp - gen.created_timestamp
+            if gen.first_token_timestamp is not None
+            else -1.0
+        )
+        metadata = Metadata(
+            model_name=self._realtime_model.model,
+            model_provider=self._realtime_model.provider,
+        )
+
+        self.emit(
+            "metrics_collected",
+            RealtimeModelMetrics(
+                request_id=gen.response_id,
+                timestamp=gen.created_timestamp,
+                duration=duration,
+                ttft=ttft,
+                cancelled=cancelled,
+                input_token_details=RealtimeModelMetrics.InputTokenDetails(),
+                output_token_details=RealtimeModelMetrics.OutputTokenDetails(),
+                metadata=metadata,
+            ),
+        )
+
+        if gen.audio_bytes and gen.audio_sample_rate:
+            audio_duration = (
+                gen.audio_bytes / 2 / gen.audio_channels / gen.audio_sample_rate
+            )
+            self.emit(
+                "metrics_collected",
+                TTSMetrics(
+                    label=self._realtime_model.label,
+                    request_id=gen.response_id,
+                    timestamp=gen.created_timestamp,
+                    ttfb=ttft,
+                    duration=duration,
+                    audio_duration=audio_duration,
+                    cancelled=cancelled,
+                    characters_count=len(gen.audio_transcript),
+                    streamed=True,
+                    metadata=metadata,
+                ),
+            )
+
+        if interrupted:
+            self._num_interruptions += 1
+            self.emit(
+                "metrics_collected",
+                InterruptionMetrics(
+                    timestamp=now,
+                    total_duration=0.0,
+                    prediction_duration=0.0,
+                    detection_delay=0.0,
+                    num_interruptions=self._num_interruptions,
+                    num_backchannels=0,
+                    num_requests=0,
+                    metadata=metadata,
+                ),
+            )
+
+    async def _usage_heartbeat(self) -> None:
+        """Periodically report connected time as billing usage."""
+        try:
+            while True:
+                await asyncio.sleep(self._USAGE_HEARTBEAT_INTERVAL_S)
+                self._report_session_duration()
+        except asyncio.CancelledError:
+            pass
+
+    def _report_session_duration(self) -> None:
+        """Report connected wall-clock time (since the last report) as billing usage."""
+        now = time.time()
+        delta = now - self._last_usage_report_time
+        if delta <= 0:
+            return
+        self._last_usage_report_time = now
+
+        self.emit(
+            "metrics_collected",
+            RealtimeModelMetrics(
+                request_id="",
+                timestamp=now,
+                session_duration=delta,
+                input_token_details=RealtimeModelMetrics.InputTokenDetails(),
+                output_token_details=RealtimeModelMetrics.OutputTokenDetails(),
+                metadata=Metadata(
+                    model_name=self._realtime_model.model,
+                    model_provider=self._realtime_model.provider,
+                ),
+            ),
+        )
