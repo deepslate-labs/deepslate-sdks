@@ -592,7 +592,7 @@ class DeepslateRealtimeSession(
     def interrupt(self) -> None:
         """Interrupt the current generation."""
         if self._current_generation:
-            self._close_current_generation(cancelled=True)
+            self._close_current_generation(cancelled=True, interrupted=True)
 
     def truncate(
         self,
