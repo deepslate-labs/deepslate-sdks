@@ -276,7 +276,7 @@ class DeepslateRealtimeSession(
         self._realtime_model = realtime_model
         self._opts = realtime_model._opts
 
-        self._session_start_time = time.time()
+        self._session_start_time = time.monotonic()
         self._last_usage_report_time = self._session_start_time
         self._connection_acquire_reported = False
         self._num_interruptions = 0
@@ -636,7 +636,7 @@ class DeepslateRealtimeSession(
         """Emit ``session_initialized`` once the core session is ready."""
         if not self._connection_acquire_reported:
             self._connection_acquire_reported = True
-            self._report_connection_acquired(time.time() - self._session_start_time)
+            self._report_connection_acquired(time.monotonic() - self._session_start_time)
         self.emit("session_initialized", None)
 
     async def on_text_fragment(self, text: str) -> None:
@@ -910,10 +910,7 @@ class DeepslateRealtimeSession(
             if gen.first_token_timestamp is not None
             else -1.0
         )
-        metadata = Metadata(
-            model_name=self._realtime_model.model,
-            model_provider=self._realtime_model.provider,
-        )
+        metadata = self._metadata()
 
         self.emit(
             "metrics_collected",
@@ -973,26 +970,45 @@ class DeepslateRealtimeSession(
                 self._report_session_duration()
         except asyncio.CancelledError:
             pass
+        except Exception:
+            logger.error("usage heartbeat failed", exc_info=True)
+
+    def _metadata(self) -> Metadata:
+        return Metadata(
+            model_name=self._realtime_model.model,
+            model_provider=self._realtime_model.provider,
+        )
+
+    def _report_connection_acquired(self, acquire_time: float) -> None:
+        """Report the one-time connection-acquire latency for this session."""
+        self.emit(
+            "metrics_collected",
+            RealtimeModelMetrics(
+                request_id="",
+                timestamp=time.time(),
+                acquire_time=acquire_time,
+                input_token_details=RealtimeModelMetrics.InputTokenDetails(),
+                output_token_details=RealtimeModelMetrics.OutputTokenDetails(),
+                metadata=self._metadata(),
+            ),
+        )
 
     def _report_session_duration(self) -> None:
         """Report connected wall-clock time (since the last report) as billing usage."""
-        now = time.time()
-        delta = now - self._last_usage_report_time
+        now_monotonic = time.monotonic()
+        delta = now_monotonic - self._last_usage_report_time
         if delta <= 0:
             return
-        self._last_usage_report_time = now
+        self._last_usage_report_time = now_monotonic
 
         self.emit(
             "metrics_collected",
             RealtimeModelMetrics(
                 request_id="",
-                timestamp=now,
+                timestamp=time.time(),
                 session_duration=delta,
                 input_token_details=RealtimeModelMetrics.InputTokenDetails(),
                 output_token_details=RealtimeModelMetrics.OutputTokenDetails(),
-                metadata=Metadata(
-                    model_name=self._realtime_model.model,
-                    model_provider=self._realtime_model.provider,
-                ),
+                metadata=self._metadata(),
             ),
         )
