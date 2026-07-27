@@ -102,12 +102,12 @@ class RealtimeModel(llm.RealtimeModel):
         temperature: float = 1.0,
         generate_reply_timeout: float = 30.0,
         # VAD configuration
-        vad_config: VadConfig | None = None,
         vad_confidence_threshold: float | None = None,
         vad_min_volume: float | None = None,
         vad_start_duration_ms: int | None = None,
         vad_stop_duration_ms: int | None = None,
         vad_backbuffer_duration_ms: int | None = None,
+        vad_config: VadConfig | None = None,
         # TTS configuration
         tts_config: ElevenLabsTtsConfig | HostedTtsConfig | HostedVoiceCloneConfig | None = None,
         http_session: aiohttp.ClientSession | None = None,
@@ -123,7 +123,6 @@ class RealtimeModel(llm.RealtimeModel):
             system_prompt: System prompt for the model.
             temperature: Sampling temperature (0.0 to 2.0). Higher values produce more random output.
             generate_reply_timeout: Timeout in seconds for generate_reply (0 = no timeout).
-            vad_config: Voice activity detection tuning.
             vad_confidence_threshold: Deprecated, use ``vad_config`` instead. VAD confidence
                 threshold (0.0 to 1.0).
             vad_min_volume: Deprecated, use ``vad_config`` instead. VAD minimum volume
@@ -134,6 +133,7 @@ class RealtimeModel(llm.RealtimeModel):
                 to detect end (milliseconds).
             vad_backbuffer_duration_ms: Deprecated, use ``vad_config`` instead. Audio buffer
                 duration before speech detection (milliseconds).
+            vad_config: Voice activity detection tuning.
             tts_config: TTS configuration. When provided, audio output is enabled.
                         Use ``ElevenLabsTtsConfig`` for ElevenLabs-hosted synthesis,
                         ``HostedTtsConfig`` for Deepslate-hosted (already cloned/existing) voices,
