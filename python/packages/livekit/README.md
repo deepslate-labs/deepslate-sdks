@@ -125,6 +125,7 @@ Pass a `VadConfig` instance to tune voice activity detection — see [VAD Config
 ### VAD Configuration
 
 ```python
+# Example overrides, see defaults in the table below
 from deepslate.livekit import RealtimeModel, VadConfig
 
 llm = RealtimeModel(
