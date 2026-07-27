@@ -19,6 +19,7 @@ import contextlib
 import json
 import os
 import time
+import warnings
 from dataclasses import dataclass
 from types import SimpleNamespace
 from typing import Any, Literal
@@ -101,11 +102,12 @@ class RealtimeModel(llm.RealtimeModel):
         temperature: float = 1.0,
         generate_reply_timeout: float = 30.0,
         # VAD configuration
-        vad_confidence_threshold: float = 0.5,
-        vad_min_volume: float = 0.01,
-        vad_start_duration_ms: int = 200,
-        vad_stop_duration_ms: int = 500,
-        vad_backbuffer_duration_ms: int = 1000,
+        vad_config: VadConfig | None = None,
+        vad_confidence_threshold: float | None = None,
+        vad_min_volume: float | None = None,
+        vad_start_duration_ms: int | None = None,
+        vad_stop_duration_ms: int | None = None,
+        vad_backbuffer_duration_ms: int | None = None,
         # TTS configuration
         tts_config: ElevenLabsTtsConfig | HostedTtsConfig | HostedVoiceCloneConfig | None = None,
         http_session: aiohttp.ClientSession | None = None,
@@ -121,11 +123,17 @@ class RealtimeModel(llm.RealtimeModel):
             system_prompt: System prompt for the model.
             temperature: Sampling temperature (0.0 to 2.0). Higher values produce more random output.
             generate_reply_timeout: Timeout in seconds for generate_reply (0 = no timeout).
-            vad_confidence_threshold: VAD confidence threshold (0.0 to 1.0).
-            vad_min_volume: VAD minimum volume threshold (0.0 to 1.0).
-            vad_start_duration_ms: Duration of speech to detect start (milliseconds).
-            vad_stop_duration_ms: Duration of silence to detect end (milliseconds).
-            vad_backbuffer_duration_ms: Audio buffer duration before speech detection (milliseconds).
+            vad_config: Voice activity detection tuning.
+            vad_confidence_threshold: Deprecated, use ``vad_config`` instead. VAD confidence
+                threshold (0.0 to 1.0).
+            vad_min_volume: Deprecated, use ``vad_config`` instead. VAD minimum volume
+                threshold (0.0 to 1.0).
+            vad_start_duration_ms: Deprecated, use ``vad_config`` instead. Duration of speech
+                to detect start (milliseconds).
+            vad_stop_duration_ms: Deprecated, use ``vad_config`` instead. Duration of silence
+                to detect end (milliseconds).
+            vad_backbuffer_duration_ms: Deprecated, use ``vad_config`` instead. Audio buffer
+                duration before speech detection (milliseconds).
             tts_config: TTS configuration. When provided, audio output is enabled.
                         Use ``ElevenLabsTtsConfig`` for ElevenLabs-hosted synthesis,
                         ``HostedTtsConfig`` for Deepslate-hosted (already cloned/existing) voices,
@@ -191,13 +199,54 @@ class RealtimeModel(llm.RealtimeModel):
             generate_reply_timeout=generate_reply_timeout,
         )
 
-        self._vad_config = VadConfig(
-            confidence_threshold=vad_confidence_threshold,
-            min_volume=vad_min_volume,
-            start_duration_ms=vad_start_duration_ms,
-            stop_duration_ms=vad_stop_duration_ms,
-            backbuffer_duration_ms=vad_backbuffer_duration_ms,
-        )
+        deprecated_vad_kwargs = {
+            "vad_confidence_threshold": vad_confidence_threshold,
+            "vad_min_volume": vad_min_volume,
+            "vad_start_duration_ms": vad_start_duration_ms,
+            "vad_stop_duration_ms": vad_stop_duration_ms,
+            "vad_backbuffer_duration_ms": vad_backbuffer_duration_ms,
+        }
+        explicit_deprecated_vad_kwargs = {
+            k: v for k, v in deprecated_vad_kwargs.items() if v is not None
+        }
+
+        if vad_config is not None and explicit_deprecated_vad_kwargs:
+            warnings.warn(
+                f"`vad_config` was provided along with deprecated flat kwargs "
+                f"({', '.join(explicit_deprecated_vad_kwargs)}); `vad_config` takes "
+                "precedence and the flat kwargs are ignored.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+        elif explicit_deprecated_vad_kwargs:
+            warnings.warn(
+                f"{', '.join(explicit_deprecated_vad_kwargs)} are deprecated and will be "
+                "removed in a future release; pass a `vad_config=VadConfig(...)` instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+
+        if vad_config is not None:
+            self._vad_config = vad_config
+        else:
+            vad_defaults = VadConfig()
+
+            def _coalesce(value, default):
+                return default if value is None else value
+
+            self._vad_config = VadConfig(
+                confidence_threshold=_coalesce(
+                    vad_confidence_threshold, vad_defaults.confidence_threshold
+                ),
+                min_volume=_coalesce(vad_min_volume, vad_defaults.min_volume),
+                start_duration_ms=_coalesce(
+                    vad_start_duration_ms, vad_defaults.start_duration_ms
+                ),
+                stop_duration_ms=_coalesce(vad_stop_duration_ms, vad_defaults.stop_duration_ms),
+                backbuffer_duration_ms=_coalesce(
+                    vad_backbuffer_duration_ms, vad_defaults.backbuffer_duration_ms
+                ),
+            )
 
         self._client = BaseDeepslateClient(
             opts=self._opts,
