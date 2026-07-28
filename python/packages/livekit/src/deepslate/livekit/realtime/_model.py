@@ -30,6 +30,7 @@ from livekit.agents.llm import (
     FunctionCall,
     GenerationCreatedEvent,
     InputSpeechStartedEvent,
+    InputTranscriptionCompleted,
     MessageGeneration,
     RawFunctionTool,
     Tool,
@@ -242,7 +243,6 @@ class DeepslateRealtimeSession(
         Literal[
             "deepslate_server_event_received",
             "deepslate_client_event_sent",
-            "user_transcription",
             "audio_transcript",
             "session_initialized",
         ]
@@ -648,6 +648,7 @@ class DeepslateRealtimeSession(
             self._current_generation.first_token_timestamp = time.time()
 
         if transcript:
+            self._current_generation.text_ch.send_nowait(transcript)
             self._current_generation.audio_transcript += transcript
             self.emit("audio_transcript", transcript)
 
@@ -684,10 +685,14 @@ class DeepslateRealtimeSession(
     async def on_user_transcription(
         self, text: str, language: str | None, turn_id: int
     ) -> None:
-        """Emit a user-transcription event for the recognized speech."""
+        """Emit the input-transcription-completed event livekit-agents listens for."""
         self.emit(
-            "user_transcription",
-            SimpleNamespace(text=text, language=language or ""),
+            "input_audio_transcription_completed",
+            InputTranscriptionCompleted(
+                item_id=utils.shortuuid("item_"),
+                transcript=text,
+                is_final=True,
+            ),
         )
 
     async def on_chat_history(self, messages) -> None:
