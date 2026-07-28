@@ -19,6 +19,7 @@ import contextlib
 import json
 import os
 import time
+from collections.abc import AsyncIterable
 from dataclasses import dataclass
 from types import SimpleNamespace
 from typing import Any, Literal
@@ -147,6 +148,7 @@ class RealtimeModel(llm.RealtimeModel):
                 audio_output=tts_config is not None,
                 manual_function_calls=False,
                 per_response_tool_choice=False,
+                supports_say=True,
             )
         )
 
@@ -458,6 +460,18 @@ class DeepslateRealtimeSession(
         uninterruptable: bool = False,
     ) -> None:
         """Bypass the LLM and speak text directly via TTS."""
+        await self._send_direct_speech(text, include_in_history, uninterruptable)
+
+    async def _send_direct_speech(
+        self,
+        text: str,
+        include_in_history: bool,
+        uninterruptable: bool,
+    ) -> None:
+        """Initialize the session and dispatch a ``DirectSpeech`` request.
+
+        Shared by :meth:`speak_direct` and :meth:`say`.
+        """
         await self._session.initialize()
         # Consumed by the next _create_generation() so on_vad_state_event can
         # tell this generation apart from a normal, barge-in-able one.
@@ -465,6 +479,48 @@ class DeepslateRealtimeSession(
         await self._session.send_direct_speech(
             text, include_in_history, uninterruptable
         )
+
+    def say(
+        self,
+        text: str | AsyncIterable[str],
+    ) -> asyncio.Future[GenerationCreatedEvent]:
+        """Speak ``text`` verbatim via direct speech, bypassing the LLM.
+
+        Callers who need an uninterruptable or
+        history-excluded utterance should use :meth:`speak_direct` instead
+        (via ``agent.realtime_llm_session`` cast to ``DeepslateRealtimeSession``).
+        """
+        return asyncio.create_task(self._say(text))
+
+    async def _say(self, text: str | AsyncIterable[str]) -> GenerationCreatedEvent:
+        """Async implementation backing :meth:`say`."""
+        if isinstance(text, str):
+            full_text = text
+        else:
+            chunks: list[str] = []
+            async for chunk in text:
+                chunks.append(chunk)
+            full_text = "".join(chunks)
+
+        self._pending_user_text = None
+
+        fut: asyncio.Future[GenerationCreatedEvent] = asyncio.Future()
+        request_id = utils.shortuuid("gen_")
+        self._response_created_futures[request_id] = fut
+
+        self._pending_uninterruptable = False
+
+        await self._send_direct_speech(
+            full_text, include_in_history=True, uninterruptable=False
+        )
+
+        timeout = self._opts.generate_reply_timeout
+        try:
+            if timeout > 0:
+                return await asyncio.wait_for(fut, timeout=timeout)
+            return await fut
+        except asyncio.TimeoutError:
+            raise llm.RealtimeError(f"say() timed out after {timeout}s")
 
     async def query_conversation(
         self,

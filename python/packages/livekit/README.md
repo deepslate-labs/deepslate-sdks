@@ -212,13 +212,27 @@ class Assistant(Agent):
 
 ---
 
-## Sending a Welcome Message
+## Speaking Text Directly
 
-To greet the user, speak directly the moment the agent becomes active. Override
-`Agent.on_enter()` and call `speak_direct()` on the realtime session that the
-`AgentSession` created for you — reachable via `self.realtime_llm_session`.
-`speak_direct()` buffers the utterance until the session is ready, so no fixed
-delay or event handling is needed:
+Deepslate can speak verbatim text without running it through the LLM, using
+the server's native `DirectSpeech` support. There are two ways to reach it:
+
+- **`AgentSession.say()` / `Agent.session.say()`** — the standard LiveKit API.
+  Supported out of the box (`RealtimeModel` sets `supports_say=True`) for the
+  common case: the text is spoken, added to the chat history, and can be
+  interrupted like any other turn.
+- **`DeepslateRealtimeSession.speak_direct()`** — a Deepslate-specific escape
+  hatch for the cases `say()` doesn't cover: `include_in_history=False`
+  (ephemeral, not added to history) and/or `uninterruptable=True` (e.g.
+  compliance announcements that must not be barged into). Reach it via
+  `self.realtime_llm_session` cast to `DeepslateRealtimeSession`.
+
+### Sending a Welcome Message
+
+To greet the user, speak directly the moment the agent becomes active by
+overriding `Agent.on_enter()`. This example plays an uninterruptable
+compliance notice via `speak_direct()`, then a normal, interruptable greeting
+via the standard `say()`:
 
 ```python
 from typing import cast
@@ -233,10 +247,14 @@ class Assistant(Agent):
 
     async def on_enter(self) -> None:
         session = cast(DeepslateRealtimeSession, self.realtime_llm_session)
+        # Uninterruptable and excluded from history: use speak_direct() directly.
         await session.speak_direct(
             "Please note that this call is handled by an AI and may be recorded.",
+            include_in_history=False,
             uninterruptable=True,
         )
+        # Normal, interruptable, added to history: use the standard say().
+        await self.session.say("Hi, how can I help you today?")
 
 
 @server.rtc_session()
