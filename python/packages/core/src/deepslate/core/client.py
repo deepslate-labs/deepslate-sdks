@@ -81,6 +81,7 @@ class BaseDeepslateClient:
         *,
         should_continue: Callable[[], bool],
         on_fatal_error: Callable[[Exception], Awaitable[None]],
+        on_connect_attempt: Optional[Callable[[], Awaitable[None]]] = None,
     ) -> None:
         """Connect and run ``run_session`` with exponential-backoff retries.
 
@@ -91,13 +92,18 @@ class BaseDeepslateClient:
         reconnects.  Once ``max_retries`` is exceeded, or on any
         unexpected exception, ``on_fatal_error`` is called and the loop
         exits.  ``should_continue`` is checked before every attempt so the
-        caller can stop the loop externally.
+        caller can stop the loop externally.  ``on_connect_attempt``, if
+        given, is awaited immediately before each dial (not before the
+        backoff sleep), so callers can time each individual connection
+        attempt rather than just the first one.
         """
         num_retries = 0
         max_retries = self._opts.max_retries
 
         while should_continue():
             try:
+                if on_connect_attempt is not None:
+                    await on_connect_attempt()
                 ws = await self.connect()
                 await run_session(ws)
                 num_retries = 0  # reset on clean exit

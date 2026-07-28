@@ -149,6 +149,9 @@ class DeepslateSessionListener:
     async def on_session_initialized(self) -> None:
         pass
 
+    async def on_connecting(self) -> None:
+        pass
+
     async def on_fatal_error(self, e: Exception) -> None:
         pass
 
