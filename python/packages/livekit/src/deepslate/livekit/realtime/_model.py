@@ -107,6 +107,7 @@ class RealtimeModel(llm.RealtimeModel):
         system_prompt: str = "You are a helpful assistant.",
         temperature: float = 1.0,
         generate_reply_timeout: float = 30.0,
+        usage_heartbeat_interval_s: float = 20.0,
         # VAD configuration
         vad_confidence_threshold: float = 0.5,
         vad_min_volume: float = 0.01,
@@ -128,6 +129,8 @@ class RealtimeModel(llm.RealtimeModel):
             system_prompt: System prompt for the model.
             temperature: Sampling temperature (0.0 to 2.0). Higher values produce more random output.
             generate_reply_timeout: Timeout in seconds for generate_reply (0 = no timeout).
+            usage_heartbeat_interval_s: Interval in seconds between connected-time
+                                        usage reports while a session is active.
             vad_confidence_threshold: VAD confidence threshold (0.0 to 1.0).
             vad_min_volume: VAD minimum volume threshold (0.0 to 1.0).
             vad_start_duration_ms: Duration of speech to detect start (milliseconds).
@@ -158,6 +161,7 @@ class RealtimeModel(llm.RealtimeModel):
         )
 
         self._tts_config = tts_config
+        self._usage_heartbeat_interval_s = usage_heartbeat_interval_s
 
         if ws_url:
             deepslate_vendor_id = vendor_id or ""
@@ -267,8 +271,6 @@ class DeepslateRealtimeSession(
     protobuf details are encapsulated in the core session; this class
     contains only LiveKit-specific logic.
     """
-
-    _USAGE_HEARTBEAT_INTERVAL_S = 20.0
 
     def __init__(self, realtime_model: RealtimeModel):
         """Initialize the session and start the underlying core session."""
@@ -942,7 +944,7 @@ class DeepslateRealtimeSession(
         """Periodically report connected time as billing usage."""
         try:
             while True:
-                await asyncio.sleep(self._USAGE_HEARTBEAT_INTERVAL_S)
+                await asyncio.sleep(self._realtime_model._usage_heartbeat_interval_s)
                 self._report_session_duration()
         except asyncio.CancelledError:
             pass
