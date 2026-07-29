@@ -125,15 +125,14 @@ Pass a `VadConfig` instance to tune voice activity detection — see [VAD Config
 ### VAD Configuration
 
 ```python
-# Example overrides, see defaults in the table below
 from deepslate.livekit import RealtimeModel, VadConfig
 
 llm = RealtimeModel(
     vad_config=VadConfig(
-        confidence_threshold=0.4,   # 0.0–1.0: minimum confidence to classify as speech
-        min_volume=0.0,             # 0.0–1.0: minimum volume to classify as speech
-        start_duration_ms=150,      # ms of speech required to trigger start
-        stop_duration_ms=390,       # ms of silence required to trigger stop
+        confidence_threshold=0.5,   # 0.0–1.0: minimum confidence to classify as speech
+        min_volume=0.01,            # 0.0–1.0: minimum volume to classify as speech
+        start_duration_ms=200,      # ms of speech required to trigger start
+        stop_duration_ms=500,       # ms of silence required to trigger stop
         backbuffer_duration_ms=1000 # ms of audio buffered before detection triggers
     )
 )
