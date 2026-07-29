@@ -223,14 +223,14 @@ the service's `DirectSpeech`. There are two ways to reach it:
   and can be interrupted like any other turn.
 - **`DeepslateRealtimeSession.speak_direct()`** — use this instead of `say()`
   when the spoken text needs to be ephemeral (not added to history), and/or
-  needs to be uninterruptable (e.g. compliance announcements that must not
+  needs to be uninterruptible (e.g. compliance announcements that must not
   be barged into). Reach it via `self.realtime_llm_session` cast to
   `DeepslateRealtimeSession`.
 
 ### Sending a Welcome Message
 
 To greet the user, speak directly the moment the agent becomes active by
-overriding `Agent.on_enter()`. This example plays an uninterruptable
+overriding `Agent.on_enter()`. This example plays an uninterruptible
 compliance notice via `speak_direct()`, then a normal, interruptable greeting
 via the standard `say()`:
 
