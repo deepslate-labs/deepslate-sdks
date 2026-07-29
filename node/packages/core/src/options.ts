@@ -127,10 +127,10 @@ export interface VadConfig {
 }
 
 export const VAD_DEFAULTS = {
-  confidenceThreshold: 0.5,
-  minVolume: 0.01,
-  startDurationMs: 200,
-  stopDurationMs: 500,
+  confidenceThreshold: 0.4,
+  minVolume: 0.0,
+  startDurationMs: 150,
+  stopDurationMs: 390,
   backbufferDurationMs: 1000,
 } as const;
 

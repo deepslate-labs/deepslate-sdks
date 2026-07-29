@@ -263,10 +263,10 @@ Subscribe with `session.on(event, listener)`. Event payloads are strongly typed 
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `confidenceThreshold` | `number` | `0.5` | Minimum confidence to classify audio as speech (0–1) |
-| `minVolume` | `number` | `0.01` | Minimum volume to classify audio as speech (0–1) |
-| `startDurationMs` | `number` | `200` | Duration of speech required to trigger start event |
-| `stopDurationMs` | `number` | `500` | Duration of silence required to trigger stop event |
+| `confidenceThreshold` | `number` | `0.4` | Minimum confidence to classify audio as speech (0–1) |
+| `minVolume` | `number` | `0.0` | Minimum volume to classify audio as speech (0–1) |
+| `startDurationMs` | `number` | `150` | Duration of speech required to trigger start event |
+| `stopDurationMs` | `number` | `390` | Duration of silence required to trigger stop event |
 | `backbufferDurationMs` | `number` | `1000` | Audio buffer captured before speech detection triggers |
 
 ---
