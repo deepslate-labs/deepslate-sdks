@@ -241,10 +241,10 @@ llm = DeepslateRealtimeLLMService(
 
 | Parameter                | Type    | Default | Description                                                       |
 |--------------------------|---------|---------|-------------------------------------------------------------------|
-| `confidence_threshold`   | `float` | `0.5`   | Minimum confidence required to classify audio as speech (0.0–1.0) |
-| `min_volume`             | `float` | `0.01`  | Minimum volume level to classify audio as speech (0.0–1.0)        |
-| `start_duration_ms`      | `int`   | `200`   | Duration of speech (ms) required to trigger speech start          |
-| `stop_duration_ms`       | `int`   | `500`   | Duration of silence (ms) required to trigger speech end           |
+| `confidence_threshold`   | `float` | `0.4`   | Minimum confidence required to classify audio as speech (0.0–1.0) |
+| `min_volume`             | `float` | `0.0`   | Minimum volume level to classify audio as speech (0.0–1.0)        |
+| `start_duration_ms`      | `int`   | `150`   | Duration of speech (ms) required to trigger speech start          |
+| `stop_duration_ms`       | `int`   | `390`   | Duration of silence (ms) required to trigger speech end           |
 | `backbuffer_duration_ms` | `int`   | `1000`  | Audio (ms) buffered before speech detection triggers              |
 
 **Tuning tips:**

@@ -78,10 +78,10 @@ DEEPSLATE_API_KEY=your_api_key
 from deepslate.core import VadConfig
 
 vad = VadConfig(
-    confidence_threshold=0.5,   # 0.0–1.0
-    min_volume=0.01,            # 0.0–1.0
-    start_duration_ms=200,
-    stop_duration_ms=500,
+    confidence_threshold=0.4,   # 0.0–1.0
+    min_volume=0.0,             # 0.0–1.0
+    start_duration_ms=150,
+    stop_duration_ms=390,
     backbuffer_duration_ms=1000,
 )
 ```
@@ -316,10 +316,10 @@ Subclass this and override only the methods you need. All methods are `async` an
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `confidence_threshold` | `float` | `0.5` | Minimum confidence to classify audio as speech (0–1) |
-| `min_volume` | `float` | `0.01` | Minimum volume to classify audio as speech (0–1) |
-| `start_duration_ms` | `int` | `200` | Duration of speech required to trigger start event |
-| `stop_duration_ms` | `int` | `500` | Duration of silence required to trigger stop event |
+| `confidence_threshold` | `float` | `0.4` | Minimum confidence to classify audio as speech (0–1) |
+| `min_volume` | `float` | `0.0` | Minimum volume to classify audio as speech (0–1) |
+| `start_duration_ms` | `int` | `150` | Duration of speech required to trigger start event |
+| `stop_duration_ms` | `int` | `390` | Duration of silence required to trigger stop event |
 | `backbuffer_duration_ms` | `int` | `1000` | Audio buffer captured before speech detection triggers |
 
 ---
