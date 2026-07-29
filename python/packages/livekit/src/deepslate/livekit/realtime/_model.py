@@ -123,16 +123,6 @@ class RealtimeModel(llm.RealtimeModel):
             system_prompt: System prompt for the model.
             temperature: Sampling temperature (0.0 to 2.0). Higher values produce more random output.
             generate_reply_timeout: Timeout in seconds for generate_reply (0 = no timeout).
-            vad_confidence_threshold: Deprecated, use ``vad_config`` instead. VAD confidence
-                threshold (0.0 to 1.0).
-            vad_min_volume: Deprecated, use ``vad_config`` instead. VAD minimum volume
-                threshold (0.0 to 1.0).
-            vad_start_duration_ms: Deprecated, use ``vad_config`` instead. Duration of speech
-                to detect start (milliseconds).
-            vad_stop_duration_ms: Deprecated, use ``vad_config`` instead. Duration of silence
-                to detect end (milliseconds).
-            vad_backbuffer_duration_ms: Deprecated, use ``vad_config`` instead. Audio buffer
-                duration before speech detection (milliseconds).
             vad_config: Voice activity detection tuning.
             tts_config: TTS configuration. When provided, audio output is enabled.
                         Use ``ElevenLabsTtsConfig`` for ElevenLabs-hosted synthesis,
