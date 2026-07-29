@@ -130,10 +130,10 @@ import { RealtimeModel } from "@deepslate-labs/livekit";
 
 const model = new RealtimeModel({
   vad: {
-    confidenceThreshold: 0.5,   // 0.0–1.0: minimum confidence to classify as speech
-    minVolume: 0.01,            // 0.0–1.0: minimum volume to classify as speech
-    startDurationMs: 200,       // ms of speech required to trigger start
-    stopDurationMs: 500,        // ms of silence required to trigger stop
+    confidenceThreshold: 0.4,   // 0.0–1.0: minimum confidence to classify as speech
+    minVolume: 0.0,             // 0.0–1.0: minimum volume to classify as speech
+    startDurationMs: 150,       // ms of speech required to trigger start
+    stopDurationMs: 390,        // ms of silence required to trigger stop
     backbufferDurationMs: 1000, // ms of audio buffered before detection triggers
   },
 });

@@ -93,16 +93,16 @@ class DeepslateOptions:
 class VadConfig:
     """Voice Activity Detection configuration handled server-side by Deepslate."""
 
-    confidence_threshold: float = 0.5
+    confidence_threshold: float = 0.4
     """Minimum confidence required to consider audio as speech (0.0 to 1.0)."""
 
-    min_volume: float = 0.01
+    min_volume: float = 0.0
     """Minimum volume level to consider audio as speech (0.0 to 1.0)."""
 
-    start_duration_ms: int = 200
+    start_duration_ms: int = 150
     """Duration of speech to detect start of speech (milliseconds)."""
 
-    stop_duration_ms: int = 500
+    stop_duration_ms: int = 390
     """Duration of silence to detect end of speech (milliseconds)."""
 
     backbuffer_duration_ms: int = 1000
