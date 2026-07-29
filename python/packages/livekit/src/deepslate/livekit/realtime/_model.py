@@ -557,8 +557,8 @@ class DeepslateRealtimeSession(
             if timeout > 0:
                 return await asyncio.wait_for(fut, timeout=timeout)
             return await fut
-        except asyncio.TimeoutError:
-            raise llm.RealtimeError(f"say() timed out after {timeout}s")
+        except asyncio.TimeoutError as exc:
+            raise llm.RealtimeError(f"say() timed out after {timeout}s") from exc
         finally:
             self._response_created_futures.pop(request_id, None)
 
