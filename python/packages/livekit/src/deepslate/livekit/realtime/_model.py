@@ -549,17 +549,18 @@ class DeepslateRealtimeSession(
 
         self._pending_uninterruptable = False
 
-        await self._send_direct_speech(
-            full_text, include_in_history=True, uninterruptable=False
-        )
-
         timeout = self._opts.generate_reply_timeout
         try:
+            await self._send_direct_speech(
+                full_text, include_in_history=True, uninterruptable=False
+            )
             if timeout > 0:
                 return await asyncio.wait_for(fut, timeout=timeout)
             return await fut
         except asyncio.TimeoutError:
             raise llm.RealtimeError(f"say() timed out after {timeout}s")
+        finally:
+            self._response_created_futures.pop(request_id, None)
 
     async def query_conversation(
         self,
@@ -627,35 +628,35 @@ class DeepslateRealtimeSession(
         if utils.is_given(instructions):
             self._instructions = instructions
 
-        if self._pending_user_text:
-            if utils.is_given(instructions):
-                await self._session.send_text(
-                    self._pending_user_text,
-                    trigger=TriggerMode.NO_TRIGGER,
-                )
-                await self._session.trigger_inference(instructions=instructions)
+        timeout = self._opts.generate_reply_timeout
+        try:
+            if self._pending_user_text:
+                if utils.is_given(instructions):
+                    await self._session.send_text(
+                        self._pending_user_text,
+                        trigger=TriggerMode.NO_TRIGGER,
+                    )
+                    await self._session.trigger_inference(instructions=instructions)
+                else:
+                    await self._session.initialize()
+                    await self._session.send_text(
+                        self._pending_user_text,
+                        trigger=TriggerMode.IMMEDIATE,
+                    )
+                self._pending_user_text = None
             else:
                 await self._session.initialize()
-                await self._session.send_text(
-                    self._pending_user_text,
-                    trigger=TriggerMode.IMMEDIATE,
+                await self._session.trigger_inference(
+                    instructions=instructions if utils.is_given(instructions) else None
                 )
-            self._pending_user_text = None
-        else:
-            await self._session.initialize()
-            await self._session.trigger_inference(
-                instructions=instructions if utils.is_given(instructions) else None
-            )
 
-        timeout = self._opts.generate_reply_timeout
-
-        if timeout > 0:
-            try:
+            if timeout > 0:
                 return await asyncio.wait_for(fut, timeout=timeout)
-            except asyncio.TimeoutError:
-                raise TimeoutError(f"generate_reply timed out after {timeout}s")
-        else:
             return await fut
+        except asyncio.TimeoutError:
+            raise TimeoutError(f"generate_reply timed out after {timeout}s")
+        finally:
+            self._response_created_futures.pop(request_id, None)
 
     def commit_audio(self) -> None:
         """Deepslate uses server-side VAD for auto-commit."""
@@ -928,10 +929,11 @@ class DeepslateRealtimeSession(
 
         self.emit("generation_created", generation_ev)
 
-        for fut in list(self._response_created_futures.values()):
+        if self._response_created_futures:
+            request_id = next(iter(self._response_created_futures))
+            fut = self._response_created_futures.pop(request_id)
             if not fut.done():
                 fut.set_result(generation_ev)
-        self._response_created_futures.clear()
 
     def _close_current_generation(self) -> None:
         """Close the active generation's channels and mark it complete.
