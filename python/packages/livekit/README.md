@@ -118,8 +118,9 @@ if __name__ == "__main__":
 | `system_prompt`          | `str`                 | `"You are a helpful assistant."` | System prompt for the model                             |
 | `generate_reply_timeout` | `float`               | `30.0`                           | Timeout in seconds for `generate_reply` (0 = no limit) |
 | `tts_config`             | `ElevenLabsTtsConfig \| HostedTtsConfig` | `None`          | TTS configuration (enables server-side audio output)    |
+| `vad_config`             | `VadConfig`           | `None`                            | Voice activity detection tuning                         |
 
-You can also pass a `VadConfig` instance to tune voice activity detection — see [VAD Configuration](#vad-configuration) below.
+Pass a `VadConfig` instance to tune voice activity detection — see [VAD Configuration](#vad-configuration) below.
 
 ### VAD Configuration
 
@@ -138,12 +139,12 @@ llm = RealtimeModel(
 ```
 
 | Parameter                    | Type    | Default | Description                                               |
-|------------------------------|---------|---------|-----------------------------------------------------------|
-| `confidence_threshold`       | `float` | `0.5`   | Minimum confidence to consider audio as speech (0.0–1.0)  |
-| `min_volume`                 | `float` | `0.01`  | Minimum volume threshold (0.0–1.0)                        |
-| `start_duration_ms`          | `int`   | `200`   | Duration of speech required to detect start (ms)          |
-| `stop_duration_ms`           | `int`   | `500`   | Duration of silence required to detect end (ms)           |
-| `backbuffer_duration_ms`     | `int`   | `1000`  | Audio buffer captured before speech detection triggers    |
+|-------------------------------|---------|---------|-----------------------------------------------------------|
+| `confidence_threshold`        | `float` | `0.5`   | Minimum confidence to consider audio as speech (0.0–1.0)  |
+| `min_volume`                  | `float` | `0.01`  | Minimum volume threshold (0.0–1.0)                        |
+| `start_duration_ms`           | `int`   | `200`   | Duration of speech required to detect start (ms)          |
+| `stop_duration_ms`            | `int`   | `500`   | Duration of silence required to detect end (ms)           |
+| `backbuffer_duration_ms`      | `int`   | `1000`  | Audio buffer captured before speech detection triggers    |
 
 **Tuning tips:**
 - **Noisy environments:** Increase `confidence_threshold` (0.6–0.8) and `min_volume` (0.02–0.05)
