@@ -213,13 +213,26 @@ class Assistant(Agent):
 
 ---
 
-## Sending a Welcome Message
+## Speaking Text Directly
 
-To greet the user, speak directly the moment the agent becomes active. Override
-`Agent.on_enter()` and call `speak_direct()` on the realtime session that the
-`AgentSession` created for you — reachable via `self.realtime_llm_session`.
-`speak_direct()` buffers the utterance until the session is ready, so no fixed
-delay or event handling is needed:
+Deepslate can speak the given text directly via TTS, bypassing the LLM, using
+the service's `DirectSpeech`. There are two ways to reach it:
+
+- **`AgentSession.say()` / `Agent.session.say()`** — the standard LiveKit API.
+  Supported out of the box for the common case: the text is spoken, added to the chat history,
+  and can be interrupted like any other turn.
+- **`DeepslateRealtimeSession.speak_direct()`** — use this instead of `say()`
+  when the spoken text needs to be ephemeral (not added to history), and/or
+  needs to be uninterruptible (e.g. compliance announcements that must not
+  be barged into). Reach it via `self.realtime_llm_session` cast to
+  `DeepslateRealtimeSession`.
+
+### Sending a Welcome Message
+
+To greet the user, speak directly the moment the agent becomes active by
+overriding `Agent.on_enter()`. This example plays an uninterruptible
+compliance notice via `speak_direct()`, then a normal, interruptable greeting
+via the standard `say()`:
 
 ```python
 from typing import cast
@@ -234,10 +247,14 @@ class Assistant(Agent):
 
     async def on_enter(self) -> None:
         session = cast(DeepslateRealtimeSession, self.realtime_llm_session)
+        # Deepslate's speak_direct(): configurable to be uninterruptable and excluded from history
         await session.speak_direct(
             "Please note that this call is handled by an AI and may be recorded.",
+            include_in_history=False,
             uninterruptable=True,
         )
+        # LiveKit's standard say(): always interruptable and added to history
+        await self.session.say("Hi, how can I help you today?")
 
 
 @server.rtc_session()
