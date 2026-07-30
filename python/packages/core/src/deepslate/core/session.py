@@ -489,11 +489,16 @@ class DeepslateSession:
             self._run_ws,
             should_continue=lambda: not self._should_stop,
             on_fatal_error=self._on_fatal_error,
+            on_connect_attempt=self._on_connecting,
         )
 
     async def _on_fatal_error(self, e: Exception) -> None:
         self._fail_pending_chat_history(e)
         await self._fire(self._listener.on_fatal_error(e))
+
+    async def _on_connecting(self) -> None:
+        """Notify the listener right before each connection attempt (dial)."""
+        await self._fire(self._listener.on_connecting())
 
     async def _run_ws(self, ws: aiohttp.ClientWebSocketResponse) -> None:
         """Run one WebSocket session.
