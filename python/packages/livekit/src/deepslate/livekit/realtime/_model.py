@@ -725,7 +725,7 @@ class DeepslateRealtimeSession(
             data=pcm_bytes,
             sample_rate=sample_rate,
             num_channels=channels,
-            samples_per_channel=len(pcm_bytes) // 2,
+            samples_per_channel=len(pcm_bytes) // 2 // max(channels, 1),
         )
         gen.audio_ch.send_nowait(frame)
         gen.audio_bytes += len(pcm_bytes)
