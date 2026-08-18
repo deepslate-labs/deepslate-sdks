@@ -181,7 +181,9 @@ class DeepslateRealtimeLLMService(LLMService, DeepslateSessionListener):
     async def on_response_end(self, turn_id: int = 0) -> None:
         await self.push_frame(LLMFullResponseEndFrame())
 
-    async def on_text_fragment(self, text: str) -> None:
+    async def on_text_fragment(
+        self, text: str, turn_id: Optional[int] = None
+    ) -> None:
         await self.push_frame(LLMTextFrame(text))
 
     async def on_audio_chunk(
@@ -190,6 +192,7 @@ class DeepslateRealtimeLLMService(LLMService, DeepslateSessionListener):
         sample_rate: int,
         channels: int,
         transcript: Optional[str],
+        turn_id: Optional[int] = None,
     ) -> None:
         await self.push_frame(
             OutputAudioRawFrame(

@@ -380,7 +380,8 @@ message HostedTtsConfiguration {
 /*
  * Configuration for text-to-speech output.
  *
- * If not specified, raw text fragments are sent to the client.
+ * Text fragments (ModelTextFragment) are sent to the client whether or not
+ * TTS is configured. This controls audio synthesis only.
  */
 message TtsConfiguration {
   oneof provider {
@@ -407,14 +408,16 @@ message InitializeSessionRequest {
   // Inference engine configuration.
   InferenceConfiguration inference_configuration = 4;
 
-  // TTS configuration. If not specified, raw text fragments are sent to the client.
+  // TTS configuration. Controls audio synthesis only — text fragments
+  // (ModelTextFragment) are sent to the client whether or not this is set.
   optional TtsConfiguration tts_configuration = 5;
 
-  // Whether the client supports playback position reporting.
+  // Whether the client intends to send playback position reports.
   //
-  // When true, the client will send PlaybackPositionReport messages
-  // with precise playback position data. When false (default), the
-  // server uses elapsed-time estimation for context truncation.
+  // Advisory only — it does not gate anything. The server honours
+  // PlaybackPositionReport messages whenever they arrive, regardless of this
+  // flag. Absent such reports, the server falls back to a server-side
+  // elapsed-time estimate for context truncation.
   bool supports_playback_reporting = 6;
 
   // When true, the server emits per-frame VadAnalysisFrame messages
@@ -423,6 +426,18 @@ message InitializeSessionRequest {
   //
   // This flag is considered experimental and may be removed or changed without a major version bump.
   bool enable_vad_frame_telemetry = 7;
+
+  // Optional experiments to enable.
+  //
+  // Maps the name of the experiment to a parameter value. The semantics of the parameter value
+  // is defined by the experiment itself.
+  //
+  // There are zero stability guarantees given for experiments. They may be removed or changed without
+  // any version bump or warning. Use at your own risk.
+  //
+  // Behavior of experiments is subject to the experiment itself, and may arbitrarily enable, disable
+  // or change parts of the protocol and underlying behavior. Unknown experiments are ignored.
+  map<string, google.protobuf.Value> experiments = 8;
 }
 
 /*
@@ -542,12 +557,16 @@ message ExportChatHistoryRequest {
  * precise information about how many audio bytes have been played.
  * This enables accurate context truncation on user interrupt.
  *
- * Only sent when the client declares `supports_playback_reporting = true`
- * in the InitializeSessionRequest.
+ * `supports_playback_reporting` on InitializeSessionRequest is advisory only —
+ * reports are honoured whether or not it is set.
  */
 message PlaybackPositionReport {
-  // Number of audio bytes played by the client.
+  // Number of audio bytes played by the client for `turn_id`.
   uint64 bytes_played = 1;
+
+  // Which assistant turn these bytes belong to. Absent means a legacy client;
+  // the report is applied to the current response as before.
+  optional uint32 turn_id = 2;
 }
 
 /*
@@ -603,6 +622,28 @@ message ConversationQueryResult {
 }
 
 /*
+ * Sent by the client to ping corvidae.
+ *
+ * This can be used to keep the session alive if no other packets are being
+ * sent, or to measure round-trip latency.
+ *
+ * As a special case this packet is allowed to be sent before a session is initialized.
+ *
+ * Corvidae does not require you to send this packet as long as other packets are flowing
+ * continuously. Typically (depending on the deployment) a session times out after 30 seconds
+ * of not receiving any packets (a silent audio stream still counts as activity, as
+ * it sends packets). If you want to make sure that the connection is never dropped, send
+ * a Ping unconditionally every 10 seconds (or less, depending on the deployment) to keep
+ * the session alive.
+ */
+message Ping {}
+
+/*
+ * Sent by corvidae as a response to a Ping message.
+ */
+message Pong {}
+
+/*
  * Message sent from the client to the service.
  */
 message ServiceBoundMessage {
@@ -617,15 +658,21 @@ message ServiceBoundMessage {
     PlaybackPositionReport playback_position_report = 8;
     DirectSpeech direct_speech = 9;
     ConversationQuery conversation_query = 10;
+    Ping ping = 11;
   }
 }
 
 /*
  * A fragment of text from the model, streamed as tokens arrive.
+ *
+ * Sent in every session, including sessions with TTS configured.
  */
 message ModelTextFragment {
   // The text content of this fragment.
   string text = 1;
+
+  // Session-local ID of the assistant turn this fragment belongs to.
+  optional uint32 turn_id = 2;
 }
 
 /*
@@ -635,8 +682,79 @@ message ModelAudioChunk {
   // The audio data
   AudioData audio = 1;
 
-  // Optional: text that was spoken (alignment data from TTS provider)
+  // Never populated. Retained for wire compatibility only.
+  // Use ModelSpeechProgress for spoken-text tracking.
   optional string transcript = 2;
+
+  // Session-local ID of the assistant turn this audio belongs to.
+  // Required to attribute received bytes to a turn, because
+  // ModelSpeechProgress.audio_bytes_played and
+  // PlaybackPositionReport.bytes_played are both per-turn counts.
+  optional uint32 turn_id = 3;
+}
+
+/*
+ * Reports how much of an assistant turn's text the caller has actually heard.
+ *
+ * Emitted continuously while TTS audio is playing. When the client does not
+ * send PlaybackPositionReport, the position is a server-side estimate.
+ *
+ * Independently, `exact` indicates whether the text boundary fell exactly on
+ * a TTS segment edge or was interpolated within one.
+ */
+message ModelSpeechProgress {
+  // Turn this progress belongs to.
+  uint32 turn_id = 1;
+
+  // Text that became audible since the previous ModelSpeechProgress for this
+  // turn. Concatenating these in order yields an exact prefix of the
+  // concatenated ModelTextFragment stream for the same turn.
+  //
+  // Rare exception: when TTS fails to synthesize a span (logged server-side),
+  // that span's text is still included here to keep the stream contiguous.
+  string text = 2;
+
+  // Bytes of THIS TURN's audio played, per the server's estimate.
+  uint64 audio_bytes_played = 3;
+
+  // True when the boundary lands exactly on a TTS segment edge; false when
+  // interpolated inside one.
+  bool exact = 4;
+}
+
+/*
+ * The LLM has finished producing this turn's output. Sent in every session
+ * regardless of TTS configuration, at the same point in the turn lifecycle.
+ *
+ * TTS audio for the turn may still be synthesizing; see ResponseEnd.
+ *
+ * Not sent for direct-speech turns (no LLM runs) or conversation queries
+ * (no turn exists).
+ */
+message InferenceComplete {
+  // Session-local ID of the assistant turn whose generation finished.
+  uint32 turn_id = 1;
+}
+
+/*
+ * The server's authoritative view of one turn's content at a point in time.
+ * Replaces any optimistic client-side state for this turn_id.
+ *
+ * Sent whenever that view changes, so more than one may arrive per turn.
+ * TTS audio is always omitted from the embedded message — it was already
+ * streamed as ModelAudioChunk.
+ */
+message TurnSnapshot {
+  // The turn's content as of this snapshot.
+  ChatMessage message = 1;
+
+  // True when no further snapshot will be sent: the turn's content and
+  // delivery_status are now immutable. Exactly one snapshot per turn has
+  // this set.
+  //
+  // ChatMessage.truncated_at_response_turn_id may still change afterwards
+  // and is reported separately by ContextTruncated.
+  bool is_final = 2;
 }
 
 /*
@@ -718,8 +836,12 @@ message ChatMessage {
 
   /*
    * The turn ID. Correlates with `ResponseBegin.turn_id` / `ResponseEnd.turn_id`
-   * for assistant turns and `UserTranscriptionResult.turn_id` for user audio
-   * turns.
+   * / `InferenceComplete.turn_id` / `ModelTextFragment.turn_id` /
+   * `ModelAudioChunk.turn_id` / `ModelSpeechProgress.turn_id` for assistant
+   * turns, and `UserTranscriptionResult.turn_id` for user audio turns.
+   *
+   * When this message is delivered embedded in `TurnSnapshot.message`, this
+   * is the same turn_id as that `TurnSnapshot`'s subject turn.
    */
   optional uint32 turn_id = 6;
 
@@ -824,7 +946,14 @@ message ResponseBegin {
 }
 
 /*
- * Notification that the model has finished its response.
+ * Notification that no more audio is coming for this turn.
+ *
+ * In TTS sessions this fires once all synthesized audio has been dispatched.
+ * In sessions without TTS there is no audio, so it fires when the model
+ * finishes generating — the same instant as InferenceComplete.
+ *
+ * This is NOT a signal that the turn's content is settled; an interrupted
+ * turn's content is corrected afterwards. See TurnSnapshot.
  */
 message ResponseEnd {
   /*
@@ -947,5 +1076,9 @@ message ClientBoundMessage {
     VadAnalysisFrame vad_analysis_frame = 12;
     VadStateEvent vad_state_event = 13;
     ContextTruncated context_truncated = 14;
+    Pong pong = 15;
+    ModelSpeechProgress model_speech_progress = 16;
+    TurnSnapshot turn_snapshot = 17;
+    InferenceComplete inference_complete = 18;
   }
 }
