@@ -204,7 +204,13 @@ class DeepslateRealtimeLLMService(LLMService, DeepslateSessionListener):
         if transcript:
             await self.push_frame(DeepslateModelTranscriptionFrame(text=transcript))
 
-    async def on_tool_call(self, call_id: str, name: str, params: dict) -> None:
+    async def on_tool_call(
+        self,
+        call_id: str,
+        name: str,
+        params: dict,
+        turn_id: Optional[int] = None,
+    ) -> None:
         asyncio.create_task(self._dispatch_function_call(call_id, name, params))
 
     async def on_error(
