@@ -356,9 +356,20 @@ class DeepslateSession:
             proto.ServiceBoundMessage(conversation_query=query)
         )
 
-    async def report_playback_position(self, bytes_played: int) -> None:
-        """Send a ``PlaybackPositionReport`` for server-side audio truncation."""
-        report = proto.PlaybackPositionReport(bytes_played=bytes_played)
+    async def report_playback_position(
+        self, bytes_played: int, turn_id: Optional[int] = None
+    ) -> None:
+        """Send a ``PlaybackPositionReport`` for server-side audio truncation.
+
+        ``turn_id`` attributes ``bytes_played`` to a specific assistant turn.
+        Omit it only against a legacy server that doesn't send turn IDs.
+        """
+        if turn_id is not None:
+            report = proto.PlaybackPositionReport(
+                bytes_played=bytes_played, turn_id=turn_id
+            )
+        else:
+            report = proto.PlaybackPositionReport(bytes_played=bytes_played)
         await self._enqueue_or_buffer(
             proto.ServiceBoundMessage(playback_position_report=report)
         )
