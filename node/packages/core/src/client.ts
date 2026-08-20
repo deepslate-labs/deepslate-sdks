@@ -125,6 +125,7 @@ export class BaseDeepslateClient {
         return;
       }
       const ws = new WebSocket(url, { headers, handshakeTimeout: HANDSHAKE_TIMEOUT_MS });
+      ws.on("error", () => {});
       this.pendingWs = ws;
       const onOpen = () => {
         this.pendingWs = null;
