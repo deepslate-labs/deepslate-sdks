@@ -355,9 +355,13 @@ class DeepslateSession:
             proto.ServiceBoundMessage(conversation_query=query)
         )
 
-    async def report_playback_position(self, bytes_played: int) -> None:
+    async def report_playback_position(
+        self, bytes_played: int, turn_id: int
+    ) -> None:
         """Send a ``PlaybackPositionReport`` for server-side audio truncation."""
-        report = proto.PlaybackPositionReport(bytes_played=bytes_played)
+        report = proto.PlaybackPositionReport(
+            bytes_played=bytes_played, turn_id=turn_id
+        )
         await self._enqueue_or_buffer(
             proto.ServiceBoundMessage(playback_position_report=report)
         )
@@ -433,6 +437,7 @@ class DeepslateSession:
             system_prompt=self._options.system_prompt,
             tts_config=self._tts_config,
             temperature=self._options.temperature,
+            supports_playback_reporting=self._options.supports_playback_reporting,
         )
         await self._send_queue.put(
             proto.ServiceBoundMessage(initialize_session_request=init_request)
@@ -624,15 +629,12 @@ class DeepslateSession:
         elif payload_type == "model_audio_chunk":
             chunk = msg.model_audio_chunk
             if chunk.audio and chunk.audio.data:
-                transcript: Optional[str] = (
-                    chunk.transcript if chunk.transcript else None
-                )
                 await self._fire(
                     self._listener.on_audio_chunk(
                         chunk.audio.data,
                         self._sample_rate or 24000,
                         self._channels or 1,
-                        transcript,
+                        None,
                     )
                 )
 

@@ -279,7 +279,7 @@ Factory that creates a session together with its own `BaseDeepslateClient`. The 
 | `await session.send_direct_speech(text, include_in_history=True, uninterruptable=False)` | Speak text directly via TTS, bypassing the LLM |
 | `await session.export_chat_history(await_pending=False, exclude_audio=False)` | Request a history export; returns `list[ChatMessageDict]` and is also delivered via `on_chat_history`. Set `exclude_audio=True` to omit audio blobs (transcripts only) |
 | `await session.send_conversation_query(query_id, prompt, instructions)` | Side-channel inference; at least one of `prompt`/`instructions` required; result via `on_conversation_query_result` |
-| `await session.report_playback_position(bytes_played)` | Report audio playback position for server-side truncation |
+| `await session.report_playback_position(bytes_played, turn_id)` | Report how many bytes of `turn_id`'s audio were played, for server-side truncation |
 
 ### `DeepslateSessionListener`
 

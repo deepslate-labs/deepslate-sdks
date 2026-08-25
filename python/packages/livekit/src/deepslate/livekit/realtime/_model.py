@@ -20,6 +20,7 @@ import json
 import os
 import time
 import warnings
+from collections import OrderedDict
 from dataclasses import dataclass
 from types import SimpleNamespace
 from typing import Any, Literal
@@ -72,6 +73,10 @@ from .._log import logger
 
 DEEPSLATE_BASE_URL = "https://app.deepslate.eu"
 
+_BYTES_PER_SAMPLE = 2
+
+_CLOSED_GENERATION_LIMIT = 16
+
 
 @dataclass
 class _ResponseGeneration:
@@ -84,6 +89,7 @@ class _ResponseGeneration:
     done_fut: asyncio.Future[None]
     response_id: str
     created_timestamp: float
+    turn_id: int | None = None
     first_token_timestamp: float | None = None
     audio_transcript: str = ""
     uninterruptable: bool = False
@@ -118,6 +124,7 @@ class RealtimeModel(llm.RealtimeModel):
         vad_config: VadConfig | None = None,
         # TTS configuration
         tts_config: ElevenLabsTtsConfig | HostedTtsConfig | HostedVoiceCloneConfig | None = None,
+        supports_playback_reporting: bool = False,
         http_session: aiohttp.ClientSession | None = None,
         ws_url: str | None = None,
     ):
@@ -140,6 +147,11 @@ class RealtimeModel(llm.RealtimeModel):
                         or ``HostedVoiceCloneConfig`` to clone a voice on the fly by
                         supplying a raw audio sample. When None (default), only text
                         output is provided.
+            supports_playback_reporting: When True, report how much of an
+                        interrupted assistant turn the caller actually heard, so
+                        the server truncates the model's context to match instead
+                        of falling back to elapsed-time estimation which is less precise.
+                        Off by default.
             http_session: Optional shared aiohttp session.
         """
         super().__init__(
@@ -198,6 +210,7 @@ class RealtimeModel(llm.RealtimeModel):
             temperature=temperature,
             ws_url=ws_url,
             generate_reply_timeout=generate_reply_timeout,
+            supports_playback_reporting=supports_playback_reporting,
         )
 
         deprecated_vad_kwargs = {
@@ -338,6 +351,11 @@ class DeepslateRealtimeSession(
         self._pending_user_generation: bool = False
         self._pending_uninterruptable: bool = False
         self._pending_user_text: str | None = None
+
+        self._closed_generations: OrderedDict[str, _ResponseGeneration] = (
+            OrderedDict()
+        )
+        self._playback_report_tasks: set[asyncio.Task[None]] = set()
 
         # Conversation query tracking: query_id → Future[str]
         self._pending_queries: dict[str, asyncio.Future[str]] = {}
@@ -642,8 +660,82 @@ class DeepslateRealtimeSession(
         audio_end_ms: int,
         audio_transcript: NotGivenOr[str] = NOT_GIVEN,
     ) -> None:
-        """Deepslate handles truncation server-side automatically."""
-        pass
+        """Report how much of an interrupted turn the user actually heard.
+
+        Truncation still happens server-side without this; the report only makes
+        it accurate.
+        """
+        if not self._realtime_model._opts.supports_playback_reporting:
+            return
+
+        if self._realtime_model._tts_config is None:
+            return
+
+        gen = self._find_generation(message_id)
+        if gen is None:
+            logger.debug(
+                "playback position not reported: no generation for message",
+                extra={"message_id": message_id},
+            )
+            return
+
+        if gen.uninterruptable:
+            logger.debug(
+                "playback position not reported: turn is uninterruptable",
+                extra={"message_id": message_id, "turn_id": gen.turn_id},
+            )
+            return
+
+        if gen.turn_id is None:
+            logger.debug(
+                "playback position not reported: turn id unknown",
+                extra={"message_id": message_id},
+            )
+            return
+
+        bytes_played = self._playback_bytes(gen, audio_end_ms)
+        self._spawn_playback_report(bytes_played, gen.turn_id)
+
+    def _find_generation(self, message_id: str) -> _ResponseGeneration | None:
+        """Resolve a livekit message id to its generation, open or just closed."""
+        if (
+            self._current_generation is not None
+            and self._current_generation.response_id == message_id
+        ):
+            return self._current_generation
+        return self._closed_generations.get(message_id)
+
+    def _retain_closed_generation(self, gen: _ResponseGeneration) -> None:
+        """Keep a just-closed generation resolvable by a later truncate()."""
+        self._closed_generations[gen.response_id] = gen
+        self._closed_generations.move_to_end(gen.response_id)
+        while len(self._closed_generations) > _CLOSED_GENERATION_LIMIT:
+            self._closed_generations.popitem(last=False)
+
+    @staticmethod
+    def _playback_bytes(gen: _ResponseGeneration, audio_end_ms: int) -> int:
+        """Convert a played duration to a byte offset into this turn's audio."""
+        sample_rate = gen.audio_sample_rate or 24000
+        channels = gen.audio_channels or 1
+        frame_size = channels * _BYTES_PER_SAMPLE
+        raw = int(max(audio_end_ms, 0) / 1000 * sample_rate * frame_size)
+        aligned = raw - (raw % frame_size)
+        return max(0, min(aligned, gen.audio_bytes))
+
+    def _spawn_playback_report(self, bytes_played: int, turn_id: int) -> None:
+        """Send a playback position report without blocking the caller."""
+        task = asyncio.create_task(
+            self._session.report_playback_position(bytes_played, turn_id)
+        )
+        self._playback_report_tasks.add(task)
+        task.add_done_callback(self._playback_report_tasks.discard)
+        task.add_done_callback(self._on_playback_report_done)
+
+    @staticmethod
+    def _on_playback_report_done(task: asyncio.Task[None]) -> None:
+        """Surface failures from a fire-and-forget playback report."""
+        if not task.cancelled() and (exc := task.exception()) is not None:
+            logger.error("playback position report failed", exc_info=exc)
 
     async def aclose(self) -> None:
         """Close the session."""
@@ -656,6 +748,10 @@ class DeepslateRealtimeSession(
             task.cancel()
         if tool_tasks:
             await asyncio.gather(*tool_tasks, return_exceptions=True)
+
+        report_tasks = tuple(self._playback_report_tasks)
+        if report_tasks:
+            await asyncio.gather(*report_tasks, return_exceptions=True)
 
         if self._current_generation:
             self._close_current_generation(cancelled=True)
@@ -675,6 +771,7 @@ class DeepslateRealtimeSession(
     async def on_connecting(self) -> None:
         """Record the start of a connection attempt (first connect or reconnect)."""
         self._connection_attempt_started_at = time.monotonic()
+        self._closed_generations.clear()
 
     async def on_session_initialized(self) -> None:
         """Emit ``session_initialized`` once the core session is ready."""
@@ -711,7 +808,7 @@ class DeepslateRealtimeSession(
             data=pcm_bytes,
             sample_rate=sample_rate,
             num_channels=channels,
-            samples_per_channel=len(pcm_bytes) // 2,
+            samples_per_channel=len(pcm_bytes) // (2 * channels),
         )
         self._current_generation.audio_ch.send_nowait(frame)
         self._current_generation.audio_bytes += len(pcm_bytes)
@@ -751,6 +848,8 @@ class DeepslateRealtimeSession(
         """Start a new generation at the beginning of a server response."""
         if self._current_generation is None:
             self._create_generation()
+        if self._current_generation is not None:
+            self._current_generation.turn_id = turn_id
 
     async def on_response_end(self, turn_id: int = 0) -> None:
         """Close the current generation when the server response ends."""
@@ -944,6 +1043,7 @@ class DeepslateRealtimeSession(
         with contextlib.suppress(asyncio.InvalidStateError):
             gen.done_fut.set_result(None)
         self._current_generation = None
+        self._retain_closed_generation(gen)
         self._emit_generation_metrics(gen, cancelled=cancelled)
 
     def _emit_generation_metrics(self, gen: _ResponseGeneration, *, cancelled: bool) -> None:

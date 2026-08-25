@@ -514,7 +514,7 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
             chunk.audio.data,
             this.sampleRateValue ?? 24000,
             this.channelsValue ?? 1,
-            chunk.transcript ? chunk.transcript : null,
+            null,
           );
         }
         break;
