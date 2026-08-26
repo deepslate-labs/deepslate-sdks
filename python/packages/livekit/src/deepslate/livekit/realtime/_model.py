@@ -308,6 +308,7 @@ class DeepslateRealtimeSession(
             "deepslate_server_event_received",
             "deepslate_client_event_sent",
             "audio_transcript",
+            "model_text_fragment",
             "session_initialized",
             "turn_snapshot",
         ]
@@ -706,6 +707,11 @@ class DeepslateRealtimeSession(
         self, text: str, turn_id: int | None = None
     ) -> None:
         """Accumulate a raw text fragment for its turn."""
+        self.emit(
+            "model_text_fragment",
+            SimpleNamespace(text=text, turn_id=turn_id),
+        )
+
         gen = self._get_or_create_generation(turn_id)
         if gen is None:
             return

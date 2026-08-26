@@ -249,6 +249,42 @@ async def my_agent(ctx: agents.JobContext):
 
 ---
 
+## Live Transcripts
+
+The session emits two different text events:
+
+| Event | Pacing | Means |
+|---|---|---|
+| `model_text_fragment` | Faster than realtime, ahead of synthesis | What the model **intends** to say |
+| `audio_transcript` | Playback-paced, aligned to server byte counts | What the caller has **actually heard** |
+
+```python
+from typing import cast
+
+from deepslate.livekit import DeepslateRealtimeSession
+
+
+rt = cast(DeepslateRealtimeSession, session.current_agent.realtime_llm_session)
+
+
+@rt.on("model_text_fragment")
+def _on_fragment(ev) -> None:
+    # ev.text, ev.turn_id (turn_id is None if the server sent no attribution)
+    print(ev.text, end="", flush=True)
+
+
+@rt.on("audio_transcript")
+def _on_spoken(text: str) -> None:
+    print(f"heard: {text!r}")
+```
+
+> **`model_text_fragment` overshoots on interrupted turns.** Because the server
+> streams fragments faster than it synthesizes audio, a turn that gets
+> interrupted will already have emitted text that was never spoken. That is
+> inherent to arriving ahead of synthesis, not a bug.
+
+---
+
 ## Exporting Chat History
 
 Call `export_chat_history()` on the realtime session to request the current
