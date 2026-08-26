@@ -20,6 +20,7 @@ import json
 import os
 import time
 import warnings
+from collections import deque
 from dataclasses import dataclass
 from types import SimpleNamespace
 from typing import Any, Literal
@@ -73,6 +74,7 @@ from .._log import logger
 
 DEEPSLATE_BASE_URL = "https://app.deepslate.eu"
 
+SETTLE_GRACE_PERIOD = 0.5
 
 @dataclass
 class _ResponseGeneration:
@@ -92,6 +94,8 @@ class _ResponseGeneration:
     spoken_text: str = ""
     last_audio_bytes_played: int = 0
     text_complete: bool = False
+    response_ended: bool = False
+    settle_watchdog: asyncio.Task[None] | None = None
     uninterruptable: bool = False
     audio_bytes: int = 0
     audio_sample_rate: int | None = None
@@ -339,8 +343,9 @@ class DeepslateRealtimeSession(
 
         # Generation tracking
         self._generations: dict[int, _ResponseGeneration] = {}
+        self._settled_turns: deque[int] = deque(maxlen=64)
         self._last_turn_id: int | None = None
-        self._server_supports_live_transcripts: bool = False
+        self._server_supports_live_transcripts: bool | None = None
         self._response_created_futures: dict[
             str, asyncio.Future[GenerationCreatedEvent]
         ] = {}
@@ -682,7 +687,12 @@ class DeepslateRealtimeSession(
         await self._session.close()
 
     async def on_connecting(self) -> None:
-        """Record the start of a connection attempt (first connect or reconnect)."""
+        """Reset per-connection state at the start of a connection attempt."""
+        for gen in list(self._generations.values()):
+            self._settle_generation(gen, cancelled=True)
+        self._generations.clear()
+        self._settled_turns.clear()
+        self._last_turn_id = None
         self._connection_attempt_started_at = time.monotonic()
 
     async def on_session_initialized(self) -> None:
@@ -697,6 +707,8 @@ class DeepslateRealtimeSession(
     ) -> None:
         """Accumulate a raw text fragment for its turn."""
         gen = self._get_or_create_generation(turn_id)
+        if gen is None:
+            return
         gen.raw_text += text
         if gen.first_token_timestamp is None:
             gen.first_token_timestamp = time.time()
@@ -720,6 +732,8 @@ class DeepslateRealtimeSession(
         spoken-text tracking) so it's accepted but otherwise unused.
         """
         gen = self._get_or_create_generation(turn_id)
+        if gen is None:
+            return
 
         frame = rtc.AudioFrame(
             data=pcm_bytes,
@@ -749,9 +763,6 @@ class DeepslateRealtimeSession(
         if gen is None:
             return
 
-        if not text:
-            return
-
         if audio_bytes_played < gen.last_audio_bytes_played:
             logger.warning(
                 "Deepslate: ModelSpeechProgress.audio_bytes_played went "
@@ -765,17 +776,25 @@ class DeepslateRealtimeSession(
         end_time = audio_bytes_played / bytes_per_second
         gen.last_audio_bytes_played = audio_bytes_played
 
-        gen.text_ch.send_nowait(TimedString(text, start_time=start_time, end_time=end_time))
-        gen.audio_transcript += text
-        gen.spoken_text += text
-        self.emit("audio_transcript", text)
+        if text:
+            gen.text_ch.send_nowait(TimedString(text, start_time=start_time, end_time=end_time))
+            gen.audio_transcript += text
+            gen.spoken_text += text
+            self.emit("audio_transcript", text)
+
+        self._maybe_settle_after_playback(gen)
 
     async def on_inference_complete(self, turn_id: int) -> None:
         """Mark a turn's raw text as complete (no more ModelTextFragment)."""
         self._server_supports_live_transcripts = True
+        self.emit(
+            "deepslate_server_event_received",
+            SimpleNamespace(type="inference_complete", turn_id=turn_id),
+        )
         gen = self._generations.get(turn_id)
         if gen is not None:
             gen.text_complete = True
+            self._maybe_settle_after_playback(gen)
 
     async def on_turn_snapshot(self, message: ChatMessageDict, is_final: bool) -> None:
         """Surface the server's authoritative view of a turn's content."""
@@ -795,14 +814,28 @@ class DeepslateRealtimeSession(
         if gen is None:
             return
 
-        cancelled = message.get("delivery_status") == "DELIVERY_INTERRUPTED"
-        self._settle_generation(gen, cancelled=cancelled)
+        gen.text_complete = True
+        gen.response_ended = True
+        if message.get("delivery_status") == "DELIVERY_INTERRUPTED":
+            self._settle_generation(gen, cancelled=True)
+            return
+        self._maybe_settle_after_playback(gen)
 
     async def on_tool_call(
         self, call_id: str, name: str, params: dict, turn_id: int | None = None
     ) -> None:
-        """Forward a server tool-call request and close its generation."""
+        """Forward a server tool-call request into its generation."""
         gen = self._get_or_create_generation(turn_id)
+        if gen is None:
+            logger.warning(
+                "Deepslate: dropping tool call %s(%s) for already-settled "
+                "turn_id=%s — the turn was interrupted or completed before the "
+                "request arrived",
+                name,
+                call_id,
+                turn_id,
+            )
+            return
         gen.function_ch.send_nowait(
             FunctionCall(
                 call_id=call_id,
@@ -811,20 +844,32 @@ class DeepslateRealtimeSession(
             )
         )
         logger.debug(f"tool call request: {name}({call_id})")
-        self._settle_generation(gen)
 
     async def on_response_begin(self, turn_id: int = 0) -> None:
         """Start a new generation at the beginning of a server response."""
-        if turn_id not in self._generations:
-            self._create_generation(turn_id)
+        existing = self._generations.get(turn_id)
+        if existing is not None:
+            logger.warning(
+                "Deepslate: ResponseBegin for already-open turn_id=%s; "
+                "recycling the stale generation",
+                turn_id,
+            )
+            self._settle_generation(existing, cancelled=True)
+        self._create_generation(turn_id)
 
     async def on_response_end(self, turn_id: int = 0) -> None:
         """Close the generation when the server response ends."""
         gen = self._generations.get(turn_id)
         if gen is None:
             return
-        if self._realtime_model._tts_config is None or not self._server_supports_live_transcripts:
+        gen.response_ended = True
+        if (
+            self._realtime_model._tts_config is None
+            or self._server_supports_live_transcripts is False
+        ):
             self._settle_generation(gen)
+            return
+        self._maybe_settle_after_playback(gen)
 
     async def on_user_transcription(
         self, text: str, language: str | None, turn_id: int
@@ -890,7 +935,11 @@ class DeepslateRealtimeSession(
         """Handle a VAD state transition, interrupting on confirmed user speech."""
         open_gens = list(self._generations.values())
         if from_state == "SPEECH_STARTING" and to_state == "SPEECH":
-            if not any(gen.uninterruptable for gen in open_gens):
+            protected = any(
+                gen.uninterruptable and not self._audio_drained(gen)
+                for gen in open_gens
+            )
+            if not protected:
                 self.emit("input_speech_started", InputSpeechStartedEvent())
                 for gen in open_gens:
                     self._settle_generation(gen, cancelled=True)
@@ -928,13 +977,17 @@ class DeepslateRealtimeSession(
             ),
         )
 
-    def _get_or_create_generation(self, turn_id: int | None) -> _ResponseGeneration:
+    def _get_or_create_generation(
+        self, turn_id: int | None
+    ) -> _ResponseGeneration | None:
         """Resolve the open generation for ``turn_id``, creating it if needed."""
         if turn_id is None:
             turn_id = self._last_turn_id if self._last_turn_id is not None else 0
         gen = self._generations.get(turn_id)
         if gen is not None:
             return gen
+        if turn_id in self._settled_turns:
+            return None
         return self._create_generation(turn_id)
 
     def _create_generation(self, turn_id: int) -> _ResponseGeneration:
@@ -994,10 +1047,108 @@ class DeepslateRealtimeSession(
 
         return gen
 
+    def _text_fully_spoken(self, gen: _ResponseGeneration) -> bool:
+        """Whether every speakable character of ``gen`` appears to be audible."""
+        if not gen.text_complete:
+            return False
+        if not gen.raw_text:
+            return True
+        return not gen.raw_text[len(gen.spoken_text) :].strip()
+
+    def _audio_drained(self, gen: _ResponseGeneration) -> bool:
+        """Whether every audio byte dispatched for ``gen`` has been played."""
+        if not gen.response_ended:
+            return False
+        return gen.last_audio_bytes_played >= gen.audio_bytes
+
+    def _delivery_complete(self, gen: _ResponseGeneration) -> bool:
+        """Whether ``gen`` is finished: nothing left to play and nothing to say."""
+        if not gen.text_complete:
+            return False
+        return self._audio_drained(gen)
+
+    def _maybe_settle_after_playback(self, gen: _ResponseGeneration) -> None:
+        """Settle ``gen`` once every audio byte it produced has been played."""
+        if not gen.response_ended:
+            return
+        if self._delivery_complete(gen):
+            self._settle_generation(gen)
+            return
+        self._start_settle_watchdog(gen)
+
+    def _start_settle_watchdog(self, gen: _ResponseGeneration) -> None:
+        """Arm the backstop that settles ``gen`` if speech progress stalls."""
+        if gen.settle_watchdog is not None:
+            return
+        gen.settle_watchdog = asyncio.create_task(
+            self._settle_watchdog_task(gen),
+            name=f"deepslate.settle_watchdog.turn_{gen.turn_id}",
+        )
+
+    async def _settle_watchdog_task(self, gen: _ResponseGeneration) -> None:
+        """Settle ``gen`` once its audio can no longer be playing."""
+        try:
+            while True:
+                bytes_per_second = (
+                    (gen.audio_sample_rate or 24000) * (gen.audio_channels or 1) * 2
+                )
+                bytes_seen = gen.audio_bytes
+                played_before = gen.last_audio_bytes_played
+                unplayed = max(bytes_seen - played_before, 0)
+
+                await asyncio.sleep(unplayed / bytes_per_second + SETTLE_GRACE_PERIOD)
+
+                if self._generations.get(gen.turn_id) is not gen:
+                    return
+                if self._delivery_complete(gen):
+                    logger.debug(
+                        f"settling turn_id={gen.turn_id} after full playback"
+                    )
+                    self._settle_generation(gen)
+                    return
+                if (
+                    gen.audio_bytes > bytes_seen
+                    or gen.last_audio_bytes_played > played_before
+                ):
+                    continue
+
+                if self._server_supports_live_transcripts is None:
+                    logger.debug(
+                        "no live-transcript messages seen through turn_id="
+                        f"{gen.turn_id}; assuming the server does not send them"
+                    )
+                    self._server_supports_live_transcripts = False
+
+                unplayed_audio = gen.audio_bytes > gen.last_audio_bytes_played
+                short_text = bool(gen.raw_text) and not self._text_fully_spoken(gen)
+                if unplayed_audio or short_text:
+                    logger.warning(
+                        "Deepslate: settling turn_id=%s without a complete live "
+                        "transcript — speech progress stalled at %s/%s audio bytes "
+                        "and %s/%s characters",
+                        gen.turn_id,
+                        gen.last_audio_bytes_played,
+                        gen.audio_bytes,
+                        len(gen.spoken_text),
+                        len(gen.raw_text),
+                    )
+                else:
+                    logger.debug(
+                        f"settling turn_id={gen.turn_id} on playback watchdog"
+                    )
+                self._settle_generation(gen)
+                return
+        except asyncio.CancelledError:
+            pass
+
     def _settle_generation(
         self, gen: _ResponseGeneration, *, cancelled: bool = False
     ) -> None:
         """Close one generation's channels and mark it complete"""
+        if (watchdog := gen.settle_watchdog) is not None:
+            gen.settle_watchdog = None
+            if watchdog is not asyncio.current_task():
+                watchdog.cancel()
         if self._generations.get(gen.turn_id) is not gen:
             return
         if not gen.text_ch.closed:
@@ -1010,6 +1161,8 @@ class DeepslateRealtimeSession(
         with contextlib.suppress(asyncio.InvalidStateError):
             gen.done_fut.set_result(None)
         del self._generations[gen.turn_id]
+        if gen.turn_id not in self._settled_turns:
+            self._settled_turns.append(gen.turn_id)
         self._emit_generation_metrics(gen, cancelled=cancelled)
 
     def _emit_generation_metrics(self, gen: _ResponseGeneration, *, cancelled: bool) -> None:
