@@ -76,6 +76,7 @@ DEEPSLATE_BASE_URL = "https://app.deepslate.eu"
 
 SETTLE_GRACE_PERIOD = 0.5
 
+
 @dataclass
 class _ResponseGeneration:
     """Internal state for a response being generated."""
@@ -346,7 +347,6 @@ class DeepslateRealtimeSession(
         self._generations: dict[int, _ResponseGeneration] = {}
         self._settled_turns: deque[int] = deque(maxlen=64)
         self._last_turn_id: int | None = None
-        self._server_supports_live_transcripts: bool | None = None
         self._response_created_futures: dict[
             str, asyncio.Future[GenerationCreatedEvent]
         ] = {}
@@ -763,8 +763,6 @@ class DeepslateRealtimeSession(
         exact: bool,
     ) -> None:
         """Feed newly-audible text into its generation, paced to playback."""
-        self._server_supports_live_transcripts = True
-
         gen = self._generations.get(turn_id)
         if gen is None:
             return
@@ -799,6 +797,7 @@ class DeepslateRealtimeSession(
         gen = self._generations.get(turn_id)
         if gen is not None:
             gen.text_complete = True
+            self._close_function_ch(gen)
             self._maybe_settle_after_playback(gen)
 
     async def on_turn_snapshot(self, message: ChatMessageDict, is_final: bool) -> None:
@@ -840,6 +839,15 @@ class DeepslateRealtimeSession(
                 turn_id,
             )
             return
+        if gen.function_ch.closed:
+            logger.warning(
+                "Deepslate: dropping tool call %s(%s) for turn_id=%s, it "
+                "arrived after the turn's inference had already completed",
+                name,
+                call_id,
+                turn_id,
+            )
+            return
         gen.function_ch.send_nowait(
             FunctionCall(
                 call_id=call_id,
@@ -867,10 +875,8 @@ class DeepslateRealtimeSession(
         if gen is None:
             return
         gen.response_ended = True
-        if (
-            self._realtime_model._tts_config is None
-            or self._server_supports_live_transcripts is False
-        ):
+        self._close_function_ch(gen)
+        if self._realtime_model._tts_config is None:
             self._settle_generation(gen)
             return
         self._maybe_settle_after_playback(gen)
@@ -1051,6 +1057,10 @@ class DeepslateRealtimeSession(
 
         return gen
 
+    def _close_function_ch(self, gen: _ResponseGeneration) -> None:
+        if not gen.function_ch.closed:
+            gen.function_ch.close()
+
     def _text_fully_spoken(self, gen: _ResponseGeneration) -> bool:
         """Whether every speakable character of ``gen`` appears to be audible."""
         if not gen.text_complete:
@@ -1067,9 +1077,13 @@ class DeepslateRealtimeSession(
 
     def _delivery_complete(self, gen: _ResponseGeneration) -> bool:
         """Whether ``gen`` is finished: nothing left to play and nothing to say."""
-        if not gen.text_complete:
+        if not gen.response_ended:
             return False
-        return self._audio_drained(gen)
+        if self._audio_drained(gen):
+            return True
+        if not gen.raw_text:
+            return False
+        return self._text_fully_spoken(gen)
 
     def _maybe_settle_after_playback(self, gen: _ResponseGeneration) -> None:
         """Settle ``gen`` once every audio byte it produced has been played."""
@@ -1116,34 +1130,32 @@ class DeepslateRealtimeSession(
                 ):
                     continue
 
-                if self._server_supports_live_transcripts is None:
-                    logger.debug(
-                        "no live-transcript messages seen through turn_id="
-                        f"{gen.turn_id}; assuming the server does not send them"
-                    )
-                    self._server_supports_live_transcripts = False
-
-                unplayed_audio = gen.audio_bytes > gen.last_audio_bytes_played
-                short_text = bool(gen.raw_text) and not self._text_fully_spoken(gen)
-                if unplayed_audio or short_text:
+                if bool(gen.raw_text) and not self._text_fully_spoken(gen):
                     logger.warning(
-                        "Deepslate: settling turn_id=%s without a complete live "
-                        "transcript — speech progress stalled at %s/%s audio bytes "
-                        "and %s/%s characters",
+                        "Deepslate: settling turn_id=%s with an incomplete live "
+                        "transcript, speech progress stalled at %s/%s characters "
+                        "(%s/%s audio bytes reported played)",
                         gen.turn_id,
-                        gen.last_audio_bytes_played,
-                        gen.audio_bytes,
                         len(gen.spoken_text),
                         len(gen.raw_text),
+                        gen.last_audio_bytes_played,
+                        gen.audio_bytes,
                     )
                 else:
                     logger.debug(
-                        f"settling turn_id={gen.turn_id} on playback watchdog"
+                        f"settling turn_id={gen.turn_id} on playback watchdog "
+                        f"({gen.last_audio_bytes_played}/{gen.audio_bytes} audio "
+                        "bytes reported played)"
                     )
                 self._settle_generation(gen)
                 return
         except asyncio.CancelledError:
             pass
+        except Exception:
+            logger.exception(
+                f"settle watchdog failed for turn_id={gen.turn_id}; settling"
+            )
+            self._settle_generation(gen)
 
     def _settle_generation(
         self, gen: _ResponseGeneration, *, cancelled: bool = False
