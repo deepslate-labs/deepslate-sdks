@@ -256,7 +256,7 @@ The session emits two different text events:
 | Event | Pacing | Means |
 |---|---|---|
 | `model_text_fragment` | Faster than realtime, ahead of synthesis | What the model **intends** to say |
-| `audio_transcript` | Playback-paced, aligned to server byte counts | What the caller has **actually heard** |
+| `audio_transcript` | Playback-paced | **Approximately** what the caller has heard, timed by the server and possibly slightly ahead of or behind actual playback |
 
 ```python
 from typing import cast
