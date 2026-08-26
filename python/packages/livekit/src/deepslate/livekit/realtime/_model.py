@@ -786,7 +786,6 @@ class DeepslateRealtimeSession(
 
     async def on_inference_complete(self, turn_id: int) -> None:
         """Mark a turn's raw text as complete (no more ModelTextFragment)."""
-        self._server_supports_live_transcripts = True
         self.emit(
             "deepslate_server_event_received",
             SimpleNamespace(type="inference_complete", turn_id=turn_id),
@@ -798,7 +797,6 @@ class DeepslateRealtimeSession(
 
     async def on_turn_snapshot(self, message: ChatMessageDict, is_final: bool) -> None:
         """Surface the server's authoritative view of a turn's content."""
-        self._server_supports_live_transcripts = True
         self.emit(
             "turn_snapshot",
             SimpleNamespace(message=message, is_final=is_final),
