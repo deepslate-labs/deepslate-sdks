@@ -640,9 +640,6 @@ class DeepslateSession:
         elif payload_type == "model_audio_chunk":
             chunk = msg.model_audio_chunk
             if chunk.audio and chunk.audio.data:
-                transcript: Optional[str] = (
-                    chunk.transcript if chunk.transcript else None
-                )
                 chunk_turn_id: Optional[int] = (
                     chunk.turn_id if chunk.HasField("turn_id") else None
                 )
@@ -651,7 +648,7 @@ class DeepslateSession:
                         chunk.audio.data,
                         self._sample_rate or 24000,
                         self._channels or 1,
-                        transcript,
+                        None,
                         chunk_turn_id,
                     )
                 )

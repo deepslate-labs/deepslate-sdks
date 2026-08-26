@@ -379,9 +379,6 @@ message HostedTtsConfiguration {
 
 /*
  * Configuration for text-to-speech output.
- *
- * Text fragments (ModelTextFragment) are sent to the client whether or not
- * TTS is configured. This controls audio synthesis only.
  */
 message TtsConfiguration {
   oneof provider {
@@ -408,16 +405,15 @@ message InitializeSessionRequest {
   // Inference engine configuration.
   InferenceConfiguration inference_configuration = 4;
 
-  // TTS configuration. Controls audio synthesis only — text fragments
-  // (ModelTextFragment) are sent to the client whether or not this is set.
+  // TTS configuration.
   optional TtsConfiguration tts_configuration = 5;
 
   // Whether the client intends to send playback position reports.
   //
-  // Advisory only — it does not gate anything. The server honours
-  // PlaybackPositionReport messages whenever they arrive, regardless of this
-  // flag. Absent such reports, the server falls back to a server-side
-  // elapsed-time estimate for context truncation.
+  // This is treated as a hint only.
+  // The server honours PlaybackPositionReport messages whenever they arrive, regardless of this
+  // flag. Absent such reports, the server falls back to a server-side elapsed-time estimate for context
+  // truncation.
   bool supports_playback_reporting = 6;
 
   // When true, the server emits per-frame VadAnalysisFrame messages
@@ -556,16 +552,15 @@ message ExportChatHistoryRequest {
  * Sent by clients that support playback reporting to provide
  * precise information about how many audio bytes have been played.
  * This enables accurate context truncation on user interrupt.
- *
- * `supports_playback_reporting` on InitializeSessionRequest is advisory only —
- * reports are honoured whether or not it is set.
  */
 message PlaybackPositionReport {
   // Number of audio bytes played by the client for `turn_id`.
   uint64 bytes_played = 1;
 
-  // Which assistant turn these bytes belong to. Absent means a legacy client;
-  // the report is applied to the current response as before.
+  // Which assistant turn these bytes belong to. Explicitly optional: turn IDs
+  // are 0-based, so without presence a report for turn 0 is indistinguishable
+  // from a legacy client that sends no turn_id at all. Absent means a legacy
+  // client; the report is applied to the current response as before.
   optional uint32 turn_id = 2;
 }
 
@@ -664,14 +659,15 @@ message ServiceBoundMessage {
 
 /*
  * A fragment of text from the model, streamed as tokens arrive.
- *
- * Sent in every session, including sessions with TTS configured.
  */
 message ModelTextFragment {
   // The text content of this fragment.
   string text = 1;
 
   // Session-local ID of the assistant turn this fragment belongs to.
+  // Explicitly optional: turn IDs are 0-based, so without presence a fragment
+  // for turn 0 is indistinguishable from a server that sends no turn_id, and
+  // the client cannot fall back to attributing it to the current turn.
   optional uint32 turn_id = 2;
 }
 
@@ -682,54 +678,58 @@ message ModelAudioChunk {
   // The audio data
   AudioData audio = 1;
 
-  // Never populated. Retained for wire compatibility only.
-  // Use ModelSpeechProgress for spoken-text tracking.
-  optional string transcript = 2;
+  // This used to be a field here, but was never populated.
+  // Wire compatibility only, see ModelSpeechProgress for spoken text.
+  reserved 2;
+  reserved "transcript";
 
   // Session-local ID of the assistant turn this audio belongs to.
-  // Required to attribute received bytes to a turn, because
-  // ModelSpeechProgress.audio_bytes_played and
-  // PlaybackPositionReport.bytes_played are both per-turn counts.
   optional uint32 turn_id = 3;
 }
 
 /*
- * Reports how much of an assistant turn's text the caller has actually heard.
+ * Reports how much of an assistant turn's text the client has played back.
  *
- * Emitted continuously while TTS audio is playing. When the client does not
- * send PlaybackPositionReport, the position is a server-side estimate.
+ * Emitted continuously while TTS audio is playing.
  *
- * Independently, `exact` indicates whether the text boundary fell exactly on
- * a TTS segment edge or was interpolated within one.
+ * See PlaybackPositionReport for improving accuracy of this stream
+ * with client-reported playback positions.
  */
 message ModelSpeechProgress {
   // Turn this progress belongs to.
   uint32 turn_id = 1;
 
   // Text that became audible since the previous ModelSpeechProgress for this
-  // turn. Concatenating these in order yields an exact prefix of the
-  // concatenated ModelTextFragment stream for the same turn.
+  // turn.
   //
-  // Rare exception: when TTS fails to synthesize a span (logged server-side),
-  // that span's text is still included here to keep the stream contiguous.
+  // Concatenating these in order will reproduce the same text as the model
+  // text fragments and can thus be treated as a prefix of the generated text.
   string text = 2;
 
-  // Bytes of THIS TURN's audio played, per the server's estimate.
+  // Bytes of audio that have been played back so far, based on the server's
+  // estimate.
+  //
+  // This should not significantly drift from what the client has actually played
+  // back. If it does, consider adding support for PlaybackPositionReport to
+  // improve accuracy.
   uint64 audio_bytes_played = 3;
 
-  // True when the boundary lands exactly on a TTS segment edge; false when
-  // interpolated inside one.
+  // Accuracy indicator for debug purpose.
+  //
+  // Non-exact segments still contain the correct and whole text, but may not 100%
+  // correspond to the audio that has been played back. The server attempts to keep
+  // this drift as small as possible, but due to technical limitations a tiny amount
+  // of drift can occur.
+  //
+  // Treat this value as debug information only.
   bool exact = 4;
 }
 
 /*
- * The LLM has finished producing this turn's output. Sent in every session
- * regardless of TTS configuration, at the same point in the turn lifecycle.
+ * The LLM has finished producing this turn's output.
  *
- * TTS audio for the turn may still be synthesizing; see ResponseEnd.
- *
- * Not sent for direct-speech turns (no LLM runs) or conversation queries
- * (no turn exists).
+ * TTS audio for the turn may still be synthesizing and further turn events
+ * may arrive.
  */
 message InferenceComplete {
   // Session-local ID of the assistant turn whose generation finished.
@@ -738,22 +738,24 @@ message InferenceComplete {
 
 /*
  * The server's authoritative view of one turn's content at a point in time.
- * Replaces any optimistic client-side state for this turn_id.
  *
- * Sent whenever that view changes, so more than one may arrive per turn.
- * TTS audio is always omitted from the embedded message — it was already
- * streamed as ModelAudioChunk.
+ * Multiple of these snapshots may arrive per turn, whenever the server determines
+ * that new turn contents are available. This might not be a strict monotonic sequence,
+ * and content may be rolled back.
+ *
+ * This packet is authoritative in that it reflects what the server treats as the actual
+ * content of the turn, independent of other streamed state.
  */
 message TurnSnapshot {
   // The turn's content as of this snapshot.
   ChatMessage message = 1;
 
-  // True when no further snapshot will be sent: the turn's content and
-  // delivery_status are now immutable. Exactly one snapshot per turn has
-  // this set.
+  // If set, no further TurnSnapshots will arrive and the server has finalized the turn.
+  // Its status will not change anymore in regards to its contents.
   //
-  // ChatMessage.truncated_at_response_turn_id may still change afterwards
-  // and is reported separately by ContextTruncated.
+  // This does not indicate that the content of this turn will stay visible forever,
+  // only that it will not change anymore. Context truncation may eventually remove this
+  // turn from the visible context entirely.
   bool is_final = 2;
 }
 
@@ -835,13 +837,7 @@ message ChatMessage {
   google.protobuf.Timestamp created_at = 5;
 
   /*
-   * The turn ID. Correlates with `ResponseBegin.turn_id` / `ResponseEnd.turn_id`
-   * / `InferenceComplete.turn_id` / `ModelTextFragment.turn_id` /
-   * `ModelAudioChunk.turn_id` / `ModelSpeechProgress.turn_id` for assistant
-   * turns, and `UserTranscriptionResult.turn_id` for user audio turns.
-   *
-   * When this message is delivered embedded in `TurnSnapshot.message`, this
-   * is the same turn_id as that `TurnSnapshot`'s subject turn.
+   * The session-local ID of the assistant turn this message belongs to.
    */
   optional uint32 turn_id = 6;
 
@@ -948,12 +944,11 @@ message ResponseBegin {
 /*
  * Notification that no more audio is coming for this turn.
  *
- * In TTS sessions this fires once all synthesized audio has been dispatched.
- * In sessions without TTS there is no audio, so it fires when the model
- * finishes generating — the same instant as InferenceComplete.
+ * This is sent after all audio packets have been sent. However, changes
+ * to a turns content can still happen due to interruptions.
  *
- * This is NOT a signal that the turn's content is settled; an interrupted
- * turn's content is corrected afterwards. See TurnSnapshot.
+ * See TurnSnapshot for a notification of when a turn's content becomes
+ * immutable and finalized.
  */
 message ResponseEnd {
   /*

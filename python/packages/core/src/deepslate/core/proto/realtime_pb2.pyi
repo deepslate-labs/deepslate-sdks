@@ -410,14 +410,12 @@ class ModelTextFragment(_message.Message):
     def __init__(self, text: _Optional[str] = ..., turn_id: _Optional[int] = ...) -> None: ...
 
 class ModelAudioChunk(_message.Message):
-    __slots__ = ("audio", "transcript", "turn_id")
+    __slots__ = ("audio", "turn_id")
     AUDIO_FIELD_NUMBER: _ClassVar[int]
-    TRANSCRIPT_FIELD_NUMBER: _ClassVar[int]
     TURN_ID_FIELD_NUMBER: _ClassVar[int]
     audio: AudioData
-    transcript: str
     turn_id: int
-    def __init__(self, audio: _Optional[_Union[AudioData, _Mapping]] = ..., transcript: _Optional[str] = ..., turn_id: _Optional[int] = ...) -> None: ...
+    def __init__(self, audio: _Optional[_Union[AudioData, _Mapping]] = ..., turn_id: _Optional[int] = ...) -> None: ...
 
 class ModelSpeechProgress(_message.Message):
     __slots__ = ("turn_id", "text", "audio_bytes_played", "exact")
