@@ -278,10 +278,11 @@ def _on_spoken(text: str) -> None:
     print(f"heard: {text!r}")
 ```
 
-> **`model_text_fragment` overshoots on interrupted turns.** Because the server
-> streams fragments faster than it synthesizes audio, a turn that gets
-> interrupted will already have emitted text that was never spoken. That is
-> inherent to arriving ahead of synthesis, not a bug.
+> `model_text_fragment` arrives ahead of synthesis, so on an interrupted turn it
+> will usually have emitted text that was never spoken. `audio_transcript`
+> follows playback closely, it can land slightly ahead of or behind what was actually played.
+> Reach for `audio_transcript` when you need what was spoken, and treat
+> `model_text_fragment` as intent.
 
 ---
 
