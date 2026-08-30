@@ -76,6 +76,14 @@ DEEPSLATE_BASE_URL = "https://app.deepslate.eu"
 
 SETTLE_GRACE_PERIOD = 0.5
 
+ABANDONED_TOOL_RESULT = {
+    "error": "tool_call_cancelled",
+    "detail": (
+        "The user interrupted before this tool call returned, so its result "
+        "is unavailable. Respond to what the user just said instead."
+    ),
+}
+
 
 @dataclass
 class _ResponseGeneration:
@@ -362,6 +370,7 @@ class DeepslateRealtimeSession(
         self._tool_choice: ToolChoice | None = None
         self._tool_tasks: set[asyncio.Task[None]] = set()
         self._tool_sync_lock = asyncio.Lock()
+        self._outstanding_tool_calls: dict[str, tuple[str, int]] = {}
 
         # Core session — owns the WebSocket lifecycle
         self._session = DeepslateSession(
@@ -399,6 +408,7 @@ class DeepslateRealtimeSession(
                     if text := item.text_content:
                         self._pending_user_text = text
                 elif item.type == "function_call_output":
+                    self._outstanding_tool_calls.pop(item.call_id, None)
                     await self._session.send_tool_response(item.call_id, item.output)
 
         self._chat_ctx = chat_ctx.copy()
@@ -662,6 +672,7 @@ class DeepslateRealtimeSession(
 
     async def aclose(self) -> None:
         """Close the session."""
+        self._outstanding_tool_calls.clear()
         self._usage_heartbeat_task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
             await self._usage_heartbeat_task
@@ -689,6 +700,7 @@ class DeepslateRealtimeSession(
 
     async def on_connecting(self) -> None:
         """Reset per-connection state at the start of a connection attempt."""
+        self._outstanding_tool_calls.clear()
         for gen in list(self._generations.values()):
             self._settle_generation(gen, cancelled=True)
         self._generations.clear()
@@ -798,7 +810,6 @@ class DeepslateRealtimeSession(
         gen = self._generations.get(turn_id)
         if gen is not None:
             gen.text_complete = True
-            self._close_function_ch(gen)
             self._maybe_settle_after_playback(gen)
 
     async def on_turn_snapshot(self, message: ChatMessageDict, is_final: bool) -> None:
@@ -829,26 +840,23 @@ class DeepslateRealtimeSession(
         self, call_id: str, name: str, params: dict, turn_id: int | None = None
     ) -> None:
         """Forward a server tool-call request into its generation."""
-        gen = self._get_or_create_generation(turn_id)
+        if turn_id is None:
+            turn_id = self._last_turn_id if self._last_turn_id is not None else 0
+
+        gen = self._generations.get(turn_id)
+        reopened = gen is None and turn_id in self._settled_turns
         if gen is None:
-            logger.warning(
-                "Deepslate: dropping tool call %s(%s) for already-settled "
-                "turn_id=%s — the turn was interrupted or completed before the "
-                "request arrived",
-                name,
-                call_id,
-                turn_id,
-            )
-            return
-        if gen.function_ch.closed:
-            logger.warning(
-                "Deepslate: dropping tool call %s(%s) for turn_id=%s, it "
-                "arrived after the turn's inference had already completed",
-                name,
-                call_id,
-                turn_id,
-            )
-            return
+            if reopened:
+                logger.warning(
+                    "Deepslate: tool call %s(%s) arrived after turn_id=%s had "
+                    "already settled; running it on a reopened generation",
+                    name,
+                    call_id,
+                    turn_id,
+                )
+            gen = self._create_generation(turn_id)
+
+        self._outstanding_tool_calls[call_id] = (name, turn_id)
         gen.function_ch.send_nowait(
             FunctionCall(
                 call_id=call_id,
@@ -857,6 +865,10 @@ class DeepslateRealtimeSession(
             )
         )
         logger.debug(f"tool call request: {name}({call_id})")
+
+        if reopened:
+            gen.response_ended = True
+            self._settle_generation(gen)
 
     async def on_response_begin(self, turn_id: int = 0) -> None:
         """Start a new generation at the beginning of a server response."""
@@ -876,7 +888,6 @@ class DeepslateRealtimeSession(
         if gen is None:
             return
         gen.response_ended = True
-        self._close_function_ch(gen)
         if self._realtime_model._tts_config is None:
             self._settle_generation(gen)
             return
@@ -1058,10 +1069,6 @@ class DeepslateRealtimeSession(
 
         return gen
 
-    def _close_function_ch(self, gen: _ResponseGeneration) -> None:
-        if not gen.function_ch.closed:
-            gen.function_ch.close()
-
     def _text_fully_spoken(self, gen: _ResponseGeneration) -> bool:
         """Whether every speakable character of ``gen`` appears to be audible."""
         if not gen.text_complete:
@@ -1180,7 +1187,22 @@ class DeepslateRealtimeSession(
         del self._generations[gen.turn_id]
         if gen.turn_id not in self._settled_turns:
             self._settled_turns.append(gen.turn_id)
+        if cancelled:
+            self._cancel_tool_calls_for(gen.turn_id)
         self._emit_generation_metrics(gen, cancelled=cancelled)
+
+    def _cancel_tool_calls_for(self, turn_id: int) -> None:
+        """Answer tool calls livekit-agents is about to throw away."""
+        for call_id, (name, call_turn_id) in list(self._outstanding_tool_calls.items()):
+            if call_turn_id != turn_id:
+                continue
+            del self._outstanding_tool_calls[call_id]
+            task = asyncio.create_task(
+                self._session.send_tool_response(call_id, ABANDONED_TOOL_RESULT)
+            )
+            self._tool_tasks.add(task)
+            task.add_done_callback(self._tool_tasks.discard)
+            task.add_done_callback(self._on_tool_task_done)
 
     def _emit_generation_metrics(self, gen: _ResponseGeneration, *, cancelled: bool) -> None:
         """Emit latency and usage metrics for a just-closed generation."""
