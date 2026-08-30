@@ -22,7 +22,7 @@ import time
 import warnings
 from dataclasses import dataclass
 from types import SimpleNamespace
-from typing import Any, Literal
+from typing import Any, Literal, Mapping
 
 import aiohttp
 from livekit import rtc
@@ -120,6 +120,7 @@ class RealtimeModel(llm.RealtimeModel):
         tts_config: ElevenLabsTtsConfig | HostedTtsConfig | HostedVoiceCloneConfig | None = None,
         http_session: aiohttp.ClientSession | None = None,
         ws_url: str | None = None,
+        experiments: Mapping[str, Any] | None = None,
     ):
         """Initialize a Deepslate RealtimeModel.
 
@@ -141,6 +142,9 @@ class RealtimeModel(llm.RealtimeModel):
                         supplying a raw audio sample. When None (default), only text
                         output is provided.
             http_session: Optional shared aiohttp session.
+            experiments: Server-side experiments to enable. Experiments carry zero
+                         stability guarantees and may change or disappear without a
+                         version bump.
         """
         super().__init__(
             capabilities=llm.RealtimeCapabilities(
@@ -198,6 +202,7 @@ class RealtimeModel(llm.RealtimeModel):
             temperature=temperature,
             ws_url=ws_url,
             generate_reply_timeout=generate_reply_timeout,
+            experiments=experiments,
         )
 
         deprecated_vad_kwargs = {

@@ -18,6 +18,8 @@
 // plain JsonObject values, so Struct conversion helpers are unnecessary —
 // objects pass through unchanged.
 import { create } from "@bufbuild/protobuf";
+
+import { encodeExperiments } from "./experiments.js";
 import {
   type ChatHistory,
   type InitializeSessionRequest,
@@ -31,6 +33,7 @@ import {
 } from "@deepslate-labs/proto";
 
 import {
+  type Experiments,
   type ResolvedDeepslateOptions,
   type TtsConfig,
   type VadConfig,
@@ -93,6 +96,7 @@ export function buildInitializeRequest(params: {
   systemPrompt: string;
   ttsConfig?: TtsConfig;
   temperature?: number;
+  experiments?: Experiments;
 }): InitializeSessionRequest {
   const audioLine = {
     sampleRate: params.sampleRate,
@@ -125,6 +129,7 @@ export function buildInitializeRequest(params: {
       temperature: params.temperature ?? 1.0,
     },
     ttsConfiguration,
+    experiments: encodeExperiments(params.experiments),
   });
 }
 
@@ -143,6 +148,7 @@ export function buildInitializeRequestFromOptions(
     systemPrompt: options.systemPrompt,
     ttsConfig,
     temperature: options.temperature,
+    experiments: options.experiments,
   });
 }
 

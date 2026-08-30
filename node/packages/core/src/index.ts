@@ -34,6 +34,7 @@ export {
 } from "./options.js";
 export type {
   DeepslateOptions,
+  Experiments,
   ResolvedDeepslateOptions,
   VadConfig,
   ElevenLabsVoiceSettings,
@@ -69,3 +70,5 @@ export {
   buildInitializeRequest,
   TRIGGER_MODE_MAP,
 } from "./utils.js";
+
+export { encodeExperiments } from "./experiments.js";

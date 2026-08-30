@@ -122,6 +122,7 @@ The constructor takes a single options object (`RealtimeModelOptions`):
 | `vad` | `VadConfig` | defaults | Voice activity detection tuning |
 | `ttsConfig` | `TtsConfig` | `undefined` | TTS configuration (enables server-side audio output) |
 | `wsUrl` | `string` | `undefined` | Direct WebSocket URL (for local dev/testing) |
+| `experiments` | `Experiments` | `undefined` | Server-side experiments to enable |
 
 ### VAD Configuration
 

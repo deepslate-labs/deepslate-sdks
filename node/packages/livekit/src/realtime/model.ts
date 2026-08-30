@@ -37,6 +37,7 @@ import {
   TriggerMode,
   optionsFromEnv,
   type FunctionTool as DeepslateFunctionTool,
+  type Experiments,
   type ResolvedDeepslateOptions,
   type TtsConfig,
   type VadConfig,
@@ -58,6 +59,7 @@ export interface RealtimeModelOptions {
   vad?: VadConfig;
   ttsConfig?: TtsConfig;
   wsUrl?: string;
+  experiments?: Experiments;
 }
 
 /** Internal state for an in-flight response generation. */
@@ -111,6 +113,7 @@ export class RealtimeModel extends llm.RealtimeModel {
       temperature: options.temperature,
       generateReplyTimeout: options.generateReplyTimeout,
       wsUrl: options.wsUrl,
+      experiments: options.experiments,
     });
     this.vad = options.vad;
     this.ttsConfig = options.ttsConfig;

@@ -368,6 +368,12 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
     logger.debug(
       `DeepslateSession: initializing session (${sampleRate}Hz, ${channels}ch)`,
     );
+    const experimentNames = Object.keys(this.options.experiments ?? {});
+    if (experimentNames.length > 0) {
+      logger.info(
+        `DeepslateSession: experiments enabled: ${experimentNames.join(", ")}`,
+      );
+    }
 
     if (this.currentTools.length > 0) {
       this.send(this.buildUpdateToolsMessage(this.currentTools));
@@ -514,7 +520,7 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
             chunk.audio.data,
             this.sampleRateValue ?? 24000,
             this.channelsValue ?? 1,
-            chunk.transcript ? chunk.transcript : null,
+            null,
           );
         }
         break;

@@ -13,6 +13,17 @@
 // limitations under the License.
 
 // Core Deepslate connection and model options.
+import type { JsonValue } from "@bufbuild/protobuf";
+
+import { encodeExperiments } from "./experiments.js";
+
+/**
+ * Server-side experiments to enable for a session.
+ *
+ * Experiments carry **zero stability guarantees**: they may change or disappear
+ * without a version bump.
+ */
+export type Experiments = Record<string, JsonValue | undefined>;
 
 /** Inference trigger mode for user input. */
 export enum TriggerMode {
@@ -52,6 +63,8 @@ export interface DeepslateOptions {
   maxRetries?: number;
   /** Timeout in seconds for generate_reply (0 = no timeout). */
   generateReplyTimeout?: number;
+  /** Server-side experiments to enable. See {@link Experiments}. */
+  experiments?: Experiments;
 }
 
 /** Fully-populated options with all defaults applied. */
@@ -65,6 +78,7 @@ export interface ResolvedDeepslateOptions {
   wsUrl?: string;
   maxRetries: number;
   generateReplyTimeout: number;
+  experiments?: Experiments;
 }
 
 export const DEEPSLATE_DEFAULTS = {
@@ -77,6 +91,8 @@ export const DEEPSLATE_DEFAULTS = {
 
 /** Apply defaults to a partially-specified options object. */
 export function resolveOptions(opts: DeepslateOptions): ResolvedDeepslateOptions {
+  encodeExperiments(opts.experiments);
+
   return {
     vendorId: opts.vendorId,
     organizationId: opts.organizationId,
@@ -88,6 +104,7 @@ export function resolveOptions(opts: DeepslateOptions): ResolvedDeepslateOptions
     maxRetries: opts.maxRetries ?? DEEPSLATE_DEFAULTS.maxRetries,
     generateReplyTimeout:
       opts.generateReplyTimeout ?? DEEPSLATE_DEFAULTS.generateReplyTimeout,
+    experiments: opts.experiments,
   };
 }
 

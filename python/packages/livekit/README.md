@@ -119,6 +119,7 @@ if __name__ == "__main__":
 | `generate_reply_timeout` | `float`               | `30.0`                           | Timeout in seconds for `generate_reply` (0 = no limit) |
 | `tts_config`             | `ElevenLabsTtsConfig \| HostedTtsConfig` | `None`          | TTS configuration (enables server-side audio output)    |
 | `vad_config`             | `VadConfig`           | `None`                            | Voice activity detection tuning                         |
+| `experiments`            | `Mapping[str, Any]`   | `None`                            | Server-side experiments to enable                       |
 
 Pass a `VadConfig` instance to tune voice activity detection — see [VAD Configuration](#vad-configuration) below.
 

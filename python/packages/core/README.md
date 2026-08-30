@@ -135,6 +135,30 @@ tts = ElevenLabsTtsConfig(
 )
 ```
 
+### Experiments
+
+> **No stability guarantees.** Experiments may change or disappear without a version bump or warning.
+
+Deepslate can enable server-side experiments for a session. Pass them as a plain map of experiment name to parameter value.
+
+```python
+from deepslate.core import DeepslateOptions
+
+opts = DeepslateOptions.from_env(
+    experiments={"stt-query-tool:1": None},
+)
+```
+
+Experiments that take parameters are configured by passing them directly. Values may be any JSON value: `None`, booleans, numbers, strings, lists, or nested objects. An experiment's parameter object may be filled in partially:
+
+```python
+opts = DeepslateOptions.from_env(
+    experiments={
+        "stt-query-tool:1": {"name": "lookup", "description": "Look up an order"},
+    },
+)
+```
+
 ### `DeepslateSession`
 
 `DeepslateSession` is the recommended entry point for custom integrations. It handles the full protocol lifecycle — session initialization, protobuf serialization, reconnection, and server-event routing — delivering events to a `DeepslateSessionListener` so your code only deals with application logic.
@@ -311,6 +335,7 @@ Subclass this and override only the methods you need. All methods are `async` an
 | `system_prompt` | `str` | `"You are a helpful assistant."` | Default system prompt |
 | `ws_url` | `str \| None` | `None` | Direct WebSocket URL (overrides `base_url`; for local dev) |
 | `max_retries` | `int` | `3` | Maximum reconnection attempts before giving up |
+| `experiments` | `Mapping[str, Any] \| None` | `None` | Server-side experiments to enable |
 
 ### `VadConfig`
 
