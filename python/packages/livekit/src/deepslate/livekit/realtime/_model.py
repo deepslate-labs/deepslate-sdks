@@ -767,16 +767,17 @@ class DeepslateRealtimeSession(
         if gen is None:
             return
 
-        if audio_bytes_played < gen.last_audio_bytes_played:
+        previous_bytes_played = gen.last_audio_bytes_played
+        if audio_bytes_played < previous_bytes_played:
             logger.warning(
                 "Deepslate: ModelSpeechProgress.audio_bytes_played went "
                 f"backward for turn_id={turn_id} "
-                f"({audio_bytes_played} < {gen.last_audio_bytes_played}); ignoring"
+                f"({audio_bytes_played} < {previous_bytes_played}); our playback "
+                "reports have possibly de-synced"
             )
-            return
 
         bytes_per_second = (gen.audio_sample_rate or 24000) * (gen.audio_channels or 1) * 2
-        start_time = gen.last_audio_bytes_played / bytes_per_second
+        start_time = min(previous_bytes_played, audio_bytes_played) / bytes_per_second
         end_time = audio_bytes_played / bytes_per_second
         gen.last_audio_bytes_played = audio_bytes_played
 
@@ -1126,7 +1127,7 @@ class DeepslateRealtimeSession(
                     return
                 if (
                     gen.audio_bytes > bytes_seen
-                    or gen.last_audio_bytes_played > played_before
+                    or gen.last_audio_bytes_played != played_before
                 ):
                     continue
 
