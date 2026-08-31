@@ -408,7 +408,8 @@ class DeepslateRealtimeSession(
                     if text := item.text_content:
                         self._pending_user_text = text
                 elif item.type == "function_call_output":
-                    self._outstanding_tool_calls.pop(item.call_id, None)
+                    if self._outstanding_tool_calls.pop(item.call_id, None) is None:
+                        continue
                     await self._session.send_tool_response(item.call_id, item.output)
 
         self._chat_ctx = chat_ctx.copy()
