@@ -210,6 +210,11 @@ def encode_experiments(
 
     encoded: dict[str, Value] = {}
     for name, value in experiments.items():
+        if not isinstance(name, str):
+            raise ValueError(
+                f"experiments: experiment names must be strings, got "
+                f"{type(name).__name__}"
+            )
         parsed = Value()
         json_format.ParseDict(
             _normalize_experiment_value(value, f"experiments[{name!r}]"), parsed
