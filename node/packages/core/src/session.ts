@@ -312,11 +312,11 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
     this.enqueueOrBuffer({ payload: { case: "conversationQuery", value } });
   }
 
-  async reportPlaybackPosition(bytesPlayed: number): Promise<void> {
+  async reportPlaybackPosition(bytesPlayed: number, turnId: number): Promise<void> {
     this.enqueueOrBuffer({
       payload: {
         case: "playbackPositionReport",
-        value: { bytesPlayed: BigInt(bytesPlayed) },
+        value: { bytesPlayed: BigInt(bytesPlayed), turnId },
       },
     });
   }
@@ -498,10 +498,10 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
         break;
       }
       case "responseBegin":
-        this.fire("responseBegin");
+        this.fire("responseBegin", msg.payload.value.turnId);
         break;
       case "responseEnd":
-        this.fire("responseEnd");
+        this.fire("responseEnd", msg.payload.value.turnId);
         break;
       case "modelTextFragment":
         this.fire("textFragment", msg.payload.value.text);
