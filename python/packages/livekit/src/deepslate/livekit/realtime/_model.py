@@ -375,7 +375,7 @@ class DeepslateRealtimeSession(
         """Return a copy of the current tool context."""
         return self._tools.copy()
 
-    async def update_instructions(self, instructions: str) -> None:
+    async def update_instructions(self, instructions: str | Instructions) -> None:
         """Update system prompt for the next session initialization."""
         if isinstance(instructions, Instructions):
             modality: Literal["audio", "text"] = (
