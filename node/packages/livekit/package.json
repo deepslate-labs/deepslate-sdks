@@ -23,11 +23,11 @@
     "@deepslate-labs/core": "workspace:*"
   },
   "peerDependencies": {
-    "@livekit/agents": "^1.7.0",
+    "@livekit/agents": "^1.7.1",
     "@livekit/rtc-node": "^0.13.34"
   },
   "devDependencies": {
-    "@livekit/agents": "^1.7.0",
+    "@livekit/agents": "^1.7.1",
     "@livekit/rtc-node": "^0.13.34",
     "dotenv": "^16.4.5",
     "zod": "^4.1.8"
