@@ -378,7 +378,10 @@ class DeepslateRealtimeSession(
     async def update_instructions(self, instructions: str) -> None:
         """Update system prompt for the next session initialization."""
         if isinstance(instructions, Instructions):
-            instructions = instructions.render(modality="audio")
+            modality: Literal["audio", "text"] = (
+                "audio" if self._realtime_model.capabilities.audio_output else "text"
+            )
+            instructions = instructions.render(modality=modality)
 
         self._instructions = instructions
         self._opts.system_prompt = instructions
