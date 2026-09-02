@@ -503,9 +503,11 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
       case "responseEnd":
         this.fire("responseEnd");
         break;
-      case "modelTextFragment":
-        this.fire("textFragment", msg.payload.value.text);
+      case "modelTextFragment": {
+        const fragment = msg.payload.value;
+        this.fire("textFragment", fragment.text, fragment.turnId ?? null);
         break;
+      }
       case "modelAudioChunk": {
         const chunk = msg.payload.value;
         if (chunk.audio && chunk.audio.data.length > 0) {
@@ -514,7 +516,7 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
             chunk.audio.data,
             this.sampleRateValue ?? 24000,
             this.channelsValue ?? 1,
-            chunk.transcript ? chunk.transcript : null,
+            null,
           );
         }
         break;

@@ -27,6 +27,7 @@ from .options import DeepslateOptions, ElevenLabsTtsConfig, HostedTtsConfig, Hos
 from .proto import realtime_pb2 as proto
 from ._types import ChatMessageDict, DeepslateSessionListener, FunctionToolDict, TriggerMode
 from ._utils import (
+    _parse_chat_message,
     build_initialize_request,
     dict_to_struct,
     parse_chat_history,
@@ -355,9 +356,14 @@ class DeepslateSession:
             proto.ServiceBoundMessage(conversation_query=query)
         )
 
-    async def report_playback_position(self, bytes_played: int) -> None:
-        """Send a ``PlaybackPositionReport`` for server-side audio truncation."""
-        report = proto.PlaybackPositionReport(bytes_played=bytes_played)
+    async def report_playback_position(self, bytes_played: int, turn_id: int) -> None:
+        """Send a ``PlaybackPositionReport`` for server-side audio truncation.
+
+        ``turn_id`` attributes ``bytes_played`` to a specific assistant turn.
+        """
+        report = proto.PlaybackPositionReport(
+            bytes_played=bytes_played, turn_id=turn_id
+        )
         await self._enqueue_or_buffer(
             proto.ServiceBoundMessage(playback_position_report=report)
         )
@@ -617,24 +623,56 @@ class DeepslateSession:
             )
 
         elif payload_type == "model_text_fragment":
+            fragment = msg.model_text_fragment
+            fragment_turn_id: Optional[int] = (
+                fragment.turn_id if fragment.HasField("turn_id") else None
+            )
             await self._fire(
-                self._listener.on_text_fragment(msg.model_text_fragment.text)
+                self._listener.on_text_fragment(fragment.text, fragment_turn_id)
             )
 
         elif payload_type == "model_audio_chunk":
             chunk = msg.model_audio_chunk
             if chunk.audio and chunk.audio.data:
-                transcript: Optional[str] = (
-                    chunk.transcript if chunk.transcript else None
+                chunk_turn_id: Optional[int] = (
+                    chunk.turn_id if chunk.HasField("turn_id") else None
                 )
                 await self._fire(
                     self._listener.on_audio_chunk(
                         chunk.audio.data,
                         self._sample_rate or 24000,
                         self._channels or 1,
-                        transcript,
+                        None,
+                        chunk_turn_id,
                     )
                 )
+
+        elif payload_type == "model_speech_progress":
+            progress = msg.model_speech_progress
+            await self._fire(
+                self._listener.on_model_speech_progress(
+                    progress.turn_id,
+                    progress.text,
+                    progress.audio_bytes_played,
+                    progress.exact,
+                )
+            )
+
+        elif payload_type == "inference_complete":
+            await self._fire(
+                self._listener.on_inference_complete(
+                    msg.inference_complete.turn_id
+                )
+            )
+
+        elif payload_type == "turn_snapshot":
+            snapshot = msg.turn_snapshot
+            await self._fire(
+                self._listener.on_turn_snapshot(
+                    _parse_chat_message(snapshot.message),
+                    snapshot.is_final,
+                )
+            )
 
         elif payload_type == "user_transcription_result":
             result = msg.user_transcription_result

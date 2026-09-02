@@ -100,7 +100,9 @@ class ChatMessageDict(TypedDict):
 class DeepslateSessionListener:
     """Base class for receiving events from a :class:`DeepslateSession`."""
 
-    async def on_text_fragment(self, text: str) -> None:
+    async def on_text_fragment(
+        self, text: str, turn_id: Optional[int] = None
+    ) -> None:
         pass
 
     async def on_audio_chunk(
@@ -109,7 +111,28 @@ class DeepslateSessionListener:
         sample_rate: int,
         channels: int,
         transcript: Optional[str],
+        turn_id: Optional[int] = None,
     ) -> None:
+        pass
+
+    async def on_model_speech_progress(
+        self,
+        turn_id: int,
+        text: str,
+        audio_bytes_played: int,
+        exact: bool,
+    ) -> None:
+        """Called when the server reports newly-audible text for an assistant turn."""
+        pass
+
+    async def on_inference_complete(self, turn_id: int) -> None:
+        """Called when the LLM has finished producing a turn's output."""
+        pass
+
+    async def on_turn_snapshot(
+        self, message: ChatMessageDict, is_final: bool
+    ) -> None:
+        """Called with the server's authoritative view of one turn's content."""
         pass
 
     async def on_tool_call(
