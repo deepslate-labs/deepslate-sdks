@@ -33,7 +33,7 @@ pip install deepslate-livekit
 ### Dependencies (installed automatically)
 
 - `deepslate-core` — Shared Deepslate models and base client
-- `livekit-agents>=1.3.8` — LiveKit Agents framework
+- `livekit-agents>=1.7.1` — LiveKit Agents framework
 
 ---
 
