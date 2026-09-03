@@ -843,7 +843,12 @@ class DeepslateRealtimeSession(
         transcript: str | None,
         turn_id: int | None = None,
     ) -> None:
-        """Stream an audio chunk into its generation."""
+        """Stream an audio chunk into its generation.
+
+        ``transcript`` is never populated by the server anymore (retained on
+        the wire for compatibility only; see ``ModelSpeechProgress`` for
+        spoken-text tracking) so it's accepted but otherwise unused.
+        """
         gen = self._get_or_create_generation(turn_id)
         if gen is None:
             return
