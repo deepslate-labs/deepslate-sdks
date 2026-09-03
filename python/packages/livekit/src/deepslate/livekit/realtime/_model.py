@@ -79,7 +79,7 @@ SETTLE_GRACE_PERIOD = 0.5
 
 _BYTES_PER_SAMPLE = 2
 
-_SETTLED_GENERATION_LIMIT = 16
+_SETTLED_GENERATION_LIMIT = 4
 
 ABANDONED_TOOL_RESULT = {
     "error": "tool_call_cancelled",
@@ -383,7 +383,6 @@ class DeepslateRealtimeSession(
         self._settled_generations: OrderedDict[str, _ResponseGeneration] = (
             OrderedDict()
         )
-        self._playback_report_tasks: set[asyncio.Task[None]] = set()
 
         # Conversation query tracking: query_id → Future[str]
         self._pending_queries: dict[str, asyncio.Future[str]] = {}
@@ -705,7 +704,7 @@ class DeepslateRealtimeSession(
         if not self._realtime_model._opts.supports_playback_reporting:
             return
 
-        if self._realtime_model._tts_config is None:
+        if "audio" not in modalities:
             return
 
         gen = self._find_generation(message_id)
@@ -716,15 +715,9 @@ class DeepslateRealtimeSession(
             )
             return
 
-        if gen.uninterruptable:
-            logger.debug(
-                "playback position not reported: turn is uninterruptable",
-                extra={"message_id": message_id, "turn_id": gen.turn_id},
-            )
-            return
-
-        bytes_played = self._playback_bytes(gen, audio_end_ms)
-        self._spawn_playback_report(bytes_played, gen.turn_id)
+        self._session.report_playback_position_nowait(
+            self._playback_bytes(gen, audio_end_ms), gen.turn_id
+        )
 
     def _find_generation(self, message_id: str) -> _ResponseGeneration | None:
         """Resolve a livekit message id to its generation, open or just settled."""
@@ -743,27 +736,13 @@ class DeepslateRealtimeSession(
     @staticmethod
     def _playback_bytes(gen: _ResponseGeneration, audio_end_ms: int) -> int:
         """Convert a played duration to a byte offset into this turn's audio."""
-        sample_rate = gen.audio_sample_rate or 24000
-        channels = gen.audio_channels or 1
-        frame_size = channels * _BYTES_PER_SAMPLE
-        raw = int(max(audio_end_ms, 0) / 1000 * sample_rate * frame_size)
-        aligned = raw - (raw % frame_size)
-        return max(0, min(aligned, gen.audio_bytes))
-
-    def _spawn_playback_report(self, bytes_played: int, turn_id: int) -> None:
-        """Send a playback position report without blocking the caller."""
-        task = asyncio.create_task(
-            self._session.report_playback_position(bytes_played, turn_id)
+        if not gen.audio_bytes or gen.audio_sample_rate is None:
+            return 0
+        bytes_per_second = (
+            gen.audio_sample_rate * gen.audio_channels * _BYTES_PER_SAMPLE
         )
-        self._playback_report_tasks.add(task)
-        task.add_done_callback(self._playback_report_tasks.discard)
-        task.add_done_callback(self._on_playback_report_done)
-
-    @staticmethod
-    def _on_playback_report_done(task: asyncio.Task[None]) -> None:
-        """Surface failures from a fire-and-forget playback report."""
-        if not task.cancelled() and (exc := task.exception()) is not None:
-            logger.error("playback position report failed", exc_info=exc)
+        played = int(audio_end_ms / 1000 * bytes_per_second)
+        return min(played, gen.audio_bytes)
 
     async def aclose(self) -> None:
         """Close the session."""
@@ -777,10 +756,6 @@ class DeepslateRealtimeSession(
             task.cancel()
         if tool_tasks:
             await asyncio.gather(*tool_tasks, return_exceptions=True)
-
-        report_tasks = tuple(self._playback_report_tasks)
-        if report_tasks:
-            await asyncio.gather(*report_tasks, return_exceptions=True)
 
         for gen in list(self._generations.values()):
             self._settle_generation(gen, cancelled=True)
