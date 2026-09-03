@@ -51,6 +51,9 @@ class DeepslateOptions:
     generate_reply_timeout: float = 30.0
     """Timeout in seconds for generate_reply (0 = no timeout)."""
 
+    supports_playback_reporting: bool = False
+    """Whether this client reports audio playback positions to the server."""
+
     @classmethod
     def from_env(
         cls,

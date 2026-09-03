@@ -210,6 +210,7 @@ def build_initialize_request(
     system_prompt: str,
     tts_config: Optional[ElevenLabsTtsConfig | HostedTtsConfig | HostedVoiceCloneConfig] = None,
     temperature: float = 1.0,
+    supports_playback_reporting: bool = False,
 ) -> proto.InitializeSessionRequest:
     """Build a proto.InitializeSessionRequest from core configuration objects.
 
@@ -271,4 +272,5 @@ def build_initialize_request(
             temperature=temperature,
         ),
         tts_configuration=tts_proto,
+        supports_playback_reporting=supports_playback_reporting,
     )

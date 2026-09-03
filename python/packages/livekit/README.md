@@ -17,6 +17,7 @@ LiveKit Agents plugin for [Deepslate's](https://deepslate.eu/) realtime voice AI
 - **Function Tools** — Define and invoke tools using LiveKit's `@function_tool()` decorator
 - **Flexible TTS** — Server-side TTS via Deepslate-hosted (cloned) voices or ElevenLabs, with automatic context truncation on interruption
 - **Automatic Interruption Handling** — Truncates the in-flight response when users interrupt
+- **Playback Position Reporting** — Optionally report what the caller actually heard, so context truncation on barge-in is measured rather than estimated
 
 ---
 
@@ -119,6 +120,7 @@ if __name__ == "__main__":
 | `generate_reply_timeout` | `float`               | `30.0`                           | Timeout in seconds for `generate_reply` (0 = no limit) |
 | `tts_config`             | `ElevenLabsTtsConfig \| HostedTtsConfig` | `None`          | TTS configuration (enables server-side audio output)    |
 | `vad_config`             | `VadConfig`           | `None`                            | Voice activity detection tuning                         |
+| `supports_playback_reporting` | `bool`           | `False`                           | Report how much of an interrupted turn the caller actually heard, so context truncation on barge-in is measured rather than estimated |
 
 Pass a `VadConfig` instance to tune voice activity detection — see [VAD Configuration](#vad-configuration) below.
 

@@ -20,7 +20,7 @@ import json
 import os
 import time
 import warnings
-from collections import deque
+from collections import OrderedDict, deque
 from dataclasses import dataclass
 from types import SimpleNamespace
 from typing import Any, Literal
@@ -76,6 +76,10 @@ from .._log import logger
 DEEPSLATE_BASE_URL = "https://app.deepslate.eu"
 
 SETTLE_GRACE_PERIOD = 0.5
+
+_BYTES_PER_SAMPLE = 2
+
+_SETTLED_GENERATION_LIMIT = 4
 
 ABANDONED_TOOL_RESULT = {
     "error": "tool_call_cancelled",
@@ -138,6 +142,7 @@ class RealtimeModel(llm.RealtimeModel):
         vad_config: VadConfig | None = None,
         # TTS configuration
         tts_config: ElevenLabsTtsConfig | HostedTtsConfig | HostedVoiceCloneConfig | None = None,
+        supports_playback_reporting: bool = False,
         http_session: aiohttp.ClientSession | None = None,
         ws_url: str | None = None,
     ):
@@ -160,6 +165,11 @@ class RealtimeModel(llm.RealtimeModel):
                         or ``HostedVoiceCloneConfig`` to clone a voice on the fly by
                         supplying a raw audio sample. When None (default), only text
                         output is provided.
+            supports_playback_reporting: When True, report how much of an
+                        interrupted assistant turn the caller actually heard, so
+                        the server truncates the model's context to match instead
+                        of falling back to elapsed-time estimation which is less precise.
+                        Off by default.
             http_session: Optional shared aiohttp session.
         """
         super().__init__(
@@ -218,6 +228,7 @@ class RealtimeModel(llm.RealtimeModel):
             temperature=temperature,
             ws_url=ws_url,
             generate_reply_timeout=generate_reply_timeout,
+            supports_playback_reporting=supports_playback_reporting,
         )
 
         deprecated_vad_kwargs = {
@@ -368,6 +379,10 @@ class DeepslateRealtimeSession(
         self._pending_user_generation: bool = False
         self._pending_uninterruptable: bool = False
         self._pending_user_text: str | None = None
+
+        self._settled_generations: OrderedDict[str, _ResponseGeneration] = (
+            OrderedDict()
+        )
 
         # Conversation query tracking: query_id → Future[str]
         self._pending_queries: dict[str, asyncio.Future[str]] = {}
@@ -681,8 +696,53 @@ class DeepslateRealtimeSession(
         audio_end_ms: int,
         audio_transcript: NotGivenOr[str] = NOT_GIVEN,
     ) -> None:
-        """Deepslate handles truncation server-side automatically."""
-        pass
+        """Report how much of an interrupted turn the user actually heard.
+
+        Truncation still happens server-side without this; the report only makes
+        it accurate.
+        """
+        if not self._realtime_model._opts.supports_playback_reporting:
+            return
+
+        if "audio" not in modalities:
+            return
+
+        gen = self._find_generation(message_id)
+        if gen is None:
+            logger.debug(
+                "playback position not reported: no generation for message",
+                extra={"message_id": message_id},
+            )
+            return
+
+        self._session.report_playback_position_nowait(
+            self._playback_bytes(gen, audio_end_ms), gen.turn_id
+        )
+
+    def _find_generation(self, message_id: str) -> _ResponseGeneration | None:
+        """Resolve a livekit message id to its generation, open or just settled."""
+        for gen in self._generations.values():
+            if gen.response_id == message_id:
+                return gen
+        return self._settled_generations.get(message_id)
+
+    def _retain_settled_generation(self, gen: _ResponseGeneration) -> None:
+        """Keep a just-settled generation resolvable by a later truncate()."""
+        self._settled_generations[gen.response_id] = gen
+        self._settled_generations.move_to_end(gen.response_id)
+        while len(self._settled_generations) > _SETTLED_GENERATION_LIMIT:
+            self._settled_generations.popitem(last=False)
+
+    @staticmethod
+    def _playback_bytes(gen: _ResponseGeneration, audio_end_ms: int) -> int:
+        """Convert a played duration to a byte offset into this turn's audio."""
+        if not gen.audio_bytes or gen.audio_sample_rate is None:
+            return 0
+        bytes_per_second = (
+            gen.audio_sample_rate * gen.audio_channels * _BYTES_PER_SAMPLE
+        )
+        played = int(audio_end_ms / 1000 * bytes_per_second)
+        return min(played, gen.audio_bytes)
 
     async def aclose(self) -> None:
         """Close the session."""
@@ -720,6 +780,7 @@ class DeepslateRealtimeSession(
         self._generations.clear()
         self._settled_turns.clear()
         self._last_turn_id = None
+        self._settled_generations.clear()
         self._connection_attempt_started_at = time.monotonic()
 
     async def on_session_initialized(self) -> None:
@@ -1199,6 +1260,7 @@ class DeepslateRealtimeSession(
         with contextlib.suppress(asyncio.InvalidStateError):
             gen.done_fut.set_result(None)
         del self._generations[gen.turn_id]
+        self._retain_settled_generation(gen)
         if gen.turn_id not in self._settled_turns:
             self._settled_turns.append(gen.turn_id)
         if cancelled:
