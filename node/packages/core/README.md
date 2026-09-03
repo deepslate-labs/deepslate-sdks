@@ -256,14 +256,20 @@ and closes it when `close()` is called.
 
 Subscribe with `session.on(event, listener)`. Event payloads are strongly typed via `DeepslateSessionEvents`.
 
-| Event | Listener signature | Emitted when |
-|---|---|---|
-| `sessionInitialized` | `()` | Session is fully initialized and ready to accept messages |
-| `textFragment` | `(text: string)` | Model streams a text token |
-| `audioChunk` | `(pcm: Uint8Array, sampleRate: number, channels: number, transcript: string \| null)` | Model streams a TTS audio chunk |
-| `toolCall` | `(callId: string, name: string, params: Record<string, unknown>)` | Model requests a tool invocation |
-| `responseBegin` | `()` | Model response starts |
-| `responseEnd` | `()` | Model response ends |
+| Event | Listener signature | Emitted when                                                      |
+|---|---|-------------------------------------------------------------------|
+| `sessionInitialized` | `()` | Session is fully initialized and ready to accept messages         |
+| `textFragment` | `(text: string, turnId: number \| null)` | Model streams a text token (faster than realtime, see note below) |
+| `audioChunk` | `(pcm: Uint8Array, sampleRate: number, channels: number, transcript: string \| null)` | Model streams a TTS audio chunk                                   |
+| `toolCall` | `(callId: string, name: string, params: Record<string, unknown>)` | Model requests a tool invocation                                  |
+| `responseBegin` | `()` | Model response starts                                             |
+| `responseEnd` | `()` | Model response ends                                               |
+
+> **`textFragment` is not a transcript of what was heard.** Fragments arrive
+> faster than realtime, ahead of TTS synthesis, so they carry the model's
+> *intended* output. When a turn is interrupted, the server has already sent
+> text that never reached the speaker. Do not use it as a record of what the caller actually heard, and
+> never sync it straight into a conversation history.
 | `userTranscription` | `(text: string, language: string \| null, turnId: number)` | User speech transcription arrives |
 | `playbackBufferClear` | `()` | Server cleared its audio playback buffer |
 | `chatHistory` | `(messages: ChatMessage[])` | Chat history export received |

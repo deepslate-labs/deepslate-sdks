@@ -35,8 +35,8 @@ npm install @deepslate-labs/livekit
 
 ### Peer dependencies
 
-- `@livekit/agents` `^1.0.7` — LiveKit Agents framework (Node)
-- `@livekit/rtc-node` `^0.13.27` — LiveKit realtime audio frames
+- `@livekit/agents` `^1.7.1` — LiveKit Agents framework (Node)
+- `@livekit/rtc-node` `^0.13.34` — LiveKit realtime audio frames
 
 ```bash
 npm install @livekit/agents @livekit/rtc-node

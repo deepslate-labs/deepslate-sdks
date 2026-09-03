@@ -557,8 +557,11 @@ message PlaybackPositionReport {
   // Number of audio bytes played by the client for `turn_id`.
   uint64 bytes_played = 1;
 
-  // Which assistant turn these bytes belong to.
-  uint32 turn_id = 2;
+  // Which assistant turn these bytes belong to. Explicitly optional: turn IDs
+  // are 0-based, so without presence a report for turn 0 is indistinguishable
+  // from a legacy client that sends no turn_id at all. Absent means a legacy
+  // client; the report is applied to the current response as before.
+  optional uint32 turn_id = 2;
 }
 
 /*
@@ -662,7 +665,10 @@ message ModelTextFragment {
   string text = 1;
 
   // Session-local ID of the assistant turn this fragment belongs to.
-  uint32 turn_id = 2;
+  // Explicitly optional: turn IDs are 0-based, so without presence a fragment
+  // for turn 0 is indistinguishable from a server that sends no turn_id, and
+  // the client cannot fall back to attributing it to the current turn.
+  optional uint32 turn_id = 2;
 }
 
 /*
