@@ -23,7 +23,7 @@ import { AudioFrame } from "@livekit/rtc-node";
 // type-only members are aliased.)
 import { llm } from "@livekit/agents";
 
-const { ChatContext, FunctionCall, isFunctionTool, toJsonSchema } = llm;
+const { ChatContext, FunctionCall, ToolContext, isFunctionTool, toJsonSchema } = llm;
 type ChatContext = llm.ChatContext;
 type FunctionCall = llm.FunctionCall;
 type GenerationCreatedEvent = llm.GenerationCreatedEvent;
@@ -138,7 +138,7 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
   private readonly session: DeepslateSession;
 
   private _chatCtx: ChatContext = ChatContext.empty();
-  private _tools: ToolContext = {};
+  private _tools: ToolContext = ToolContext.empty();
   private toolsDicts: DeepslateFunctionTool[] = [];
   private toolChoice: ToolChoice | null = null;
 
@@ -192,7 +192,7 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
   }
 
   get tools(): ToolContext {
-    return { ...this._tools };
+    return new ToolContext(this._tools.tools);
   }
 
   async updateInstructions(instructions: string): Promise<void> {
@@ -216,20 +216,19 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
 
   async updateTools(tools: ToolContext): Promise<void> {
     const dicts: DeepslateFunctionTool[] = [];
-    for (const [name, tool] of Object.entries(tools)) {
+    for (const [name, tool] of Object.entries(tools.functionTools)) {
       if (!isFunctionTool(tool)) continue;
-      const schema = toJsonSchema(tool);
       dicts.push({
         type: "function",
         function: {
-          name: schema.name ?? name,
-          description: schema.description ?? "",
-          parameters: schema.parameters ?? {},
+          name: tool.name ?? name,
+          description: tool.description ?? "",
+          parameters: toJsonSchema(tool.parameters) as Record<string, unknown>,
         },
       });
     }
     this.toolsDicts = dicts;
-    this._tools = { ...tools };
+    this._tools = new ToolContext(tools.tools);
     await this.syncToolChoice();
     logger.debug("updated tools:", dicts.map((d) => d.function.name));
   }

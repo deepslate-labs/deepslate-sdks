@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "deepslate-core",
-    "livekit-agents>=1.5.2",
+    "livekit-agents>=1.7.1",
 ]
 keywords = ["voice", "ai", "realtime", "audio", "video", "livekit", "deepslate"]
 classifiers = [

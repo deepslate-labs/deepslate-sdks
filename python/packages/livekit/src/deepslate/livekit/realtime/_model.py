@@ -40,6 +40,7 @@ from livekit.agents.llm import (
     ToolChoice,
     ToolContext,
 )
+from livekit.agents.llm.chat_context import Instructions
 from livekit.agents.llm.tool_context import (
     get_raw_function_info,
     is_function_tool,
@@ -284,8 +285,14 @@ class RealtimeModel(llm.RealtimeModel):
         """Return the model identifier used in emitted usage/metrics metadata."""
         return "opal"
 
-    def session(self) -> "DeepslateRealtimeSession":
+    def session(
+        self, *, turn_detection_disabled: bool = False
+    ) -> "DeepslateRealtimeSession":
         """Create a new Deepslate real-time session."""
+        if turn_detection_disabled:
+            logger.warning(
+                "turn_detection_disabled is not supported and will be ignored"
+            )
         return DeepslateRealtimeSession(realtime_model=self)
 
     def update_options(
@@ -392,8 +399,14 @@ class DeepslateRealtimeSession(
         """Return a copy of the current tool context."""
         return self._tools.copy()
 
-    async def update_instructions(self, instructions: str) -> None:
+    async def update_instructions(self, instructions: str | Instructions) -> None:
         """Update system prompt for the next session initialization."""
+        if isinstance(instructions, Instructions):
+            modality: Literal["audio", "text"] = (
+                "audio" if self._realtime_model.capabilities.audio_output else "text"
+            )
+            instructions = instructions.render(modality=modality)
+
         self._instructions = instructions
         self._opts.system_prompt = instructions
         logger.debug("instructions updated (will take effect on next session)")
