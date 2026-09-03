@@ -178,6 +178,7 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
         wsUrl: model.opts.wsUrl,
         maxRetries: model.opts.maxRetries,
         generateReplyTimeout: model.opts.generateReplyTimeout,
+        experiments: model.opts.experiments,
       },
       {
         vadConfig: model.vad,
