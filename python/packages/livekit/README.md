@@ -34,7 +34,7 @@ pip install deepslate-livekit
 ### Dependencies (installed automatically)
 
 - `deepslate-core` — Shared Deepslate models and base client
-- `livekit-agents>=1.3.8` — LiveKit Agents framework
+- `livekit-agents>=1.7.1` — LiveKit Agents framework
 
 ---
 
@@ -248,6 +248,43 @@ async def my_agent(ctx: agents.JobContext):
     session = AgentSession(llm=model)
     await session.start(room=ctx.room, agent=Assistant())
 ```
+
+---
+
+## Live Transcripts
+
+The session emits two different text events:
+
+| Event | Pacing | Means |
+|---|---|---|
+| `model_text_fragment` | Faster than realtime, ahead of synthesis | What the model **intends** to say |
+| `audio_transcript` | Playback-paced | **Approximately** what the caller has heard, timed by the server and possibly slightly ahead of or behind actual playback |
+
+```python
+from typing import cast
+
+from deepslate.livekit import DeepslateRealtimeSession
+
+
+rt = cast(DeepslateRealtimeSession, session.current_agent.realtime_llm_session)
+
+
+@rt.on("model_text_fragment")
+def _on_fragment(ev) -> None:
+    # ev.text, ev.turn_id (turn_id is None if the server sent no attribution)
+    print(ev.text, end="", flush=True)
+
+
+@rt.on("audio_transcript")
+def _on_spoken(text: str) -> None:
+    print(f"heard: {text!r}")
+```
+
+> `model_text_fragment` arrives ahead of synthesis, so on an interrupted turn it
+> will usually have emitted text that was never spoken. `audio_transcript`
+> follows playback closely, it can land slightly ahead of or behind what was actually played.
+> Reach for `audio_transcript` when you need what was spoken, and treat
+> `model_text_fragment` as intent.
 
 ---
 

@@ -22,7 +22,7 @@ import type { ChatMessage } from "./types.js";
 // type literals get an implicit index signature, interfaces do not.
 export type DeepslateSessionEvents = {
   /** A fragment of model text streamed as tokens arrive. */
-  textFragment: (text: string) => void;
+  textFragment: (text: string, turnId: number | null) => void;
   /** A chunk of model TTS audio (PCM), with optional alignment transcript. */
   audioChunk: (
     pcm: Uint8Array,
