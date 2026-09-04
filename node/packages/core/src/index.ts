@@ -34,6 +34,7 @@ export {
 } from "./options.js";
 export type {
   DeepslateOptions,
+  Experiments,
   ResolvedDeepslateOptions,
   VadConfig,
   ElevenLabsVoiceSettings,

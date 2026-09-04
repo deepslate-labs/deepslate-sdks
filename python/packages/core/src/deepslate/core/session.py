@@ -439,6 +439,7 @@ class DeepslateSession:
             system_prompt=self._options.system_prompt,
             tts_config=self._tts_config,
             temperature=self._options.temperature,
+            experiments=self._options.experiments,
         )
         await self._send_queue.put(
             proto.ServiceBoundMessage(initialize_session_request=init_request)
@@ -446,6 +447,11 @@ class DeepslateSession:
         logger.debug(
             f"DeepslateSession: initializing session ({sample_rate}Hz, {channels}ch)"
         )
+        if self._options.experiments:
+            logger.info(
+                "DeepslateSession: experiments enabled: %s",
+                ", ".join(self._options.experiments),
+            )
 
         if self._current_tools:
             tools_msg = self._build_update_tools_msg(self._current_tools)

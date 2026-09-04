@@ -208,6 +208,7 @@ if __name__ == "__main__":
 | `system_prompt`   | `str`           | `"You are a helpful assistant."` | System prompt for the AI assistant                             |
 | `ws_url`          | `Optional[str]` | `None`                           | Direct WebSocket URL (overrides `base_url`; for local dev/testing) |
 | `max_retries`     | `int`           | `3`                              | Maximum reconnection attempts before giving up                 |
+| `experiments`     | `Mapping[str, Any] \| None` | `None`               | Server-side experiments to enable                              |
 
 Use `DeepslateOptions.from_env()` to load credentials from environment variables:
 
@@ -219,6 +220,16 @@ opts = DeepslateOptions.from_env(
     max_retries=5,
 )
 ```
+
+To enable a server-side experiment, set `experiments` on the same options object. Names are opaque strings, and each experiment defines its own value — an experiment that takes no parameters is enabled with `None`:
+
+```python
+opts = DeepslateOptions.from_env(
+    experiments={"example-experiment:1": None},
+)
+```
+
+Experiments carry no stability guarantees and may change or disappear without a version bump or warning. The SDK holds no catalogue of them: ask your Deepslate contact which experiments are available and what values they accept.
 
 ### VAD Configuration
 
