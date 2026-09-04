@@ -14,8 +14,6 @@
 
 from __future__ import annotations
 
-import collections.abc
-import math
 from typing import Any, Mapping, Optional
 from urllib.parse import urlparse
 
@@ -209,69 +207,13 @@ def encode_experiments(
     experiments: Optional[Mapping[str, Any]],
 ) -> dict[str, Value]:
     """Encode a caller's experiments map into protobuf ``Value`` entries."""
-    if not experiments:
-        return {}
-
     encoded: dict[str, Value] = {}
-    for name, value in experiments.items():
-        if not isinstance(name, str):
-            raise ValueError(
-                f"experiments: experiment names must be strings, got "
-                f"{type(name).__name__}"
-            )
-        parsed = Value()
-        json_format.ParseDict(
-            _normalize_experiment_value(value, f"experiments[{name!r}]"), parsed
-        )
-        encoded[name] = parsed
+    for name, value in (experiments or {}).items():
+        try:
+            encoded[name] = json_format.ParseDict(value, Value())
+        except json_format.ParseError as exc:
+            raise ValueError(f"experiments[{name!r}]: {exc}") from exc
     return encoded
-
-
-def _normalize_experiment_value(value: Any, path: str) -> Any:
-    """Reduce plain Python data to the shapes the protobuf JSON parser accepts."""
-    if value is None or isinstance(value, (bool, str)):
-        return value
-
-    if isinstance(value, float):
-        if not math.isfinite(value):
-            raise ValueError(
-                f"{path}: non-finite numbers (NaN, Infinity) have no JSON "
-                "representation"
-            )
-        return value
-
-    if isinstance(value, int):
-        if int(float(value)) != value:
-            raise ValueError(
-                f"{path}: integer is too large to be represented exactly "
-                "(a protobuf Value holds numbers as doubles, so the limit "
-                "is 2**53)"
-            )
-        return value
-
-    if isinstance(value, collections.abc.Mapping):
-        normalized = {}
-        for key, item in value.items():
-            if not isinstance(key, str):
-                raise ValueError(
-                    f"{path}: object keys must be strings, got "
-                    f"{type(key).__name__}"
-                )
-            normalized[key] = _normalize_experiment_value(item, f"{path}.{key}")
-        return normalized
-
-    if isinstance(value, collections.abc.Sequence) and not isinstance(
-        value, (str, bytes, bytearray)
-    ):
-        return [
-            _normalize_experiment_value(item, f"{path}[{index}]")
-            for index, item in enumerate(value)
-        ]
-
-    raise ValueError(
-        f"{path}: {type(value).__name__} is not JSON-encodable. Experiment "
-        "values accept null, booleans, numbers, strings, lists and objects."
-    )
 
 
 def build_initialize_request(

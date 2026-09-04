@@ -17,9 +17,8 @@
 // Note: protobuf-es v2 represents google.protobuf.Struct fields directly as
 // plain JsonObject values, so Struct conversion helpers are unnecessary —
 // objects pass through unchanged.
-import { create } from "@bufbuild/protobuf";
-
-import { encodeExperiments } from "./experiments.js";
+import { create, fromJson } from "@bufbuild/protobuf";
+import { ValueSchema } from "@bufbuild/protobuf/wkt";
 import {
   type ChatHistory,
   type InitializeSessionRequest,
@@ -129,7 +128,12 @@ export function buildInitializeRequest(params: {
       temperature: params.temperature ?? 1.0,
     },
     ttsConfiguration,
-    experiments: encodeExperiments(params.experiments),
+    experiments: Object.fromEntries(
+      Object.entries(params.experiments ?? {}).map(([name, value]) => [
+        name,
+        fromJson(ValueSchema, value ?? null),
+      ]),
+    ),
   });
 }
 

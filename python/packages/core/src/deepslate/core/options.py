@@ -53,7 +53,7 @@ class DeepslateOptions:
 
     experiments: Optional[Mapping[str, Any]] = None
     """Server-side experiments to enable for the session.
-    
+
     Experiments carry **zero stability guarantees**: they may change or disappear
     without a version bump. Use at your own risk.
     """

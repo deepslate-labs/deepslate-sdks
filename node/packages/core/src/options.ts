@@ -15,8 +15,6 @@
 // Core Deepslate connection and model options.
 import type { JsonValue } from "@bufbuild/protobuf";
 
-import { encodeExperiments } from "./experiments.js";
-
 /**
  * Server-side experiments to enable for a session.
  *
@@ -91,8 +89,6 @@ export const DEEPSLATE_DEFAULTS = {
 
 /** Apply defaults to a partially-specified options object. */
 export function resolveOptions(opts: DeepslateOptions): ResolvedDeepslateOptions {
-  encodeExperiments(opts.experiments);
-
   return {
     vendorId: opts.vendorId,
     organizationId: opts.organizationId,
