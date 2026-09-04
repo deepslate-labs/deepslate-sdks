@@ -124,6 +124,25 @@ The constructor takes a single options object (`RealtimeModelOptions`):
 | `wsUrl` | `string` | `undefined` | Direct WebSocket URL (for local dev/testing) |
 | `experiments` | `Experiments` | `undefined` | Server-side experiments to enable |
 
+### Experiments
+
+> **No stability guarantees.** Experiments may change or disappear without a version bump or warning.
+
+Server-side experiments are enabled per session by passing `experiments` to the model, a map of experiment name to parameter value. An experiment that takes no parameters is enabled with `null`; one that takes parameters accepts any JSON value, and a parameter object may be filled in partially:
+
+```ts
+import { RealtimeModel } from "@deepslate-labs/livekit";
+
+const model = new RealtimeModel({
+  experiments: {
+    "example-experiment:1": null,
+    "example-parameterised-experiment:1": { someSetting: "value" },
+  },
+});
+```
+
+The SDK holds no catalogue of experiments: it sends whatever you pass, and the server ignores names it does not know. Ask your Deepslate contact which experiments are available and what values they accept.
+
 ### VAD Configuration
 
 ```ts

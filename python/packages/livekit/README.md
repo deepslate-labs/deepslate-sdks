@@ -123,6 +123,25 @@ if __name__ == "__main__":
 
 Pass a `VadConfig` instance to tune voice activity detection — see [VAD Configuration](#vad-configuration) below.
 
+### Experiments
+
+> **No stability guarantees.** Experiments may change or disappear without a version bump or warning.
+
+Server-side experiments are enabled per session by passing `experiments` to the model, a map of experiment name to parameter value. An experiment that takes no parameters is enabled with `None`; one that takes parameters accepts any JSON value, and a parameter object may be filled in partially:
+
+```python
+from deepslate.livekit import RealtimeModel
+
+llm = RealtimeModel(
+    experiments={
+        "example-experiment:1": None,
+        "example-parameterised-experiment:1": {"some_setting": "value"},
+    }
+)
+```
+
+The SDK holds no catalogue of experiments: it sends whatever you pass, and the server ignores names it does not know. Ask your Deepslate contact which experiments are available and what values they accept.
+
 ### VAD Configuration
 
 ```python
