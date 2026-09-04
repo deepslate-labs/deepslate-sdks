@@ -15,6 +15,7 @@
 // WebSocket connectivity with exponential-backoff reconnection.
 import WebSocket from "ws";
 
+import { TypedEventEmitter } from "./events.js";
 import { logger } from "./log.js";
 import type { ResolvedDeepslateOptions } from "./options.js";
 import { buildWsUrl } from "./utils.js";
@@ -37,6 +38,17 @@ export interface RunWithRetryHandlers {
   onFatalError: (err: Error) => void | Promise<void>;
 }
 
+export type BaseDeepslateClientEvents = {
+  /**
+   * Emitted when a raw WebSocket error occurs outside the standard request lifecycle.
+   *
+   * Because connection and session errors are handled via the 'runWithRetry' promise loop,
+   * this event safely catches orphaned errors (e.g., a socket emitting an error after
+   * a rejected handshake) to prevent unhandled process exceptions.
+   */
+  socketError: (err: Error) => void;
+};
+
 /** Max time to wait for the WebSocket handshake before aborting the attempt. */
 const HANDSHAKE_TIMEOUT_MS = 10_000;
 
@@ -48,7 +60,7 @@ const HANDSHAKE_TIMEOUT_MS = 10_000;
  * A client backs a single session run loop. Call `requestShutdown()` to make an
  * in-flight `connect()` / backoff `sleep()` return promptly during shutdown.
  */
-export class BaseDeepslateClient {
+export class BaseDeepslateClient extends TypedEventEmitter<BaseDeepslateClientEvents> {
   /** Socket created by connect() that hasn't opened yet (still CONNECTING). */
   private pendingWs: WebSocket | null = null;
   /** Set once shutdown has been requested; unblocks connect()/sleep(). */
@@ -59,7 +71,9 @@ export class BaseDeepslateClient {
   constructor(
     private readonly opts: ResolvedDeepslateOptions,
     private readonly userAgent: string,
-  ) {}
+  ) {
+    super();
+  }
 
   /**
    * Request shutdown: abort an in-flight CONNECTING handshake and wake any
@@ -125,7 +139,12 @@ export class BaseDeepslateClient {
         return;
       }
       const ws = new WebSocket(url, { headers, handshakeTimeout: HANDSHAKE_TIMEOUT_MS });
-      ws.on("error", () => {});
+      ws.on("error", (err) => {
+        logger.debug(`WebSocket error: ${err.message}`);
+        if (this.listenerCount("socketError") > 0) {
+          this.emit("socketError", err);
+        }
+      });
       this.pendingWs = ws;
       const onOpen = () => {
         this.pendingWs = null;

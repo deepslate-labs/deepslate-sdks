@@ -15,7 +15,7 @@
 // Public API surface for @deepslate-labs/core.
 
 export { BaseDeepslateClient, RetriableError } from "./client.js";
-export type { RunWithRetryHandlers } from "./client.js";
+export type { RunWithRetryHandlers, BaseDeepslateClientEvents } from "./client.js";
 
 export {
   DeepslateSession,

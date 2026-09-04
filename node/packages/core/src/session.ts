@@ -93,6 +93,7 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
     private readonly ttsConfig?: TtsConfig,
   ) {
     super();
+    this.client.on("socketError", (err) => this.fire("socketError", err));
   }
 
   /** Create a session together with its own BaseDeepslateClient. */
