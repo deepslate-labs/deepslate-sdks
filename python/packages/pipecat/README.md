@@ -221,15 +221,15 @@ opts = DeepslateOptions.from_env(
 )
 ```
 
-To enable a server-side experiment, set `experiments` on the same options object:
+To enable a server-side experiment, set `experiments` on the same options object. Names are opaque strings, and each experiment defines its own value — an experiment that takes no parameters is enabled with `None`:
 
 ```python
 opts = DeepslateOptions.from_env(
-    experiments={"stt-query-tool:1": None},
+    experiments={"example-experiment:1": None},
 )
 ```
 
-Experiments carry no stability guarantees and may change or disappear without a version bump or warning.
+Experiments carry no stability guarantees and may change or disappear without a version bump or warning. The SDK holds no catalogue of them: ask your Deepslate contact which experiments are available and what values they accept.
 
 ### VAD Configuration
 

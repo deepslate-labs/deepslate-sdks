@@ -139,25 +139,27 @@ tts = ElevenLabsTtsConfig(
 
 > **No stability guarantees.** Experiments may change or disappear without a version bump or warning.
 
-Deepslate can enable server-side experiments for a session. Pass them as a plain map of experiment name to parameter value.
+Deepslate can enable server-side experiments for a session. Pass them as a plain map of experiment name to parameter value. Names are opaque strings; an experiment that takes no parameters is enabled with `None`:
 
 ```python
 from deepslate.core import DeepslateOptions
 
 opts = DeepslateOptions.from_env(
-    experiments={"stt-query-tool:1": None},
+    experiments={"example-experiment:1": None},
 )
 ```
 
-Experiments that take parameters are configured by passing them directly. Values may be any JSON value: `None`, booleans, numbers, strings, lists, or nested objects. An experiment's parameter object may be filled in partially:
+Each experiment defines its own value, so what a value means, and whether one is needed at all, depends on the experiment. Values may be any JSON value: `None`, booleans, numbers, strings, lists, or nested objects, and a parameter object may be filled in partially:
 
 ```python
 opts = DeepslateOptions.from_env(
     experiments={
-        "stt-query-tool:1": {"name": "lookup", "description": "Look up an order"},
+        "example-experiment:1": {"some_setting": "value", "another_setting": 3},
     },
 )
 ```
+
+The SDK holds no catalogue of experiments: it sends whatever you pass, and the server ignores names it does not know. Ask your Deepslate contact which experiments are available and what values they accept.
 
 ### `DeepslateSession`
 
