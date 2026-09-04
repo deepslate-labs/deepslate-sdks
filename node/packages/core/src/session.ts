@@ -93,7 +93,12 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
     private readonly ttsConfig?: TtsConfig,
   ) {
     super();
+    this.client.on("socketError", this.onSocketError);
   }
+
+  private readonly onSocketError = (err: Error): void => {
+    this.fire("socketError", err);
+  };
 
   /** Create a session together with its own BaseDeepslateClient. */
   static create(
@@ -155,6 +160,7 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
     }
     this.mainPromise = undefined;
     if (this.ownsClient) await this.client.aclose();
+    this.client.off("socketError", this.onSocketError);
   }
 
   // ---- public send API ----

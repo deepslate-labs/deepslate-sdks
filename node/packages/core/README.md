@@ -278,6 +278,7 @@ Subscribe with `session.on(event, listener)`. Event payloads are strongly typed 
 | `conversationQueryResult` | `(queryId: string, text: string)` | Side-channel query result received |
 | `error` | `(category: string, message: string, traceId: string \| null)` | Server sent an error notification |
 | `fatalError` | `(err: Error)` | All reconnect retries exhausted |
+| `socketError` | `(err: Error)` | Background WebSocket error (logging/observability only; does not affect the run loop) |
 
 ### `DeepslateOptions`
 
