@@ -141,7 +141,7 @@ export class BaseDeepslateClient extends TypedEventEmitter<BaseDeepslateClientEv
       const ws = new WebSocket(url, { headers, handshakeTimeout: HANDSHAKE_TIMEOUT_MS });
       ws.on("error", (err) => {
         logger.debug(`WebSocket error: ${err.message}`);
-        if (this.listenerCount("socketError") > 0) {
+        if (ws.listenerCount("error") === 1 && this.listenerCount("socketError") > 0) {
           this.emit("socketError", err);
         }
       });
