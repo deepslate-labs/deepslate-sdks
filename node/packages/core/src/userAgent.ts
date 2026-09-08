@@ -12,61 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { readFileSync } from "node:fs";
-import { createRequire } from "node:module";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { VERSION } from "./version.js";
 
 const CORE_PRODUCT = "@deepslate-labs/core";
-
-function readPackageJson(dir: string): { version?: string } | null {
-  try {
-    return JSON.parse(readFileSync(path.join(dir, "package.json"), "utf8"));
-  } catch {
-    return null;
-  }
-}
-
-function nearestPackageVersion(fromFile: string): string {
-  let dir = path.dirname(fromFile);
-  for (let i = 0; i < 10; i++) {
-    const version = readPackageJson(dir)?.version;
-    if (version) return version;
-    const parent = path.dirname(dir);
-    if (parent === dir) break;
-    dir = parent;
-  }
-  return "unknown";
-}
-
-export function ownPackageVersion(importMetaUrl: string): string {
-  try {
-    return nearestPackageVersion(fileURLToPath(importMetaUrl));
-  } catch {
-    return "unknown";
-  }
-}
-
-export function dependencyVersion(
-  packageName: string,
-  importMetaUrl: string,
-): string {
-  try {
-    const require_ = createRequire(importMetaUrl);
-    try {
-      const version = (
-        require_(`${packageName}/package.json`) as { version?: string }
-      ).version;
-      if (version) return version;
-    } catch {
-      // package.json not in the package's exports map; fall back to
-      // resolving the entry point and walking up to its package.json.
-    }
-    return nearestPackageVersion(require_.resolve(packageName));
-  } catch {
-    return "unknown";
-  }
-}
 
 export interface UserAgentProduct {
   name: string;
@@ -75,12 +23,16 @@ export interface UserAgentProduct {
 
 /**
  * Build an RFC 7231-style User-Agent for Deepslate realtime connections.
+ *
+ * Versions are compiled-in constants (see `version.ts`). Callers pass the
+ * value their own package exports rather than having this module discover it
+ * at runtime.
  */
 export function buildUserAgent(opts?: {
   product: UserAgentProduct;
   framework?: UserAgentProduct;
 }): string {
-  const core = `${CORE_PRODUCT}/${ownPackageVersion(import.meta.url)}`;
+  const core = `${CORE_PRODUCT}/${VERSION}`;
   const runtime = `node/${process.versions.node} ${process.platform}/${process.arch}`;
   if (!opts) return `${core} ${runtime}`;
   const comment = [core];
