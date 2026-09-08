@@ -287,7 +287,7 @@ Factory that creates a session together with its own `BaseDeepslateClient`. The 
 | `options` | `DeepslateOptions` | required | API credentials and settings |
 | `vad_config` | `VadConfig \| None` | `None` | VAD settings (uses defaults if omitted) |
 | `tts_config` | `ElevenLabsTtsConfig \| HostedTtsConfig \| None` | `None` | Enables server-side TTS audio output |
-| `user_agent` | `str` | `"DeepslateCore"` | HTTP `User-Agent` header sent on connect |
+| `user_agent` | `str` | `build_user_agent()` | HTTP `User-Agent` header sent on connect |
 | `http_session` | `aiohttp.ClientSession \| None` | `None` | Shared aiohttp session (not closed by the session) |
 | `listener` | `DeepslateSessionListener \| None` | `None` | Receives all session events; defaults to a no-op base instance |
 

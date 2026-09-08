@@ -237,7 +237,7 @@ and closes it when `close()` is called.
 | `options` | `DeepslateOptions` | required | API credentials and settings |
 | `opts.vadConfig` | `VadConfig` | defaults | VAD settings |
 | `opts.ttsConfig` | `TtsConfig` | `undefined` | Enables server-side TTS audio output |
-| `opts.userAgent` | `string` | `"DeepslateCore"` | `User-Agent` header sent on connect |
+| `opts.userAgent` | `string` | `buildUserAgent()` | `User-Agent` header sent on connect |
 
 ### `DeepslateSession` — send methods
 

@@ -70,7 +70,6 @@ export class BaseDeepslateClient extends TypedEventEmitter<BaseDeepslateClientEv
 
   constructor(
     private readonly opts: ResolvedDeepslateOptions,
-    // Public so DeepslateSession can log it on connect.
     readonly userAgent: string,
   ) {
     super();
