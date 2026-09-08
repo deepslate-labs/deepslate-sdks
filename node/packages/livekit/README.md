@@ -35,8 +35,8 @@ npm install @deepslate-labs/livekit
 
 ### Peer dependencies
 
-- `@livekit/agents` `^1.0.7` — LiveKit Agents framework (Node)
-- `@livekit/rtc-node` `^0.13.27` — LiveKit realtime audio frames
+- `@livekit/agents` `^1.7.1` — LiveKit Agents framework (Node)
+- `@livekit/rtc-node` `^0.13.34` — LiveKit realtime audio frames
 
 ```bash
 npm install @livekit/agents @livekit/rtc-node
@@ -122,6 +122,26 @@ The constructor takes a single options object (`RealtimeModelOptions`):
 | `vad` | `VadConfig` | defaults | Voice activity detection tuning |
 | `ttsConfig` | `TtsConfig` | `undefined` | TTS configuration (enables server-side audio output) |
 | `wsUrl` | `string` | `undefined` | Direct WebSocket URL (for local dev/testing) |
+| `experiments` | `Experiments` | `undefined` | Server-side experiments to enable |
+
+### Experiments
+
+> **No stability guarantees.** Experiments may change or disappear without a version bump or warning.
+
+Server-side experiments are enabled per session by passing `experiments` to the model, a map of experiment name to parameter value. An experiment that takes no parameters is enabled with `null`; one that takes parameters accepts any JSON value, and a parameter object may be filled in partially:
+
+```ts
+import { RealtimeModel } from "@deepslate-labs/livekit";
+
+const model = new RealtimeModel({
+  experiments: {
+    "example-experiment:1": null,
+    "example-parameterised-experiment:1": { someSetting: "value" },
+  },
+});
+```
+
+The SDK holds no catalogue of experiments: it sends whatever you pass, and the server ignores names it does not know. Ask your Deepslate contact which experiments are available and what values they accept.
 
 ### VAD Configuration
 
@@ -130,10 +150,10 @@ import { RealtimeModel } from "@deepslate-labs/livekit";
 
 const model = new RealtimeModel({
   vad: {
-    confidenceThreshold: 0.5,   // 0.0–1.0: minimum confidence to classify as speech
-    minVolume: 0.01,            // 0.0–1.0: minimum volume to classify as speech
-    startDurationMs: 200,       // ms of speech required to trigger start
-    stopDurationMs: 500,        // ms of silence required to trigger stop
+    confidenceThreshold: 0.4,   // 0.0–1.0: minimum confidence to classify as speech
+    minVolume: 0.0,             // 0.0–1.0: minimum volume to classify as speech
+    startDurationMs: 150,       // ms of speech required to trigger start
+    stopDurationMs: 390,        // ms of silence required to trigger stop
     backbufferDurationMs: 1000, // ms of audio buffered before detection triggers
   },
 });

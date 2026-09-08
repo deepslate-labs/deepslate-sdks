@@ -83,6 +83,7 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
   private packetIdCounter = 0;
   private pendingBeforeInit: ServiceBoundMessage[] = [];
   private pendingQueryIds: string[] = [];
+  private everInitialized = false;
 
   private mainPromise: Promise<void> | undefined;
 
@@ -93,7 +94,12 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
     private readonly ttsConfig?: TtsConfig,
   ) {
     super();
+    this.client.on("socketError", this.onSocketError);
   }
+
+  private readonly onSocketError = (err: Error): void => {
+    this.fire("socketError", err);
+  };
 
   /** Create a session together with its own BaseDeepslateClient. */
   static create(
@@ -155,6 +161,7 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
     }
     this.mainPromise = undefined;
     if (this.ownsClient) await this.client.aclose();
+    this.client.off("socketError", this.onSocketError);
   }
 
   // ---- public send API ----
@@ -332,11 +339,14 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
     this.ws = null;
     this.sessionInitializedFlag = false;
     this.initRequestSent = false;
-    this.sampleRateValue = null;
-    this.channelsValue = null;
     this.packetIdCounter = 0;
-    this.pendingBeforeInit = [];
-    this.pendingQueryIds = [];
+    if (this.everInitialized) {
+      this.sampleRateValue = null;
+      this.channelsValue = null;
+      this.pendingBeforeInit = this.pendingBeforeInit.filter(
+        (m) => m.payload.case !== "userInput",
+      );
+    }
     this.closing = false;
   }
 
@@ -365,6 +375,12 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
     logger.debug(
       `DeepslateSession: initializing session (${sampleRate}Hz, ${channels}ch)`,
     );
+    const experimentNames = Object.keys(this.options.experiments ?? {});
+    if (experimentNames.length > 0) {
+      logger.info(
+        `DeepslateSession: experiments enabled: ${experimentNames.join(", ")}`,
+      );
+    }
 
     if (this.currentTools.length > 0) {
       this.send(this.buildUpdateToolsMessage(this.currentTools));
@@ -434,6 +450,8 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
 
       if (this.initSampleRate !== null && this.initChannels !== null) {
         this.ensureInitialized(this.initSampleRate, this.initChannels);
+      } else if (this.pendingBeforeInit.length > 0) {
+        this.ensureInitialized(this.sampleRateValue ?? 24000, this.channelsValue ?? 1);
       }
 
       const cleanup = () => {
@@ -490,6 +508,7 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
         for (const pending of this.pendingBeforeInit) this.send(pending);
         this.pendingBeforeInit = [];
         this.sessionInitializedFlag = true;
+        this.everInitialized = true;
         this.fire("sessionInitialized");
         break;
       }
@@ -499,9 +518,11 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
       case "responseEnd":
         this.fire("responseEnd");
         break;
-      case "modelTextFragment":
-        this.fire("textFragment", msg.payload.value.text);
+      case "modelTextFragment": {
+        const fragment = msg.payload.value;
+        this.fire("textFragment", fragment.text, fragment.turnId ?? null);
         break;
+      }
       case "modelAudioChunk": {
         const chunk = msg.payload.value;
         if (chunk.audio && chunk.audio.data.length > 0) {
@@ -510,7 +531,7 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
             chunk.audio.data,
             this.sampleRateValue ?? 24000,
             this.channelsValue ?? 1,
-            chunk.transcript ? chunk.transcript : null,
+            null,
           );
         }
         break;

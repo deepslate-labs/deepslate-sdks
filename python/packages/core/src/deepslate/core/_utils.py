@@ -14,11 +14,11 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Mapping, Optional
 from urllib.parse import urlparse
 
 from google.protobuf import json_format
-from google.protobuf.struct_pb2 import Struct
+from google.protobuf.struct_pb2 import Struct, Value
 
 from .options import ElevenLabsLocation, ElevenLabsTtsConfig, HostedTtsConfig, HostedTtsMode, HostedVoiceCloneConfig, VadConfig
 from .proto import realtime_pb2 as proto
@@ -90,15 +90,14 @@ HOSTED_TTS_MODE_MAP: dict[HostedTtsMode, proto.HostedTtsMode] = {
 }
 
 
-def parse_chat_history(chat_history) -> list[ChatMessageDict]:
-    """Convert a proto ChatHistory into a list of plain Python dicts.
+def _parse_chat_message(msg) -> ChatMessageDict:
+    """Convert a single proto ChatMessage into a plain Python dict.
 
-    Explicitly maps the ``ephemeral`` flag on each message and the
-    ``transcription`` field on any ``ChatAudioData`` blocks so that
-    callers receive clean, serializable data without needing to touch
-    generated protobuf classes directly.
+    Explicitly maps the ``ephemeral`` flag and the ``transcription`` field on
+    any ``ChatAudioData`` blocks so that callers receive clean, serializable
+    data without needing to touch generated protobuf classes directly.
 
-    Each entry has the shape::
+    The returned dict has the shape::
 
         {
             "role": "user" | "assistant" | "system",
@@ -112,91 +111,109 @@ def parse_chat_history(chat_history) -> list[ChatMessageDict]:
                 {"type": "thoughts", "text": str},
                 {"type": "instructions", "text": str},
             ],
+            "turn_id": int | None,
+            "truncated_at_response_turn_id": int | None,
         }
     """
-    messages = []
-    for msg in chat_history.messages:
-        content_blocks = []
-        for block in msg.content:
-            kind = block.WhichOneof("content")
+    content_blocks = []
+    for block in msg.content:
+        kind = block.WhichOneof("content")
 
-            if kind == "text_content":
-                tc = block.text_content
-                tts_audio: TtsAudioDict | None = None
-                if tc.HasField("tts_audio"):
-                    tts_audio = TtsAudioDict(
-                        audio=tc.tts_audio.audio.data,
-                        transcription=tc.tts_audio.transcription,
-                    )
-                content_blocks.append(
-                    TextContentDict(
-                        type="text",
-                        text=tc.text,
-                        tts_audio=tts_audio,
-                    )
+        if kind == "text_content":
+            tc = block.text_content
+            tts_audio: TtsAudioDict | None = None
+            if tc.HasField("tts_audio"):
+                tts_audio = TtsAudioDict(
+                    audio=tc.tts_audio.audio.data,
+                    transcription=tc.tts_audio.transcription,
                 )
-
-            elif kind == "input_audio":
-                content_blocks.append(
-                    InputAudioContentDict(
-                        type="input_audio",
-                        audio=block.input_audio.audio.data,
-                        transcription=block.input_audio.transcription,
-                    )
+            content_blocks.append(
+                TextContentDict(
+                    type="text",
+                    text=tc.text,
+                    tts_audio=tts_audio,
                 )
-
-            elif kind == "tool_call":
-                tc = block.tool_call
-                content_blocks.append(
-                    ToolCallContentDict(
-                        type="tool_call",
-                        id=tc.id,
-                        name=tc.name,
-                        parameters=struct_to_dict(tc.parameters)
-                        if tc.HasField("parameters")
-                        else {},
-                    )
-                )
-
-            elif kind == "tool_result":
-                tr = block.tool_result
-                content_blocks.append(
-                    ToolResultContentDict(
-                        type="tool_result",
-                        id=tr.id,
-                        result=tr.result,
-                    )
-                )
-
-            elif kind == "thoughts":
-                content_blocks.append(
-                    ThoughtsContentDict(type="thoughts", text=block.thoughts)
-                )
-
-            elif kind == "instructions":
-                content_blocks.append(
-                    InstructionsContentDict(
-                        type="instructions", text=block.instructions
-                    )
-                )
-
-        turn_id: int | None = msg.turn_id if msg.HasField("turn_id") else None
-        truncated_at: int | None = (
-            msg.truncated_at_response_turn_id
-            if msg.HasField("truncated_at_response_turn_id")
-            else None
-        )
-        messages.append(
-            ChatMessageDict(
-                role=proto.ChatMessageRole.Name(msg.role).lower(),
-                delivery_status=proto.ChatDeliveryStatus.Name(msg.delivery_status),
-                ephemeral=msg.ephemeral,
-                content=content_blocks,
-                turn_id=turn_id,
-                truncated_at_response_turn_id=truncated_at,
             )
-        )
-    return messages
+
+        elif kind == "input_audio":
+            content_blocks.append(
+                InputAudioContentDict(
+                    type="input_audio",
+                    audio=block.input_audio.audio.data,
+                    transcription=block.input_audio.transcription,
+                )
+            )
+
+        elif kind == "tool_call":
+            tc = block.tool_call
+            content_blocks.append(
+                ToolCallContentDict(
+                    type="tool_call",
+                    id=tc.id,
+                    name=tc.name,
+                    parameters=struct_to_dict(tc.parameters)
+                    if tc.HasField("parameters")
+                    else {},
+                )
+            )
+
+        elif kind == "tool_result":
+            tr = block.tool_result
+            content_blocks.append(
+                ToolResultContentDict(
+                    type="tool_result",
+                    id=tr.id,
+                    result=tr.result,
+                )
+            )
+
+        elif kind == "thoughts":
+            content_blocks.append(
+                ThoughtsContentDict(type="thoughts", text=block.thoughts)
+            )
+
+        elif kind == "instructions":
+            content_blocks.append(
+                InstructionsContentDict(
+                    type="instructions", text=block.instructions
+                )
+            )
+
+    turn_id: int | None = msg.turn_id if msg.HasField("turn_id") else None
+    truncated_at: int | None = (
+        msg.truncated_at_response_turn_id
+        if msg.HasField("truncated_at_response_turn_id")
+        else None
+    )
+    return ChatMessageDict(
+        role=proto.ChatMessageRole.Name(msg.role).lower(),
+        delivery_status=proto.ChatDeliveryStatus.Name(msg.delivery_status),
+        ephemeral=msg.ephemeral,
+        content=content_blocks,
+        turn_id=turn_id,
+        truncated_at_response_turn_id=truncated_at,
+    )
+
+
+def parse_chat_history(chat_history) -> list[ChatMessageDict]:
+    """Convert a proto ChatHistory into a list of plain Python dicts.
+
+    See :func:`_parse_chat_message` for the shape of each entry.
+    """
+    return [_parse_chat_message(msg) for msg in chat_history.messages]
+
+
+def encode_experiments(
+    experiments: Optional[Mapping[str, Any]],
+) -> dict[str, Value]:
+    """Encode a caller's experiments map into protobuf ``Value`` entries."""
+    encoded: dict[str, Value] = {}
+    for name, value in (experiments or {}).items():
+        try:
+            encoded[name] = json_format.ParseDict(value, Value())
+        except json_format.ParseError as exc:
+            raise ValueError(f"experiments[{name!r}]: {exc}") from exc
+    return encoded
 
 
 def build_initialize_request(
@@ -206,6 +223,7 @@ def build_initialize_request(
     system_prompt: str,
     tts_config: Optional[ElevenLabsTtsConfig | HostedTtsConfig | HostedVoiceCloneConfig] = None,
     temperature: float = 1.0,
+    experiments: Optional[Mapping[str, Any]] = None,
 ) -> proto.InitializeSessionRequest:
     """Build a proto.InitializeSessionRequest from core configuration objects.
 
@@ -267,4 +285,5 @@ def build_initialize_request(
             temperature=temperature,
         ),
         tts_configuration=tts_proto,
+        experiments=encode_experiments(experiments),
     )

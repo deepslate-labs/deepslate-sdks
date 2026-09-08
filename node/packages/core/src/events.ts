@@ -22,7 +22,7 @@ import type { ChatMessage } from "./types.js";
 // type literals get an implicit index signature, interfaces do not.
 export type DeepslateSessionEvents = {
   /** A fragment of model text streamed as tokens arrive. */
-  textFragment: (text: string) => void;
+  textFragment: (text: string, turnId: number | null) => void;
   /** A chunk of model TTS audio (PCM), with optional alignment transcript. */
   audioChunk: (
     pcm: Uint8Array,
@@ -54,6 +54,12 @@ export type DeepslateSessionEvents = {
   sessionInitialized: () => void;
   /** Reconnection exhausted or an unexpected error ended the session. */
   fatalError: (err: Error) => void;
+  /**
+   * A background WebSocket error occurred (e.g. a late teardown failure).
+   * For logging/observability only. Connection and session errors that
+   * affect the run loop are surfaced via `error` and `fatalError`.
+   */
+  socketError: (err: Error) => void;
 };
 
 /* eslint-disable @typescript-eslint/no-explicit-any */

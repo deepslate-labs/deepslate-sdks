@@ -111,6 +111,34 @@ const tts = {
 };
 ```
 
+### Experiments
+
+> **No stability guarantees.** Experiments may change or disappear without a version bump or warning.
+
+Deepslate can enable server-side experiments for a session. Pass them as a plain map of experiment name to parameter value. Names are opaque strings; an experiment that takes no parameters is enabled with `null`:
+
+```ts
+import { DeepslateSession } from "@deepslate-labs/core";
+
+const session = DeepslateSession.create({
+  vendorId, organizationId, apiKey,
+  experiments: { "example-experiment:1": null },
+});
+```
+
+Each experiment defines its own value, so what a value means, and whether one is needed at all, depends on the experiment. Values may be any JSON value: `null`, booleans, numbers, strings, arrays, or nested objects, and a parameter object may be filled in partially:
+
+```ts
+const session = DeepslateSession.create({
+  vendorId, organizationId, apiKey,
+  experiments: {
+    "example-experiment:1": { someSetting: "value", anotherSetting: 3 },
+  },
+});
+```
+
+The SDK holds no catalogue of experiments: it sends whatever you pass, and the server ignores names it does not know. Ask your Deepslate contact which experiments are available and what values they accept.
+
 ### `DeepslateSession`
 
 `DeepslateSession` is the recommended entry point for custom integrations. It handles the full protocol
@@ -230,20 +258,27 @@ and closes it when `close()` is called.
 
 Subscribe with `session.on(event, listener)`. Event payloads are strongly typed via `DeepslateSessionEvents`.
 
-| Event | Listener signature | Emitted when |
-|---|---|---|
-| `sessionInitialized` | `()` | Session is fully initialized and ready to accept messages |
-| `textFragment` | `(text: string)` | Model streams a text token |
-| `audioChunk` | `(pcm: Uint8Array, sampleRate: number, channels: number, transcript: string \| null)` | Model streams a TTS audio chunk |
-| `toolCall` | `(callId: string, name: string, params: Record<string, unknown>)` | Model requests a tool invocation |
-| `responseBegin` | `()` | Model response starts |
-| `responseEnd` | `()` | Model response ends |
+| Event | Listener signature | Emitted when                                                      |
+|---|---|-------------------------------------------------------------------|
+| `sessionInitialized` | `()` | Session is fully initialized and ready to accept messages         |
+| `textFragment` | `(text: string, turnId: number \| null)` | Model streams a text token (faster than realtime, see note below) |
+| `audioChunk` | `(pcm: Uint8Array, sampleRate: number, channels: number, transcript: string \| null)` | Model streams a TTS audio chunk                                   |
+| `toolCall` | `(callId: string, name: string, params: Record<string, unknown>)` | Model requests a tool invocation                                  |
+| `responseBegin` | `()` | Model response starts                                             |
+| `responseEnd` | `()` | Model response ends                                               |
+
+> **`textFragment` is not a transcript of what was heard.** Fragments arrive
+> faster than realtime, ahead of TTS synthesis, so they carry the model's
+> *intended* output. When a turn is interrupted, the server has already sent
+> text that never reached the speaker. Do not use it as a record of what the caller actually heard, and
+> never sync it straight into a conversation history.
 | `userTranscription` | `(text: string, language: string \| null, turnId: number)` | User speech transcription arrives |
 | `playbackBufferClear` | `()` | Server cleared its audio playback buffer |
 | `chatHistory` | `(messages: ChatMessage[])` | Chat history export received |
 | `conversationQueryResult` | `(queryId: string, text: string)` | Side-channel query result received |
 | `error` | `(category: string, message: string, traceId: string \| null)` | Server sent an error notification |
 | `fatalError` | `(err: Error)` | All reconnect retries exhausted |
+| `socketError` | `(err: Error)` | Background WebSocket error (logging/observability only; does not affect the run loop) |
 
 ### `DeepslateOptions`
 
@@ -258,15 +293,16 @@ Subscribe with `session.on(event, listener)`. Event payloads are strongly typed 
 | `wsUrl` | `string` | `undefined` | Direct WebSocket URL (overrides `baseUrl`; for local dev) |
 | `maxRetries` | `number` | `3` | Maximum reconnection attempts before giving up |
 | `generateReplyTimeout` | `number` | `30.0` | Timeout in seconds for reply generation (0 = no timeout) |
+| `experiments` | `Experiments` | `undefined` | Server-side experiments to enable |
 
 ### `VadConfig`
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `confidenceThreshold` | `number` | `0.5` | Minimum confidence to classify audio as speech (0–1) |
-| `minVolume` | `number` | `0.01` | Minimum volume to classify audio as speech (0–1) |
-| `startDurationMs` | `number` | `200` | Duration of speech required to trigger start event |
-| `stopDurationMs` | `number` | `500` | Duration of silence required to trigger stop event |
+| `confidenceThreshold` | `number` | `0.4` | Minimum confidence to classify audio as speech (0–1) |
+| `minVolume` | `number` | `0.0` | Minimum volume to classify audio as speech (0–1) |
+| `startDurationMs` | `number` | `150` | Duration of speech required to trigger start event |
+| `stopDurationMs` | `number` | `390` | Duration of silence required to trigger stop event |
 | `backbufferDurationMs` | `number` | `1000` | Audio buffer captured before speech detection triggers |
 
 ---

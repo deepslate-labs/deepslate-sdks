@@ -15,7 +15,7 @@
 // Public API surface for @deepslate-labs/core.
 
 export { BaseDeepslateClient, RetriableError } from "./client.js";
-export type { RunWithRetryHandlers } from "./client.js";
+export type { RunWithRetryHandlers, BaseDeepslateClientEvents } from "./client.js";
 
 export {
   DeepslateSession,
@@ -34,6 +34,7 @@ export {
 } from "./options.js";
 export type {
   DeepslateOptions,
+  Experiments,
   ResolvedDeepslateOptions,
   VadConfig,
   ElevenLabsVoiceSettings,

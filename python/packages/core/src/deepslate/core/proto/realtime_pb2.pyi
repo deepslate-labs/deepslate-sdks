@@ -261,7 +261,14 @@ class TtsConfiguration(_message.Message):
     def __init__(self, eleven_labs: _Optional[_Union[ElevenLabsTtsConfiguration, _Mapping]] = ..., hosted: _Optional[_Union[HostedTtsConfiguration, _Mapping]] = ...) -> None: ...
 
 class InitializeSessionRequest(_message.Message):
-    __slots__ = ("input_audio_line", "output_audio_line", "vad_configuration", "inference_configuration", "tts_configuration", "supports_playback_reporting", "enable_vad_frame_telemetry")
+    __slots__ = ("input_audio_line", "output_audio_line", "vad_configuration", "inference_configuration", "tts_configuration", "supports_playback_reporting", "enable_vad_frame_telemetry", "experiments")
+    class ExperimentsEntry(_message.Message):
+        __slots__ = ("key", "value")
+        KEY_FIELD_NUMBER: _ClassVar[int]
+        VALUE_FIELD_NUMBER: _ClassVar[int]
+        key: str
+        value: _struct_pb2.Value
+        def __init__(self, key: _Optional[str] = ..., value: _Optional[_Union[_struct_pb2.Value, _Mapping]] = ...) -> None: ...
     INPUT_AUDIO_LINE_FIELD_NUMBER: _ClassVar[int]
     OUTPUT_AUDIO_LINE_FIELD_NUMBER: _ClassVar[int]
     VAD_CONFIGURATION_FIELD_NUMBER: _ClassVar[int]
@@ -269,6 +276,7 @@ class InitializeSessionRequest(_message.Message):
     TTS_CONFIGURATION_FIELD_NUMBER: _ClassVar[int]
     SUPPORTS_PLAYBACK_REPORTING_FIELD_NUMBER: _ClassVar[int]
     ENABLE_VAD_FRAME_TELEMETRY_FIELD_NUMBER: _ClassVar[int]
+    EXPERIMENTS_FIELD_NUMBER: _ClassVar[int]
     input_audio_line: AudioLineConfiguration
     output_audio_line: AudioLineConfiguration
     vad_configuration: VadConfiguration
@@ -276,7 +284,8 @@ class InitializeSessionRequest(_message.Message):
     tts_configuration: TtsConfiguration
     supports_playback_reporting: bool
     enable_vad_frame_telemetry: bool
-    def __init__(self, input_audio_line: _Optional[_Union[AudioLineConfiguration, _Mapping]] = ..., output_audio_line: _Optional[_Union[AudioLineConfiguration, _Mapping]] = ..., vad_configuration: _Optional[_Union[VadConfiguration, _Mapping]] = ..., inference_configuration: _Optional[_Union[InferenceConfiguration, _Mapping]] = ..., tts_configuration: _Optional[_Union[TtsConfiguration, _Mapping]] = ..., supports_playback_reporting: bool = ..., enable_vad_frame_telemetry: bool = ...) -> None: ...
+    experiments: _containers.MessageMap[str, _struct_pb2.Value]
+    def __init__(self, input_audio_line: _Optional[_Union[AudioLineConfiguration, _Mapping]] = ..., output_audio_line: _Optional[_Union[AudioLineConfiguration, _Mapping]] = ..., vad_configuration: _Optional[_Union[VadConfiguration, _Mapping]] = ..., inference_configuration: _Optional[_Union[InferenceConfiguration, _Mapping]] = ..., tts_configuration: _Optional[_Union[TtsConfiguration, _Mapping]] = ..., supports_playback_reporting: bool = ..., enable_vad_frame_telemetry: bool = ..., experiments: _Optional[_Mapping[str, _struct_pb2.Value]] = ...) -> None: ...
 
 class ReconfigureSessionRequest(_message.Message):
     __slots__ = ("input_audio_line", "inference_configuration")
@@ -327,10 +336,12 @@ class ExportChatHistoryRequest(_message.Message):
     def __init__(self, await_pending: bool = ..., exclude_audio: bool = ...) -> None: ...
 
 class PlaybackPositionReport(_message.Message):
-    __slots__ = ("bytes_played",)
+    __slots__ = ("bytes_played", "turn_id")
     BYTES_PLAYED_FIELD_NUMBER: _ClassVar[int]
+    TURN_ID_FIELD_NUMBER: _ClassVar[int]
     bytes_played: int
-    def __init__(self, bytes_played: _Optional[int] = ...) -> None: ...
+    turn_id: int
+    def __init__(self, bytes_played: _Optional[int] = ..., turn_id: _Optional[int] = ...) -> None: ...
 
 class DirectSpeech(_message.Message):
     __slots__ = ("text", "include_in_history", "uninterruptable")
@@ -356,8 +367,16 @@ class ConversationQueryResult(_message.Message):
     text: str
     def __init__(self, text: _Optional[str] = ...) -> None: ...
 
+class Ping(_message.Message):
+    __slots__ = ()
+    def __init__(self) -> None: ...
+
+class Pong(_message.Message):
+    __slots__ = ()
+    def __init__(self) -> None: ...
+
 class ServiceBoundMessage(_message.Message):
-    __slots__ = ("initialize_session_request", "reconfigure_session_request", "user_input", "update_tool_definitions_request", "tool_call_response", "trigger_inference", "export_chat_history_request", "playback_position_report", "direct_speech", "conversation_query")
+    __slots__ = ("initialize_session_request", "reconfigure_session_request", "user_input", "update_tool_definitions_request", "tool_call_response", "trigger_inference", "export_chat_history_request", "playback_position_report", "direct_speech", "conversation_query", "ping")
     INITIALIZE_SESSION_REQUEST_FIELD_NUMBER: _ClassVar[int]
     RECONFIGURE_SESSION_REQUEST_FIELD_NUMBER: _ClassVar[int]
     USER_INPUT_FIELD_NUMBER: _ClassVar[int]
@@ -368,6 +387,7 @@ class ServiceBoundMessage(_message.Message):
     PLAYBACK_POSITION_REPORT_FIELD_NUMBER: _ClassVar[int]
     DIRECT_SPEECH_FIELD_NUMBER: _ClassVar[int]
     CONVERSATION_QUERY_FIELD_NUMBER: _ClassVar[int]
+    PING_FIELD_NUMBER: _ClassVar[int]
     initialize_session_request: InitializeSessionRequest
     reconfigure_session_request: ReconfigureSessionRequest
     user_input: UserInput
@@ -378,21 +398,50 @@ class ServiceBoundMessage(_message.Message):
     playback_position_report: PlaybackPositionReport
     direct_speech: DirectSpeech
     conversation_query: ConversationQuery
-    def __init__(self, initialize_session_request: _Optional[_Union[InitializeSessionRequest, _Mapping]] = ..., reconfigure_session_request: _Optional[_Union[ReconfigureSessionRequest, _Mapping]] = ..., user_input: _Optional[_Union[UserInput, _Mapping]] = ..., update_tool_definitions_request: _Optional[_Union[UpdateToolDefinitionsRequest, _Mapping]] = ..., tool_call_response: _Optional[_Union[ToolCallResponse, _Mapping]] = ..., trigger_inference: _Optional[_Union[TriggerInference, _Mapping]] = ..., export_chat_history_request: _Optional[_Union[ExportChatHistoryRequest, _Mapping]] = ..., playback_position_report: _Optional[_Union[PlaybackPositionReport, _Mapping]] = ..., direct_speech: _Optional[_Union[DirectSpeech, _Mapping]] = ..., conversation_query: _Optional[_Union[ConversationQuery, _Mapping]] = ...) -> None: ...
+    ping: Ping
+    def __init__(self, initialize_session_request: _Optional[_Union[InitializeSessionRequest, _Mapping]] = ..., reconfigure_session_request: _Optional[_Union[ReconfigureSessionRequest, _Mapping]] = ..., user_input: _Optional[_Union[UserInput, _Mapping]] = ..., update_tool_definitions_request: _Optional[_Union[UpdateToolDefinitionsRequest, _Mapping]] = ..., tool_call_response: _Optional[_Union[ToolCallResponse, _Mapping]] = ..., trigger_inference: _Optional[_Union[TriggerInference, _Mapping]] = ..., export_chat_history_request: _Optional[_Union[ExportChatHistoryRequest, _Mapping]] = ..., playback_position_report: _Optional[_Union[PlaybackPositionReport, _Mapping]] = ..., direct_speech: _Optional[_Union[DirectSpeech, _Mapping]] = ..., conversation_query: _Optional[_Union[ConversationQuery, _Mapping]] = ..., ping: _Optional[_Union[Ping, _Mapping]] = ...) -> None: ...
 
 class ModelTextFragment(_message.Message):
-    __slots__ = ("text",)
+    __slots__ = ("text", "turn_id")
     TEXT_FIELD_NUMBER: _ClassVar[int]
+    TURN_ID_FIELD_NUMBER: _ClassVar[int]
     text: str
-    def __init__(self, text: _Optional[str] = ...) -> None: ...
+    turn_id: int
+    def __init__(self, text: _Optional[str] = ..., turn_id: _Optional[int] = ...) -> None: ...
 
 class ModelAudioChunk(_message.Message):
-    __slots__ = ("audio", "transcript")
+    __slots__ = ("audio", "turn_id")
     AUDIO_FIELD_NUMBER: _ClassVar[int]
-    TRANSCRIPT_FIELD_NUMBER: _ClassVar[int]
+    TURN_ID_FIELD_NUMBER: _ClassVar[int]
     audio: AudioData
-    transcript: str
-    def __init__(self, audio: _Optional[_Union[AudioData, _Mapping]] = ..., transcript: _Optional[str] = ...) -> None: ...
+    turn_id: int
+    def __init__(self, audio: _Optional[_Union[AudioData, _Mapping]] = ..., turn_id: _Optional[int] = ...) -> None: ...
+
+class ModelSpeechProgress(_message.Message):
+    __slots__ = ("turn_id", "text", "audio_bytes_played", "exact")
+    TURN_ID_FIELD_NUMBER: _ClassVar[int]
+    TEXT_FIELD_NUMBER: _ClassVar[int]
+    AUDIO_BYTES_PLAYED_FIELD_NUMBER: _ClassVar[int]
+    EXACT_FIELD_NUMBER: _ClassVar[int]
+    turn_id: int
+    text: str
+    audio_bytes_played: int
+    exact: bool
+    def __init__(self, turn_id: _Optional[int] = ..., text: _Optional[str] = ..., audio_bytes_played: _Optional[int] = ..., exact: bool = ...) -> None: ...
+
+class InferenceComplete(_message.Message):
+    __slots__ = ("turn_id",)
+    TURN_ID_FIELD_NUMBER: _ClassVar[int]
+    turn_id: int
+    def __init__(self, turn_id: _Optional[int] = ...) -> None: ...
+
+class TurnSnapshot(_message.Message):
+    __slots__ = ("message", "is_final")
+    MESSAGE_FIELD_NUMBER: _ClassVar[int]
+    IS_FINAL_FIELD_NUMBER: _ClassVar[int]
+    message: ChatMessage
+    is_final: bool
+    def __init__(self, message: _Optional[_Union[ChatMessage, _Mapping]] = ..., is_final: bool = ...) -> None: ...
 
 class ChatHistory(_message.Message):
     __slots__ = ("messages",)
@@ -501,7 +550,7 @@ class ContextTruncated(_message.Message):
     def __init__(self, truncated_turn_ids: _Optional[_Iterable[int]] = ..., response_turn_id: _Optional[int] = ...) -> None: ...
 
 class ClientBoundMessage(_message.Message):
-    __slots__ = ("tool_call_request", "model_text_fragment", "model_audio_chunk", "playback_clear_buffer", "response_begin", "response_end", "chat_history", "error", "user_transcription_result", "conversation_query_result", "session_ready", "vad_analysis_frame", "vad_state_event", "context_truncated")
+    __slots__ = ("tool_call_request", "model_text_fragment", "model_audio_chunk", "playback_clear_buffer", "response_begin", "response_end", "chat_history", "error", "user_transcription_result", "conversation_query_result", "session_ready", "vad_analysis_frame", "vad_state_event", "context_truncated", "pong", "model_speech_progress", "turn_snapshot", "inference_complete")
     TOOL_CALL_REQUEST_FIELD_NUMBER: _ClassVar[int]
     MODEL_TEXT_FRAGMENT_FIELD_NUMBER: _ClassVar[int]
     MODEL_AUDIO_CHUNK_FIELD_NUMBER: _ClassVar[int]
@@ -516,6 +565,10 @@ class ClientBoundMessage(_message.Message):
     VAD_ANALYSIS_FRAME_FIELD_NUMBER: _ClassVar[int]
     VAD_STATE_EVENT_FIELD_NUMBER: _ClassVar[int]
     CONTEXT_TRUNCATED_FIELD_NUMBER: _ClassVar[int]
+    PONG_FIELD_NUMBER: _ClassVar[int]
+    MODEL_SPEECH_PROGRESS_FIELD_NUMBER: _ClassVar[int]
+    TURN_SNAPSHOT_FIELD_NUMBER: _ClassVar[int]
+    INFERENCE_COMPLETE_FIELD_NUMBER: _ClassVar[int]
     tool_call_request: ToolCallRequest
     model_text_fragment: ModelTextFragment
     model_audio_chunk: ModelAudioChunk
@@ -530,4 +583,8 @@ class ClientBoundMessage(_message.Message):
     vad_analysis_frame: VadAnalysisFrame
     vad_state_event: VadStateEvent
     context_truncated: ContextTruncated
-    def __init__(self, tool_call_request: _Optional[_Union[ToolCallRequest, _Mapping]] = ..., model_text_fragment: _Optional[_Union[ModelTextFragment, _Mapping]] = ..., model_audio_chunk: _Optional[_Union[ModelAudioChunk, _Mapping]] = ..., playback_clear_buffer: _Optional[_Union[PlaybackClearBuffer, _Mapping]] = ..., response_begin: _Optional[_Union[ResponseBegin, _Mapping]] = ..., response_end: _Optional[_Union[ResponseEnd, _Mapping]] = ..., chat_history: _Optional[_Union[ChatHistory, _Mapping]] = ..., error: _Optional[_Union[SessionErrorNotification, _Mapping]] = ..., user_transcription_result: _Optional[_Union[UserTranscriptionResult, _Mapping]] = ..., conversation_query_result: _Optional[_Union[ConversationQueryResult, _Mapping]] = ..., session_ready: _Optional[_Union[SessionReady, _Mapping]] = ..., vad_analysis_frame: _Optional[_Union[VadAnalysisFrame, _Mapping]] = ..., vad_state_event: _Optional[_Union[VadStateEvent, _Mapping]] = ..., context_truncated: _Optional[_Union[ContextTruncated, _Mapping]] = ...) -> None: ...
+    pong: Pong
+    model_speech_progress: ModelSpeechProgress
+    turn_snapshot: TurnSnapshot
+    inference_complete: InferenceComplete
+    def __init__(self, tool_call_request: _Optional[_Union[ToolCallRequest, _Mapping]] = ..., model_text_fragment: _Optional[_Union[ModelTextFragment, _Mapping]] = ..., model_audio_chunk: _Optional[_Union[ModelAudioChunk, _Mapping]] = ..., playback_clear_buffer: _Optional[_Union[PlaybackClearBuffer, _Mapping]] = ..., response_begin: _Optional[_Union[ResponseBegin, _Mapping]] = ..., response_end: _Optional[_Union[ResponseEnd, _Mapping]] = ..., chat_history: _Optional[_Union[ChatHistory, _Mapping]] = ..., error: _Optional[_Union[SessionErrorNotification, _Mapping]] = ..., user_transcription_result: _Optional[_Union[UserTranscriptionResult, _Mapping]] = ..., conversation_query_result: _Optional[_Union[ConversationQueryResult, _Mapping]] = ..., session_ready: _Optional[_Union[SessionReady, _Mapping]] = ..., vad_analysis_frame: _Optional[_Union[VadAnalysisFrame, _Mapping]] = ..., vad_state_event: _Optional[_Union[VadStateEvent, _Mapping]] = ..., context_truncated: _Optional[_Union[ContextTruncated, _Mapping]] = ..., pong: _Optional[_Union[Pong, _Mapping]] = ..., model_speech_progress: _Optional[_Union[ModelSpeechProgress, _Mapping]] = ..., turn_snapshot: _Optional[_Union[TurnSnapshot, _Mapping]] = ..., inference_complete: _Optional[_Union[InferenceComplete, _Mapping]] = ...) -> None: ...

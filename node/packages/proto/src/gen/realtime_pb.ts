@@ -4,7 +4,7 @@
 
 import type { GenEnum, GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
 import { enumDesc, fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
-import type { Timestamp } from "@bufbuild/protobuf/wkt";
+import type { Timestamp, Value } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_struct, file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
 import type { JsonObject, Message } from "@bufbuild/protobuf";
 
@@ -12,7 +12,7 @@ import type { JsonObject, Message } from "@bufbuild/protobuf";
  * Describes the file realtime.proto.
  */
 export const file_realtime: GenFile = /*@__PURE__*/
-  fileDesc("Cg5yZWFsdGltZS5wcm90bxIbZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxInUKDlRvb2xEZWZpbml0aW9uEgwKBG5hbWUYASABKAkSGAoLZGVzY3JpcHRpb24YAiABKAlIAIgBARIrCgpwYXJhbWV0ZXJzGAMgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdEIOCgxfZGVzY3JpcHRpb24iZQocVXBkYXRlVG9vbERlZmluaXRpb25zUmVxdWVzdBJFChB0b29sX2RlZmluaXRpb25zGAEgAygLMisuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLlRvb2xEZWZpbml0aW9uInoKD1Rvb2xDYWxsUmVxdWVzdBIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEisKCnBhcmFtZXRlcnMYAyABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0EhQKB3R1cm5faWQYBCABKA1IAIgBAUIKCghfdHVybl9pZCIuChBUb29sQ2FsbFJlc3BvbnNlEgoKAmlkGAEgASgJEg4KBnJlc3VsdBgCIAEoCSIqCghEdXJhdGlvbhIPCgdzZWNvbmRzGAEgASgEEg0KBW5hbm9zGAIgASgNIoYBChZBdWRpb0xpbmVDb25maWd1cmF0aW9uEhMKC3NhbXBsZV9yYXRlGAEgASgNEhUKDWNoYW5uZWxfY291bnQYAiABKA0SQAoNc2FtcGxlX2Zvcm1hdBgDIAEoDjIpLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5TYW1wbGVGb3JtYXQihQIKEFZhZENvbmZpZ3VyYXRpb24SHAoUY29uZmlkZW5jZV90aHJlc2hvbGQYASABKAISEgoKbWluX3ZvbHVtZRgCIAEoAhI9Cg5zdGFydF9kdXJhdGlvbhgDIAEoCzIlLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5EdXJhdGlvbhI8Cg1zdG9wX2R1cmF0aW9uGAQgASgLMiUuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLkR1cmF0aW9uEkIKE2JhY2tidWZmZXJfZHVyYXRpb24YBSABKAsyJS5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuRHVyYXRpb24i2QEKEFZhZEFuYWx5c2lzRnJhbWUSEwoLZnJhbWVfaW5kZXgYASABKAQSOwoMc2Vzc2lvbl90aW1lGAIgASgLMiUuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLkR1cmF0aW9uEhIKCmNvbmZpZGVuY2UYAyABKAISDgoGdm9sdW1lGAQgASgCEjQKBXN0YXRlGAUgASgOMiUuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLlZhZFN0YXRlEhkKEXNvdXJjZV9wYWNrZXRfaWRzGAYgAygEItMBCg1WYWRTdGF0ZUV2ZW50EjsKDHNlc3Npb25fdGltZRgBIAEoCzIlLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5EdXJhdGlvbhI5Cgpmcm9tX3N0YXRlGAIgASgOMiUuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLlZhZFN0YXRlEjcKCHRvX3N0YXRlGAMgASgOMiUuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLlZhZFN0YXRlEhEKCXBhY2tldF9pZBgEIAEoBCJEChZJbmZlcmVuY2VDb25maWd1cmF0aW9uEhUKDXN5c3RlbV9wcm9tcHQYASABKAkSEwoLdGVtcGVyYXR1cmUYAiABKAEijAIKGkVsZXZlbkxhYnNUdHNDb25maWd1cmF0aW9uEg8KB2FwaV9rZXkYASABKAkSEAoIdm9pY2VfaWQYAiABKAkSFQoIbW9kZWxfaWQYAyABKAlIAIgBARJRCg52b2ljZV9zZXR0aW5ncxgEIAEoCzI0LmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5FbGV2ZW5MYWJzVm9pY2VTZXR0aW5nc0gBiAEBEkEKCGxvY2F0aW9uGAUgASgOMi8uZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLkVsZXZlbkxhYnNMb2NhdGlvbkILCglfbW9kZWxfaWRCEQoPX3ZvaWNlX3NldHRpbmdzIn8KF0VsZXZlbkxhYnNWb2ljZVNldHRpbmdzEhEKCXN0YWJpbGl0eRgBIAEoARIYChBzaW1pbGFyaXR5X2Jvb3N0GAIgASgBEg0KBXN0eWxlGAMgASgBEhkKEXVzZV9zcGVha2VyX2Jvb3N0GAQgASgIEg0KBXNwZWVkGAUgASgBIiIKDkhvc3RlZFZvaWNlUmVmEhAKCHZvaWNlX2lkGAEgASgJIoUBChJIb3N0ZWRWb2ljZUNsb25lVjESEgoKYXVkaW9fZGF0YRgBIAEoDBJJCgxhdWRpb19mb3JtYXQYAiABKAsyMy5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuQXVkaW9MaW5lQ29uZmlndXJhdGlvbhIQCghyZWZfdGV4dBgDIAEoCSLoAQoWSG9zdGVkVHRzQ29uZmlndXJhdGlvbhJACgl2b2ljZV9yZWYYASABKAsyKy5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuSG9zdGVkVm9pY2VSZWZIABJJCg52b2ljZV9jbG9uZV92MRgDIAEoCzIvLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5Ib3N0ZWRWb2ljZUNsb25lVjFIABI4CgRtb2RlGAIgASgOMiouZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLkhvc3RlZFR0c01vZGVCBwoFdm9pY2UitQEKEFR0c0NvbmZpZ3VyYXRpb24STgoLZWxldmVuX2xhYnMYASABKAsyNy5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuRWxldmVuTGFic1R0c0NvbmZpZ3VyYXRpb25IABJFCgZob3N0ZWQYAiABKAsyMy5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuSG9zdGVkVHRzQ29uZmlndXJhdGlvbkgAQgoKCHByb3ZpZGVyIocEChhJbml0aWFsaXplU2Vzc2lvblJlcXVlc3QSTQoQaW5wdXRfYXVkaW9fbGluZRgBIAEoCzIzLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5BdWRpb0xpbmVDb25maWd1cmF0aW9uEk4KEW91dHB1dF9hdWRpb19saW5lGAIgASgLMjMuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLkF1ZGlvTGluZUNvbmZpZ3VyYXRpb24SSAoRdmFkX2NvbmZpZ3VyYXRpb24YAyABKAsyLS5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuVmFkQ29uZmlndXJhdGlvbhJUChdpbmZlcmVuY2VfY29uZmlndXJhdGlvbhgEIAEoCzIzLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5JbmZlcmVuY2VDb25maWd1cmF0aW9uEk0KEXR0c19jb25maWd1cmF0aW9uGAUgASgLMi0uZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLlR0c0NvbmZpZ3VyYXRpb25IAIgBARIjChtzdXBwb3J0c19wbGF5YmFja19yZXBvcnRpbmcYBiABKAgSIgoaZW5hYmxlX3ZhZF9mcmFtZV90ZWxlbWV0cnkYByABKAhCFAoSX3R0c19jb25maWd1cmF0aW9uIvsBChlSZWNvbmZpZ3VyZVNlc3Npb25SZXF1ZXN0ElIKEGlucHV0X2F1ZGlvX2xpbmUYASABKAsyMy5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuQXVkaW9MaW5lQ29uZmlndXJhdGlvbkgAiAEBElkKF2luZmVyZW5jZV9jb25maWd1cmF0aW9uGAIgASgLMjMuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLkluZmVyZW5jZUNvbmZpZ3VyYXRpb25IAYgBAUITChFfaW5wdXRfYXVkaW9fbGluZUIaChhfaW5mZXJlbmNlX2NvbmZpZ3VyYXRpb24iGQoJQXVkaW9EYXRhEgwKBGRhdGEYASABKAwiGAoIVGV4dERhdGESDAoEZGF0YRgBIAEoCSLiAQoJVXNlcklucHV0EhEKCXBhY2tldF9pZBgBIAEoBBI/CgRtb2RlGAIgASgOMjEuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLkluZmVyZW5jZVRyaWdnZXJNb2RlEjwKCmF1ZGlvX2RhdGEYAyABKAsyJi5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuQXVkaW9EYXRhSAASOgoJdGV4dF9kYXRhGAQgASgLMiUuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLlRleHREYXRhSABCBwoFaW5wdXQiXQoQVHJpZ2dlckluZmVyZW5jZRIfChJleHRyYV9pbnN0cnVjdGlvbnMYASABKAlIAIgBARIRCglmbHVzaF92YWQYAiABKAhCFQoTX2V4dHJhX2luc3RydWN0aW9ucyJIChhFeHBvcnRDaGF0SGlzdG9yeVJlcXVlc3QSFQoNYXdhaXRfcGVuZGluZxgBIAEoCBIVCg1leGNsdWRlX2F1ZGlvGAIgASgIIi4KFlBsYXliYWNrUG9zaXRpb25SZXBvcnQSFAoMYnl0ZXNfcGxheWVkGAEgASgEIlEKDERpcmVjdFNwZWVjaBIMCgR0ZXh0GAEgASgJEhoKEmluY2x1ZGVfaW5faGlzdG9yeRgCIAEoCBIXCg91bmludGVycnVwdGFibGUYAyABKAgiXwoRQ29udmVyc2F0aW9uUXVlcnkSEwoGcHJvbXB0GAEgASgJSACIAQESGQoMaW5zdHJ1Y3Rpb25zGAIgASgJSAGIAQFCCQoHX3Byb21wdEIPCg1faW5zdHJ1Y3Rpb25zIicKF0NvbnZlcnNhdGlvblF1ZXJ5UmVzdWx0EgwKBHRleHQYASABKAki4gYKE1NlcnZpY2VCb3VuZE1lc3NhZ2USWwoaaW5pdGlhbGl6ZV9zZXNzaW9uX3JlcXVlc3QYASABKAsyNS5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuSW5pdGlhbGl6ZVNlc3Npb25SZXF1ZXN0SAASXQobcmVjb25maWd1cmVfc2Vzc2lvbl9yZXF1ZXN0GAIgASgLMjYuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLlJlY29uZmlndXJlU2Vzc2lvblJlcXVlc3RIABI8Cgp1c2VyX2lucHV0GAMgASgLMiYuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLlVzZXJJbnB1dEgAEmQKH3VwZGF0ZV90b29sX2RlZmluaXRpb25zX3JlcXVlc3QYBCABKAsyOS5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuVXBkYXRlVG9vbERlZmluaXRpb25zUmVxdWVzdEgAEksKEnRvb2xfY2FsbF9yZXNwb25zZRgFIAEoCzItLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5Ub29sQ2FsbFJlc3BvbnNlSAASSgoRdHJpZ2dlcl9pbmZlcmVuY2UYBiABKAsyLS5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuVHJpZ2dlckluZmVyZW5jZUgAElwKG2V4cG9ydF9jaGF0X2hpc3RvcnlfcmVxdWVzdBgHIAEoCzI1LmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5FeHBvcnRDaGF0SGlzdG9yeVJlcXVlc3RIABJXChhwbGF5YmFja19wb3NpdGlvbl9yZXBvcnQYCCABKAsyMy5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuUGxheWJhY2tQb3NpdGlvblJlcG9ydEgAEkIKDWRpcmVjdF9zcGVlY2gYCSABKAsyKS5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuRGlyZWN0U3BlZWNoSAASTAoSY29udmVyc2F0aW9uX3F1ZXJ5GAogASgLMi4uZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLkNvbnZlcnNhdGlvblF1ZXJ5SABCCQoHcGF5bG9hZCIhChFNb2RlbFRleHRGcmFnbWVudBIMCgR0ZXh0GAEgASgJInAKD01vZGVsQXVkaW9DaHVuaxI1CgVhdWRpbxgBIAEoCzImLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5BdWRpb0RhdGESFwoKdHJhbnNjcmlwdBgCIAEoCUgAiAEBQg0KC190cmFuc2NyaXB0IkkKC0NoYXRIaXN0b3J5EjoKCG1lc3NhZ2VzGAEgAygLMiguZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLkNoYXRNZXNzYWdlIogDCgtDaGF0TWVzc2FnZRI6CgRyb2xlGAEgASgOMiwuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLkNoYXRNZXNzYWdlUm9sZRJACgdjb250ZW50GAIgAygLMi8uZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLkNoYXRNZXNzYWdlQ29udGVudBJICg9kZWxpdmVyeV9zdGF0dXMYAyABKA4yLy5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuQ2hhdERlbGl2ZXJ5U3RhdHVzEhEKCWVwaGVtZXJhbBgEIAEoCBIuCgpjcmVhdGVkX2F0GAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIUCgd0dXJuX2lkGAYgASgNSACIAQESKgoddHJ1bmNhdGVkX2F0X3Jlc3BvbnNlX3R1cm5faWQYByABKA1IAYgBAUIKCghfdHVybl9pZEIgCh5fdHJ1bmNhdGVkX2F0X3Jlc3BvbnNlX3R1cm5faWQi3QIKEkNoYXRNZXNzYWdlQ29udGVudBJECgx0ZXh0X2NvbnRlbnQYASABKAsyLC5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuQ2hhdFRleHRDb250ZW50SAASQQoLaW5wdXRfYXVkaW8YAiABKAsyKi5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuQ2hhdEF1ZGlvRGF0YUgAEhIKCHRob3VnaHRzGAMgASgJSAASQQoJdG9vbF9jYWxsGAQgASgLMiwuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLlRvb2xDYWxsUmVxdWVzdEgAEkQKC3Rvb2xfcmVzdWx0GAUgASgLMi0uZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLlRvb2xDYWxsUmVzcG9uc2VIABIWCgxpbnN0cnVjdGlvbnMYBiABKAlIAEIJCgdjb250ZW50InEKD0NoYXRUZXh0Q29udGVudBIMCgR0ZXh0GAEgASgJEkIKCXR0c19hdWRpbxgCIAEoCzIqLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5DaGF0QXVkaW9EYXRhSACIAQFCDAoKX3R0c19hdWRpbyKiAQoNQ2hhdEF1ZGlvRGF0YRI1CgVhdWRpbxgBIAEoCzImLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5BdWRpb0RhdGESQwoGZm9ybWF0GAIgASgLMjMuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLkF1ZGlvTGluZUNvbmZpZ3VyYXRpb24SFQoNdHJhbnNjcmlwdGlvbhgDIAEoCSIVChNQbGF5YmFja0NsZWFyQnVmZmVyIiAKDVJlc3BvbnNlQmVnaW4SDwoHdHVybl9pZBgBIAEoDSIeCgtSZXNwb25zZUVuZBIPCgd0dXJuX2lkGAEgASgNIpQBChhTZXNzaW9uRXJyb3JOb3RpZmljYXRpb24SQwoIY2F0ZWdvcnkYASABKA4yMS5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuU2Vzc2lvbkVycm9yQ2F0ZWdvcnkSDwoHbWVzc2FnZRgCIAEoCRIVCgh0cmFjZV9pZBgDIAEoCUgAiAEBQgsKCV90cmFjZV9pZCJKChdVc2VyVHJhbnNjcmlwdGlvblJlc3VsdBIPCgd0dXJuX2lkGAEgASgNEgwKBHRleHQYAiABKAkSEAoIbGFuZ3VhZ2UYAyABKAkiDgoMU2Vzc2lvblJlYWR5IkgKEENvbnRleHRUcnVuY2F0ZWQSGgoSdHJ1bmNhdGVkX3R1cm5faWRzGAEgAygNEhgKEHJlc3BvbnNlX3R1cm5faWQYAiABKA0iwwgKEkNsaWVudEJvdW5kTWVzc2FnZRJJChF0b29sX2NhbGxfcmVxdWVzdBgBIAEoCzIsLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5Ub29sQ2FsbFJlcXVlc3RIABJNChNtb2RlbF90ZXh0X2ZyYWdtZW50GAIgASgLMi4uZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLk1vZGVsVGV4dEZyYWdtZW50SAASSQoRbW9kZWxfYXVkaW9fY2h1bmsYAyABKAsyLC5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuTW9kZWxBdWRpb0NodW5rSAASUQoVcGxheWJhY2tfY2xlYXJfYnVmZmVyGAQgASgLMjAuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLlBsYXliYWNrQ2xlYXJCdWZmZXJIABJECg5yZXNwb25zZV9iZWdpbhgFIAEoCzIqLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5SZXNwb25zZUJlZ2luSAASQAoMcmVzcG9uc2VfZW5kGAYgASgLMiguZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLlJlc3BvbnNlRW5kSAASQAoMY2hhdF9oaXN0b3J5GAcgASgLMiguZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLkNoYXRIaXN0b3J5SAASRgoFZXJyb3IYCCABKAsyNS5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuU2Vzc2lvbkVycm9yTm90aWZpY2F0aW9uSAASWQoZdXNlcl90cmFuc2NyaXB0aW9uX3Jlc3VsdBgJIAEoCzI0LmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5Vc2VyVHJhbnNjcmlwdGlvblJlc3VsdEgAElkKGWNvbnZlcnNhdGlvbl9xdWVyeV9yZXN1bHQYCiABKAsyNC5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuQ29udmVyc2F0aW9uUXVlcnlSZXN1bHRIABJCCg1zZXNzaW9uX3JlYWR5GAsgASgLMikuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLlNlc3Npb25SZWFkeUgAEksKEnZhZF9hbmFseXNpc19mcmFtZRgMIAEoCzItLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5WYWRBbmFseXNpc0ZyYW1lSAASRQoPdmFkX3N0YXRlX2V2ZW50GA0gASgLMiouZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLlZhZFN0YXRlRXZlbnRIABJKChFjb250ZXh0X3RydW5jYXRlZBgOIAEoCzItLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5Db250ZXh0VHJ1bmNhdGVkSABCCQoHcGF5bG9hZCpsCgxTYW1wbGVGb3JtYXQSEgoOVU5TSUdORURfOF9CSVQQABIRCg1TSUdORURfMTZfQklUEAESEQoNU0lHTkVEXzMyX0JJVBACEhAKDEZMT0FUXzMyX0JJVBADEhAKDEZMT0FUXzY0X0JJVBAEKksKCFZhZFN0YXRlEgsKB1NJTEVOQ0UQABITCg9TUEVFQ0hfU1RBUlRJTkcQARIKCgZTUEVFQ0gQAhIRCg1TUEVFQ0hfRU5ESU5HEAMqLwoSRWxldmVuTGFic0xvY2F0aW9uEgYKAlVTEAASBgoCRVUQARIJCgVJTkRJQRACKjIKDUhvc3RlZFR0c01vZGUSEAoMSElHSF9RVUFMSVRZEAASDwoLTE9XX0xBVEVOQ1kQASpAChRJbmZlcmVuY2VUcmlnZ2VyTW9kZRIOCgpOT19UUklHR0VSEAASCQoFUVVFVUUQARINCglJTU1FRElBVEUQAio2Cg9DaGF0TWVzc2FnZVJvbGUSCgoGU1lTVEVNEAASCAoEVVNFUhABEg0KCUFTU0lTVEFOVBACKl8KEkNoYXREZWxpdmVyeVN0YXR1cxIYChRERUxJVkVSWV9JTl9QUk9HUkVTUxAAEhUKEURFTElWRVJZX0NPTVBMRVRFEAESGAoUREVMSVZFUllfSU5URVJSVVBURUQQAiqyAQoUU2Vzc2lvbkVycm9yQ2F0ZWdvcnkSEQoNRVJST1JfVU5LTk9XThAAEhEKDUVSUk9SX1NFU1NJT04QARIXChNFUlJPUl9DT05GSUdVUkFUSU9OEAISEgoORVJST1JfUFJPVE9DT0wQAxITCg9FUlJPUl9JTkZFUkVOQ0UQBBIPCgtFUlJPUl9BVURJTxAFEg0KCUVSUk9SX1RUUxAGEhIKDkVSUk9SX0lOVEVSTkFMEAdiBnByb3RvMw", [file_google_protobuf_struct, file_google_protobuf_timestamp]);
+  fileDesc("Cg5yZWFsdGltZS5wcm90bxIbZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxInUKDlRvb2xEZWZpbml0aW9uEgwKBG5hbWUYASABKAkSGAoLZGVzY3JpcHRpb24YAiABKAlIAIgBARIrCgpwYXJhbWV0ZXJzGAMgASgLMhcuZ29vZ2xlLnByb3RvYnVmLlN0cnVjdEIOCgxfZGVzY3JpcHRpb24iZQocVXBkYXRlVG9vbERlZmluaXRpb25zUmVxdWVzdBJFChB0b29sX2RlZmluaXRpb25zGAEgAygLMisuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLlRvb2xEZWZpbml0aW9uInoKD1Rvb2xDYWxsUmVxdWVzdBIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEisKCnBhcmFtZXRlcnMYAyABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0EhQKB3R1cm5faWQYBCABKA1IAIgBAUIKCghfdHVybl9pZCIuChBUb29sQ2FsbFJlc3BvbnNlEgoKAmlkGAEgASgJEg4KBnJlc3VsdBgCIAEoCSIqCghEdXJhdGlvbhIPCgdzZWNvbmRzGAEgASgEEg0KBW5hbm9zGAIgASgNIoYBChZBdWRpb0xpbmVDb25maWd1cmF0aW9uEhMKC3NhbXBsZV9yYXRlGAEgASgNEhUKDWNoYW5uZWxfY291bnQYAiABKA0SQAoNc2FtcGxlX2Zvcm1hdBgDIAEoDjIpLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5TYW1wbGVGb3JtYXQihQIKEFZhZENvbmZpZ3VyYXRpb24SHAoUY29uZmlkZW5jZV90aHJlc2hvbGQYASABKAISEgoKbWluX3ZvbHVtZRgCIAEoAhI9Cg5zdGFydF9kdXJhdGlvbhgDIAEoCzIlLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5EdXJhdGlvbhI8Cg1zdG9wX2R1cmF0aW9uGAQgASgLMiUuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLkR1cmF0aW9uEkIKE2JhY2tidWZmZXJfZHVyYXRpb24YBSABKAsyJS5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuRHVyYXRpb24i2QEKEFZhZEFuYWx5c2lzRnJhbWUSEwoLZnJhbWVfaW5kZXgYASABKAQSOwoMc2Vzc2lvbl90aW1lGAIgASgLMiUuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLkR1cmF0aW9uEhIKCmNvbmZpZGVuY2UYAyABKAISDgoGdm9sdW1lGAQgASgCEjQKBXN0YXRlGAUgASgOMiUuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLlZhZFN0YXRlEhkKEXNvdXJjZV9wYWNrZXRfaWRzGAYgAygEItMBCg1WYWRTdGF0ZUV2ZW50EjsKDHNlc3Npb25fdGltZRgBIAEoCzIlLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5EdXJhdGlvbhI5Cgpmcm9tX3N0YXRlGAIgASgOMiUuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLlZhZFN0YXRlEjcKCHRvX3N0YXRlGAMgASgOMiUuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLlZhZFN0YXRlEhEKCXBhY2tldF9pZBgEIAEoBCJEChZJbmZlcmVuY2VDb25maWd1cmF0aW9uEhUKDXN5c3RlbV9wcm9tcHQYASABKAkSEwoLdGVtcGVyYXR1cmUYAiABKAEijAIKGkVsZXZlbkxhYnNUdHNDb25maWd1cmF0aW9uEg8KB2FwaV9rZXkYASABKAkSEAoIdm9pY2VfaWQYAiABKAkSFQoIbW9kZWxfaWQYAyABKAlIAIgBARJRCg52b2ljZV9zZXR0aW5ncxgEIAEoCzI0LmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5FbGV2ZW5MYWJzVm9pY2VTZXR0aW5nc0gBiAEBEkEKCGxvY2F0aW9uGAUgASgOMi8uZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLkVsZXZlbkxhYnNMb2NhdGlvbkILCglfbW9kZWxfaWRCEQoPX3ZvaWNlX3NldHRpbmdzIn8KF0VsZXZlbkxhYnNWb2ljZVNldHRpbmdzEhEKCXN0YWJpbGl0eRgBIAEoARIYChBzaW1pbGFyaXR5X2Jvb3N0GAIgASgBEg0KBXN0eWxlGAMgASgBEhkKEXVzZV9zcGVha2VyX2Jvb3N0GAQgASgIEg0KBXNwZWVkGAUgASgBIiIKDkhvc3RlZFZvaWNlUmVmEhAKCHZvaWNlX2lkGAEgASgJIoUBChJIb3N0ZWRWb2ljZUNsb25lVjESEgoKYXVkaW9fZGF0YRgBIAEoDBJJCgxhdWRpb19mb3JtYXQYAiABKAsyMy5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuQXVkaW9MaW5lQ29uZmlndXJhdGlvbhIQCghyZWZfdGV4dBgDIAEoCSLoAQoWSG9zdGVkVHRzQ29uZmlndXJhdGlvbhJACgl2b2ljZV9yZWYYASABKAsyKy5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuSG9zdGVkVm9pY2VSZWZIABJJCg52b2ljZV9jbG9uZV92MRgDIAEoCzIvLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5Ib3N0ZWRWb2ljZUNsb25lVjFIABI4CgRtb2RlGAIgASgOMiouZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLkhvc3RlZFR0c01vZGVCBwoFdm9pY2UitQEKEFR0c0NvbmZpZ3VyYXRpb24STgoLZWxldmVuX2xhYnMYASABKAsyNy5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuRWxldmVuTGFic1R0c0NvbmZpZ3VyYXRpb25IABJFCgZob3N0ZWQYAiABKAsyMy5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuSG9zdGVkVHRzQ29uZmlndXJhdGlvbkgAQgoKCHByb3ZpZGVyIrAFChhJbml0aWFsaXplU2Vzc2lvblJlcXVlc3QSTQoQaW5wdXRfYXVkaW9fbGluZRgBIAEoCzIzLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5BdWRpb0xpbmVDb25maWd1cmF0aW9uEk4KEW91dHB1dF9hdWRpb19saW5lGAIgASgLMjMuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLkF1ZGlvTGluZUNvbmZpZ3VyYXRpb24SSAoRdmFkX2NvbmZpZ3VyYXRpb24YAyABKAsyLS5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuVmFkQ29uZmlndXJhdGlvbhJUChdpbmZlcmVuY2VfY29uZmlndXJhdGlvbhgEIAEoCzIzLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5JbmZlcmVuY2VDb25maWd1cmF0aW9uEk0KEXR0c19jb25maWd1cmF0aW9uGAUgASgLMi0uZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLlR0c0NvbmZpZ3VyYXRpb25IAIgBARIjChtzdXBwb3J0c19wbGF5YmFja19yZXBvcnRpbmcYBiABKAgSIgoaZW5hYmxlX3ZhZF9mcmFtZV90ZWxlbWV0cnkYByABKAgSWwoLZXhwZXJpbWVudHMYCCADKAsyRi5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuSW5pdGlhbGl6ZVNlc3Npb25SZXF1ZXN0LkV4cGVyaW1lbnRzRW50cnkaSgoQRXhwZXJpbWVudHNFbnRyeRILCgNrZXkYASABKAkSJQoFdmFsdWUYAiABKAsyFi5nb29nbGUucHJvdG9idWYuVmFsdWU6AjgBQhQKEl90dHNfY29uZmlndXJhdGlvbiL7AQoZUmVjb25maWd1cmVTZXNzaW9uUmVxdWVzdBJSChBpbnB1dF9hdWRpb19saW5lGAEgASgLMjMuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLkF1ZGlvTGluZUNvbmZpZ3VyYXRpb25IAIgBARJZChdpbmZlcmVuY2VfY29uZmlndXJhdGlvbhgCIAEoCzIzLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5JbmZlcmVuY2VDb25maWd1cmF0aW9uSAGIAQFCEwoRX2lucHV0X2F1ZGlvX2xpbmVCGgoYX2luZmVyZW5jZV9jb25maWd1cmF0aW9uIhkKCUF1ZGlvRGF0YRIMCgRkYXRhGAEgASgMIhgKCFRleHREYXRhEgwKBGRhdGEYASABKAki4gEKCVVzZXJJbnB1dBIRCglwYWNrZXRfaWQYASABKAQSPwoEbW9kZRgCIAEoDjIxLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5JbmZlcmVuY2VUcmlnZ2VyTW9kZRI8CgphdWRpb19kYXRhGAMgASgLMiYuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLkF1ZGlvRGF0YUgAEjoKCXRleHRfZGF0YRgEIAEoCzIlLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5UZXh0RGF0YUgAQgcKBWlucHV0Il0KEFRyaWdnZXJJbmZlcmVuY2USHwoSZXh0cmFfaW5zdHJ1Y3Rpb25zGAEgASgJSACIAQESEQoJZmx1c2hfdmFkGAIgASgIQhUKE19leHRyYV9pbnN0cnVjdGlvbnMiSAoYRXhwb3J0Q2hhdEhpc3RvcnlSZXF1ZXN0EhUKDWF3YWl0X3BlbmRpbmcYASABKAgSFQoNZXhjbHVkZV9hdWRpbxgCIAEoCCJQChZQbGF5YmFja1Bvc2l0aW9uUmVwb3J0EhQKDGJ5dGVzX3BsYXllZBgBIAEoBBIUCgd0dXJuX2lkGAIgASgNSACIAQFCCgoIX3R1cm5faWQiUQoMRGlyZWN0U3BlZWNoEgwKBHRleHQYASABKAkSGgoSaW5jbHVkZV9pbl9oaXN0b3J5GAIgASgIEhcKD3VuaW50ZXJydXB0YWJsZRgDIAEoCCJfChFDb252ZXJzYXRpb25RdWVyeRITCgZwcm9tcHQYASABKAlIAIgBARIZCgxpbnN0cnVjdGlvbnMYAiABKAlIAYgBAUIJCgdfcHJvbXB0Qg8KDV9pbnN0cnVjdGlvbnMiJwoXQ29udmVyc2F0aW9uUXVlcnlSZXN1bHQSDAoEdGV4dBgBIAEoCSIGCgRQaW5nIgYKBFBvbmcilQcKE1NlcnZpY2VCb3VuZE1lc3NhZ2USWwoaaW5pdGlhbGl6ZV9zZXNzaW9uX3JlcXVlc3QYASABKAsyNS5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuSW5pdGlhbGl6ZVNlc3Npb25SZXF1ZXN0SAASXQobcmVjb25maWd1cmVfc2Vzc2lvbl9yZXF1ZXN0GAIgASgLMjYuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLlJlY29uZmlndXJlU2Vzc2lvblJlcXVlc3RIABI8Cgp1c2VyX2lucHV0GAMgASgLMiYuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLlVzZXJJbnB1dEgAEmQKH3VwZGF0ZV90b29sX2RlZmluaXRpb25zX3JlcXVlc3QYBCABKAsyOS5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuVXBkYXRlVG9vbERlZmluaXRpb25zUmVxdWVzdEgAEksKEnRvb2xfY2FsbF9yZXNwb25zZRgFIAEoCzItLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5Ub29sQ2FsbFJlc3BvbnNlSAASSgoRdHJpZ2dlcl9pbmZlcmVuY2UYBiABKAsyLS5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuVHJpZ2dlckluZmVyZW5jZUgAElwKG2V4cG9ydF9jaGF0X2hpc3RvcnlfcmVxdWVzdBgHIAEoCzI1LmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5FeHBvcnRDaGF0SGlzdG9yeVJlcXVlc3RIABJXChhwbGF5YmFja19wb3NpdGlvbl9yZXBvcnQYCCABKAsyMy5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuUGxheWJhY2tQb3NpdGlvblJlcG9ydEgAEkIKDWRpcmVjdF9zcGVlY2gYCSABKAsyKS5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuRGlyZWN0U3BlZWNoSAASTAoSY29udmVyc2F0aW9uX3F1ZXJ5GAogASgLMi4uZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLkNvbnZlcnNhdGlvblF1ZXJ5SAASMQoEcGluZxgLIAEoCzIhLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5QaW5nSABCCQoHcGF5bG9hZCJDChFNb2RlbFRleHRGcmFnbWVudBIMCgR0ZXh0GAEgASgJEhQKB3R1cm5faWQYAiABKA1IAIgBAUIKCghfdHVybl9pZCJ8Cg9Nb2RlbEF1ZGlvQ2h1bmsSNQoFYXVkaW8YASABKAsyJi5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuQXVkaW9EYXRhEhQKB3R1cm5faWQYAyABKA1IAIgBAUIKCghfdHVybl9pZEoECAIQA1IKdHJhbnNjcmlwdCJfChNNb2RlbFNwZWVjaFByb2dyZXNzEg8KB3R1cm5faWQYASABKA0SDAoEdGV4dBgCIAEoCRIaChJhdWRpb19ieXRlc19wbGF5ZWQYAyABKAQSDQoFZXhhY3QYBCABKAgiJAoRSW5mZXJlbmNlQ29tcGxldGUSDwoHdHVybl9pZBgBIAEoDSJbCgxUdXJuU25hcHNob3QSOQoHbWVzc2FnZRgBIAEoCzIoLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5DaGF0TWVzc2FnZRIQCghpc19maW5hbBgCIAEoCCJJCgtDaGF0SGlzdG9yeRI6CghtZXNzYWdlcxgBIAMoCzIoLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5DaGF0TWVzc2FnZSKIAwoLQ2hhdE1lc3NhZ2USOgoEcm9sZRgBIAEoDjIsLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5DaGF0TWVzc2FnZVJvbGUSQAoHY29udGVudBgCIAMoCzIvLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5DaGF0TWVzc2FnZUNvbnRlbnQSSAoPZGVsaXZlcnlfc3RhdHVzGAMgASgOMi8uZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLkNoYXREZWxpdmVyeVN0YXR1cxIRCgllcGhlbWVyYWwYBCABKAgSLgoKY3JlYXRlZF9hdBgFIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASFAoHdHVybl9pZBgGIAEoDUgAiAEBEioKHXRydW5jYXRlZF9hdF9yZXNwb25zZV90dXJuX2lkGAcgASgNSAGIAQFCCgoIX3R1cm5faWRCIAoeX3RydW5jYXRlZF9hdF9yZXNwb25zZV90dXJuX2lkIt0CChJDaGF0TWVzc2FnZUNvbnRlbnQSRAoMdGV4dF9jb250ZW50GAEgASgLMiwuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLkNoYXRUZXh0Q29udGVudEgAEkEKC2lucHV0X2F1ZGlvGAIgASgLMiouZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLkNoYXRBdWRpb0RhdGFIABISCgh0aG91Z2h0cxgDIAEoCUgAEkEKCXRvb2xfY2FsbBgEIAEoCzIsLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5Ub29sQ2FsbFJlcXVlc3RIABJECgt0b29sX3Jlc3VsdBgFIAEoCzItLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5Ub29sQ2FsbFJlc3BvbnNlSAASFgoMaW5zdHJ1Y3Rpb25zGAYgASgJSABCCQoHY29udGVudCJxCg9DaGF0VGV4dENvbnRlbnQSDAoEdGV4dBgBIAEoCRJCCgl0dHNfYXVkaW8YAiABKAsyKi5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuQ2hhdEF1ZGlvRGF0YUgAiAEBQgwKCl90dHNfYXVkaW8iogEKDUNoYXRBdWRpb0RhdGESNQoFYXVkaW8YASABKAsyJi5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuQXVkaW9EYXRhEkMKBmZvcm1hdBgCIAEoCzIzLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5BdWRpb0xpbmVDb25maWd1cmF0aW9uEhUKDXRyYW5zY3JpcHRpb24YAyABKAkiFQoTUGxheWJhY2tDbGVhckJ1ZmZlciIgCg1SZXNwb25zZUJlZ2luEg8KB3R1cm5faWQYASABKA0iHgoLUmVzcG9uc2VFbmQSDwoHdHVybl9pZBgBIAEoDSKUAQoYU2Vzc2lvbkVycm9yTm90aWZpY2F0aW9uEkMKCGNhdGVnb3J5GAEgASgOMjEuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLlNlc3Npb25FcnJvckNhdGVnb3J5Eg8KB21lc3NhZ2UYAiABKAkSFQoIdHJhY2VfaWQYAyABKAlIAIgBAUILCglfdHJhY2VfaWQiSgoXVXNlclRyYW5zY3JpcHRpb25SZXN1bHQSDwoHdHVybl9pZBgBIAEoDRIMCgR0ZXh0GAIgASgJEhAKCGxhbmd1YWdlGAMgASgJIg4KDFNlc3Npb25SZWFkeSJIChBDb250ZXh0VHJ1bmNhdGVkEhoKEnRydW5jYXRlZF90dXJuX2lkcxgBIAMoDRIYChByZXNwb25zZV90dXJuX2lkGAIgASgNItsKChJDbGllbnRCb3VuZE1lc3NhZ2USSQoRdG9vbF9jYWxsX3JlcXVlc3QYASABKAsyLC5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuVG9vbENhbGxSZXF1ZXN0SAASTQoTbW9kZWxfdGV4dF9mcmFnbWVudBgCIAEoCzIuLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5Nb2RlbFRleHRGcmFnbWVudEgAEkkKEW1vZGVsX2F1ZGlvX2NodW5rGAMgASgLMiwuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLk1vZGVsQXVkaW9DaHVua0gAElEKFXBsYXliYWNrX2NsZWFyX2J1ZmZlchgEIAEoCzIwLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5QbGF5YmFja0NsZWFyQnVmZmVySAASRAoOcmVzcG9uc2VfYmVnaW4YBSABKAsyKi5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuUmVzcG9uc2VCZWdpbkgAEkAKDHJlc3BvbnNlX2VuZBgGIAEoCzIoLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5SZXNwb25zZUVuZEgAEkAKDGNoYXRfaGlzdG9yeRgHIAEoCzIoLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5DaGF0SGlzdG9yeUgAEkYKBWVycm9yGAggASgLMjUuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLlNlc3Npb25FcnJvck5vdGlmaWNhdGlvbkgAElkKGXVzZXJfdHJhbnNjcmlwdGlvbl9yZXN1bHQYCSABKAsyNC5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuVXNlclRyYW5zY3JpcHRpb25SZXN1bHRIABJZChljb252ZXJzYXRpb25fcXVlcnlfcmVzdWx0GAogASgLMjQuZXUuZGVlcHNsYXRlLnJlYWx0aW1lLnNwZWVxLkNvbnZlcnNhdGlvblF1ZXJ5UmVzdWx0SAASQgoNc2Vzc2lvbl9yZWFkeRgLIAEoCzIpLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5TZXNzaW9uUmVhZHlIABJLChJ2YWRfYW5hbHlzaXNfZnJhbWUYDCABKAsyLS5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuVmFkQW5hbHlzaXNGcmFtZUgAEkUKD3ZhZF9zdGF0ZV9ldmVudBgNIAEoCzIqLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5WYWRTdGF0ZUV2ZW50SAASSgoRY29udGV4dF90cnVuY2F0ZWQYDiABKAsyLS5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuQ29udGV4dFRydW5jYXRlZEgAEjEKBHBvbmcYDyABKAsyIS5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuUG9uZ0gAElEKFW1vZGVsX3NwZWVjaF9wcm9ncmVzcxgQIAEoCzIwLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5Nb2RlbFNwZWVjaFByb2dyZXNzSAASQgoNdHVybl9zbmFwc2hvdBgRIAEoCzIpLmV1LmRlZXBzbGF0ZS5yZWFsdGltZS5zcGVlcS5UdXJuU25hcHNob3RIABJMChJpbmZlcmVuY2VfY29tcGxldGUYEiABKAsyLi5ldS5kZWVwc2xhdGUucmVhbHRpbWUuc3BlZXEuSW5mZXJlbmNlQ29tcGxldGVIAEIJCgdwYXlsb2FkKmwKDFNhbXBsZUZvcm1hdBISCg5VTlNJR05FRF84X0JJVBAAEhEKDVNJR05FRF8xNl9CSVQQARIRCg1TSUdORURfMzJfQklUEAISEAoMRkxPQVRfMzJfQklUEAMSEAoMRkxPQVRfNjRfQklUEAQqSwoIVmFkU3RhdGUSCwoHU0lMRU5DRRAAEhMKD1NQRUVDSF9TVEFSVElORxABEgoKBlNQRUVDSBACEhEKDVNQRUVDSF9FTkRJTkcQAyovChJFbGV2ZW5MYWJzTG9jYXRpb24SBgoCVVMQABIGCgJFVRABEgkKBUlORElBEAIqMgoNSG9zdGVkVHRzTW9kZRIQCgxISUdIX1FVQUxJVFkQABIPCgtMT1dfTEFURU5DWRABKkAKFEluZmVyZW5jZVRyaWdnZXJNb2RlEg4KCk5PX1RSSUdHRVIQABIJCgVRVUVVRRABEg0KCUlNTUVESUFURRACKjYKD0NoYXRNZXNzYWdlUm9sZRIKCgZTWVNURU0QABIICgRVU0VSEAESDQoJQVNTSVNUQU5UEAIqXwoSQ2hhdERlbGl2ZXJ5U3RhdHVzEhgKFERFTElWRVJZX0lOX1BST0dSRVNTEAASFQoRREVMSVZFUllfQ09NUExFVEUQARIYChRERUxJVkVSWV9JTlRFUlJVUFRFRBACKrIBChRTZXNzaW9uRXJyb3JDYXRlZ29yeRIRCg1FUlJPUl9VTktOT1dOEAASEQoNRVJST1JfU0VTU0lPThABEhcKE0VSUk9SX0NPTkZJR1VSQVRJT04QAhISCg5FUlJPUl9QUk9UT0NPTBADEhMKD0VSUk9SX0lORkVSRU5DRRAEEg8KC0VSUk9SX0FVRElPEAUSDQoJRVJST1JfVFRTEAYSEgoORVJST1JfSU5URVJOQUwQB2IGcHJvdG8z", [file_google_protobuf_struct, file_google_protobuf_timestamp]);
 
 /**
  *
@@ -640,8 +640,6 @@ export const HostedTtsConfigurationSchema: GenMessage<HostedTtsConfiguration> = 
  *
  * Configuration for text-to-speech output.
  *
- * If not specified, raw text fragments are sent to the client.
- *
  * @generated from message eu.deepslate.realtime.speeq.TtsConfiguration
  */
 export type TtsConfiguration = Message<"eu.deepslate.realtime.speeq.TtsConfiguration"> & {
@@ -708,18 +706,19 @@ export type InitializeSessionRequest = Message<"eu.deepslate.realtime.speeq.Init
   inferenceConfiguration?: InferenceConfiguration | undefined;
 
   /**
-   * TTS configuration. If not specified, raw text fragments are sent to the client.
+   * TTS configuration.
    *
    * @generated from field: optional eu.deepslate.realtime.speeq.TtsConfiguration tts_configuration = 5;
    */
   ttsConfiguration?: TtsConfiguration | undefined;
 
   /**
-   * Whether the client supports playback position reporting.
+   * Whether the client intends to send playback position reports.
    *
-   * When true, the client will send PlaybackPositionReport messages
-   * with precise playback position data. When false (default), the
-   * server uses elapsed-time estimation for context truncation.
+   * This is treated as a hint only.
+   * The server honours PlaybackPositionReport messages whenever they arrive, regardless of this
+   * flag. Absent such reports, the server falls back to a server-side elapsed-time estimate for context
+   * truncation.
    *
    * @generated from field: bool supports_playback_reporting = 6;
    */
@@ -735,6 +734,22 @@ export type InitializeSessionRequest = Message<"eu.deepslate.realtime.speeq.Init
    * @generated from field: bool enable_vad_frame_telemetry = 7;
    */
   enableVadFrameTelemetry: boolean;
+
+  /**
+   * Optional experiments to enable.
+   *
+   * Maps the name of the experiment to a parameter value. The semantics of the parameter value
+   * is defined by the experiment itself.
+   *
+   * There are zero stability guarantees given for experiments. They may be removed or changed without
+   * any version bump or warning. Use at your own risk.
+   *
+   * Behavior of experiments is subject to the experiment itself, and may arbitrarily enable, disable
+   * or change parts of the protocol and underlying behavior. Unknown experiments are ignored.
+   *
+   * @generated from field: map<string, google.protobuf.Value> experiments = 8;
+   */
+  experiments: { [key: string]: Value };
 };
 
 /**
@@ -958,18 +973,25 @@ export const ExportChatHistoryRequestSchema: GenMessage<ExportChatHistoryRequest
  * precise information about how many audio bytes have been played.
  * This enables accurate context truncation on user interrupt.
  *
- * Only sent when the client declares `supports_playback_reporting = true`
- * in the InitializeSessionRequest.
- *
  * @generated from message eu.deepslate.realtime.speeq.PlaybackPositionReport
  */
 export type PlaybackPositionReport = Message<"eu.deepslate.realtime.speeq.PlaybackPositionReport"> & {
   /**
-   * Number of audio bytes played by the client.
+   * Number of audio bytes played by the client for `turn_id`.
    *
    * @generated from field: uint64 bytes_played = 1;
    */
   bytesPlayed: bigint;
+
+  /**
+   * Which assistant turn these bytes belong to. Explicitly optional: turn IDs
+   * are 0-based, so without presence a report for turn 0 is indistinguishable
+   * from a legacy client that sends no turn_id at all. Absent means a legacy
+   * client; the report is applied to the current response as before.
+   *
+   * @generated from field: optional uint32 turn_id = 2;
+   */
+  turnId?: number | undefined;
 };
 
 /**
@@ -1087,6 +1109,50 @@ export const ConversationQueryResultSchema: GenMessage<ConversationQueryResult> 
 
 /**
  *
+ * Sent by the client to ping corvidae.
+ *
+ * This can be used to keep the session alive if no other packets are being
+ * sent, or to measure round-trip latency.
+ *
+ * As a special case this packet is allowed to be sent before a session is initialized.
+ *
+ * Corvidae does not require you to send this packet as long as other packets are flowing
+ * continuously. Typically (depending on the deployment) a session times out after 30 seconds
+ * of not receiving any packets (a silent audio stream still counts as activity, as
+ * it sends packets). If you want to make sure that the connection is never dropped, send
+ * a Ping unconditionally every 10 seconds (or less, depending on the deployment) to keep
+ * the session alive.
+ *
+ * @generated from message eu.deepslate.realtime.speeq.Ping
+ */
+export type Ping = Message<"eu.deepslate.realtime.speeq.Ping"> & {
+};
+
+/**
+ * Describes the message eu.deepslate.realtime.speeq.Ping.
+ * Use `create(PingSchema)` to create a new message.
+ */
+export const PingSchema: GenMessage<Ping> = /*@__PURE__*/
+  messageDesc(file_realtime, 27);
+
+/**
+ *
+ * Sent by corvidae as a response to a Ping message.
+ *
+ * @generated from message eu.deepslate.realtime.speeq.Pong
+ */
+export type Pong = Message<"eu.deepslate.realtime.speeq.Pong"> & {
+};
+
+/**
+ * Describes the message eu.deepslate.realtime.speeq.Pong.
+ * Use `create(PongSchema)` to create a new message.
+ */
+export const PongSchema: GenMessage<Pong> = /*@__PURE__*/
+  messageDesc(file_realtime, 28);
+
+/**
+ *
  * Message sent from the client to the service.
  *
  * @generated from message eu.deepslate.realtime.speeq.ServiceBoundMessage
@@ -1155,6 +1221,12 @@ export type ServiceBoundMessage = Message<"eu.deepslate.realtime.speeq.ServiceBo
      */
     value: ConversationQuery;
     case: "conversationQuery";
+  } | {
+    /**
+     * @generated from field: eu.deepslate.realtime.speeq.Ping ping = 11;
+     */
+    value: Ping;
+    case: "ping";
   } | { case: undefined; value?: undefined };
 };
 
@@ -1163,7 +1235,7 @@ export type ServiceBoundMessage = Message<"eu.deepslate.realtime.speeq.ServiceBo
  * Use `create(ServiceBoundMessageSchema)` to create a new message.
  */
 export const ServiceBoundMessageSchema: GenMessage<ServiceBoundMessage> = /*@__PURE__*/
-  messageDesc(file_realtime, 27);
+  messageDesc(file_realtime, 29);
 
 /**
  *
@@ -1178,6 +1250,16 @@ export type ModelTextFragment = Message<"eu.deepslate.realtime.speeq.ModelTextFr
    * @generated from field: string text = 1;
    */
   text: string;
+
+  /**
+   * Session-local ID of the assistant turn this fragment belongs to.
+   * Explicitly optional: turn IDs are 0-based, so without presence a fragment
+   * for turn 0 is indistinguishable from a server that sends no turn_id, and
+   * the client cannot fall back to attributing it to the current turn.
+   *
+   * @generated from field: optional uint32 turn_id = 2;
+   */
+  turnId?: number | undefined;
 };
 
 /**
@@ -1185,7 +1267,7 @@ export type ModelTextFragment = Message<"eu.deepslate.realtime.speeq.ModelTextFr
  * Use `create(ModelTextFragmentSchema)` to create a new message.
  */
 export const ModelTextFragmentSchema: GenMessage<ModelTextFragment> = /*@__PURE__*/
-  messageDesc(file_realtime, 28);
+  messageDesc(file_realtime, 30);
 
 /**
  *
@@ -1202,11 +1284,11 @@ export type ModelAudioChunk = Message<"eu.deepslate.realtime.speeq.ModelAudioChu
   audio?: AudioData | undefined;
 
   /**
-   * Optional: text that was spoken (alignment data from TTS provider)
+   * Session-local ID of the assistant turn this audio belongs to.
    *
-   * @generated from field: optional string transcript = 2;
+   * @generated from field: optional uint32 turn_id = 3;
    */
-  transcript?: string | undefined;
+  turnId?: number | undefined;
 };
 
 /**
@@ -1214,7 +1296,137 @@ export type ModelAudioChunk = Message<"eu.deepslate.realtime.speeq.ModelAudioChu
  * Use `create(ModelAudioChunkSchema)` to create a new message.
  */
 export const ModelAudioChunkSchema: GenMessage<ModelAudioChunk> = /*@__PURE__*/
-  messageDesc(file_realtime, 29);
+  messageDesc(file_realtime, 31);
+
+/**
+ *
+ * Reports how much of an assistant turn's text the client has played back.
+ *
+ * Emitted continuously while TTS audio is playing.
+ *
+ * See PlaybackPositionReport for improving accuracy of this stream
+ * with client-reported playback positions.
+ *
+ * @generated from message eu.deepslate.realtime.speeq.ModelSpeechProgress
+ */
+export type ModelSpeechProgress = Message<"eu.deepslate.realtime.speeq.ModelSpeechProgress"> & {
+  /**
+   * Turn this progress belongs to.
+   *
+   * @generated from field: uint32 turn_id = 1;
+   */
+  turnId: number;
+
+  /**
+   * Text that became audible since the previous ModelSpeechProgress for this
+   * turn.
+   *
+   * Concatenating these in order will reproduce the same text as the model
+   * text fragments and can thus be treated as a prefix of the generated text.
+   *
+   * @generated from field: string text = 2;
+   */
+  text: string;
+
+  /**
+   * Bytes of audio that have been played back so far, based on the server's
+   * estimate.
+   *
+   * This should not significantly drift from what the client has actually played
+   * back. If it does, consider adding support for PlaybackPositionReport to
+   * improve accuracy.
+   *
+   * @generated from field: uint64 audio_bytes_played = 3;
+   */
+  audioBytesPlayed: bigint;
+
+  /**
+   * Accuracy indicator for debug purpose.
+   *
+   * Non-exact segments still contain the correct and whole text, but may not 100%
+   * correspond to the audio that has been played back. The server attempts to keep
+   * this drift as small as possible, but due to technical limitations a tiny amount
+   * of drift can occur.
+   *
+   * Treat this value as debug information only.
+   *
+   * @generated from field: bool exact = 4;
+   */
+  exact: boolean;
+};
+
+/**
+ * Describes the message eu.deepslate.realtime.speeq.ModelSpeechProgress.
+ * Use `create(ModelSpeechProgressSchema)` to create a new message.
+ */
+export const ModelSpeechProgressSchema: GenMessage<ModelSpeechProgress> = /*@__PURE__*/
+  messageDesc(file_realtime, 32);
+
+/**
+ *
+ * The LLM has finished producing this turn's output.
+ *
+ * TTS audio for the turn may still be synthesizing and further turn events
+ * may arrive.
+ *
+ * @generated from message eu.deepslate.realtime.speeq.InferenceComplete
+ */
+export type InferenceComplete = Message<"eu.deepslate.realtime.speeq.InferenceComplete"> & {
+  /**
+   * Session-local ID of the assistant turn whose generation finished.
+   *
+   * @generated from field: uint32 turn_id = 1;
+   */
+  turnId: number;
+};
+
+/**
+ * Describes the message eu.deepslate.realtime.speeq.InferenceComplete.
+ * Use `create(InferenceCompleteSchema)` to create a new message.
+ */
+export const InferenceCompleteSchema: GenMessage<InferenceComplete> = /*@__PURE__*/
+  messageDesc(file_realtime, 33);
+
+/**
+ *
+ * The server's authoritative view of one turn's content at a point in time.
+ *
+ * Multiple of these snapshots may arrive per turn, whenever the server determines
+ * that new turn contents are available. This might not be a strict monotonic sequence,
+ * and content may be rolled back.
+ *
+ * This packet is authoritative in that it reflects what the server treats as the actual
+ * content of the turn, independent of other streamed state.
+ *
+ * @generated from message eu.deepslate.realtime.speeq.TurnSnapshot
+ */
+export type TurnSnapshot = Message<"eu.deepslate.realtime.speeq.TurnSnapshot"> & {
+  /**
+   * The turn's content as of this snapshot.
+   *
+   * @generated from field: eu.deepslate.realtime.speeq.ChatMessage message = 1;
+   */
+  message?: ChatMessage | undefined;
+
+  /**
+   * If set, no further TurnSnapshots will arrive and the server has finalized the turn.
+   * Its status will not change anymore in regards to its contents.
+   *
+   * This does not indicate that the content of this turn will stay visible forever,
+   * only that it will not change anymore. Context truncation may eventually remove this
+   * turn from the visible context entirely.
+   *
+   * @generated from field: bool is_final = 2;
+   */
+  isFinal: boolean;
+};
+
+/**
+ * Describes the message eu.deepslate.realtime.speeq.TurnSnapshot.
+ * Use `create(TurnSnapshotSchema)` to create a new message.
+ */
+export const TurnSnapshotSchema: GenMessage<TurnSnapshot> = /*@__PURE__*/
+  messageDesc(file_realtime, 34);
 
 /**
  *
@@ -1234,7 +1446,7 @@ export type ChatHistory = Message<"eu.deepslate.realtime.speeq.ChatHistory"> & {
  * Use `create(ChatHistorySchema)` to create a new message.
  */
 export const ChatHistorySchema: GenMessage<ChatHistory> = /*@__PURE__*/
-  messageDesc(file_realtime, 30);
+  messageDesc(file_realtime, 35);
 
 /**
  *
@@ -1292,9 +1504,7 @@ export type ChatMessage = Message<"eu.deepslate.realtime.speeq.ChatMessage"> & {
 
   /**
    *
-   * The turn ID. Correlates with `ResponseBegin.turn_id` / `ResponseEnd.turn_id`
-   * for assistant turns and `UserTranscriptionResult.turn_id` for user audio
-   * turns.
+   * The session-local ID of the assistant turn this message belongs to.
    *
    * @generated from field: optional uint32 turn_id = 6;
    */
@@ -1319,7 +1529,7 @@ export type ChatMessage = Message<"eu.deepslate.realtime.speeq.ChatMessage"> & {
  * Use `create(ChatMessageSchema)` to create a new message.
  */
 export const ChatMessageSchema: GenMessage<ChatMessage> = /*@__PURE__*/
-  messageDesc(file_realtime, 31);
+  messageDesc(file_realtime, 36);
 
 /**
  *
@@ -1387,7 +1597,7 @@ export type ChatMessageContent = Message<"eu.deepslate.realtime.speeq.ChatMessag
  * Use `create(ChatMessageContentSchema)` to create a new message.
  */
 export const ChatMessageContentSchema: GenMessage<ChatMessageContent> = /*@__PURE__*/
-  messageDesc(file_realtime, 32);
+  messageDesc(file_realtime, 37);
 
 /**
  *
@@ -1420,7 +1630,7 @@ export type ChatTextContent = Message<"eu.deepslate.realtime.speeq.ChatTextConte
  * Use `create(ChatTextContentSchema)` to create a new message.
  */
 export const ChatTextContentSchema: GenMessage<ChatTextContent> = /*@__PURE__*/
-  messageDesc(file_realtime, 33);
+  messageDesc(file_realtime, 38);
 
 /**
  *
@@ -1464,7 +1674,7 @@ export type ChatAudioData = Message<"eu.deepslate.realtime.speeq.ChatAudioData">
  * Use `create(ChatAudioDataSchema)` to create a new message.
  */
 export const ChatAudioDataSchema: GenMessage<ChatAudioData> = /*@__PURE__*/
-  messageDesc(file_realtime, 34);
+  messageDesc(file_realtime, 39);
 
 /**
  *
@@ -1489,7 +1699,7 @@ export type PlaybackClearBuffer = Message<"eu.deepslate.realtime.speeq.PlaybackC
  * Use `create(PlaybackClearBufferSchema)` to create a new message.
  */
 export const PlaybackClearBufferSchema: GenMessage<PlaybackClearBuffer> = /*@__PURE__*/
-  messageDesc(file_realtime, 35);
+  messageDesc(file_realtime, 40);
 
 /**
  *
@@ -1515,11 +1725,17 @@ export type ResponseBegin = Message<"eu.deepslate.realtime.speeq.ResponseBegin">
  * Use `create(ResponseBeginSchema)` to create a new message.
  */
 export const ResponseBeginSchema: GenMessage<ResponseBegin> = /*@__PURE__*/
-  messageDesc(file_realtime, 36);
+  messageDesc(file_realtime, 41);
 
 /**
  *
- * Notification that the model has finished its response.
+ * Notification that no more audio is coming for this turn.
+ *
+ * This is sent after all audio packets have been sent. However, changes
+ * to a turns content can still happen due to interruptions.
+ *
+ * See TurnSnapshot for a notification of when a turn's content becomes
+ * immutable and finalized.
  *
  * @generated from message eu.deepslate.realtime.speeq.ResponseEnd
  */
@@ -1539,7 +1755,7 @@ export type ResponseEnd = Message<"eu.deepslate.realtime.speeq.ResponseEnd"> & {
  * Use `create(ResponseEndSchema)` to create a new message.
  */
 export const ResponseEndSchema: GenMessage<ResponseEnd> = /*@__PURE__*/
-  messageDesc(file_realtime, 37);
+  messageDesc(file_realtime, 42);
 
 /**
  *
@@ -1579,7 +1795,7 @@ export type SessionErrorNotification = Message<"eu.deepslate.realtime.speeq.Sess
  * Use `create(SessionErrorNotificationSchema)` to create a new message.
  */
 export const SessionErrorNotificationSchema: GenMessage<SessionErrorNotification> = /*@__PURE__*/
-  messageDesc(file_realtime, 38);
+  messageDesc(file_realtime, 43);
 
 /**
  *
@@ -1619,7 +1835,7 @@ export type UserTranscriptionResult = Message<"eu.deepslate.realtime.speeq.UserT
  * Use `create(UserTranscriptionResultSchema)` to create a new message.
  */
 export const UserTranscriptionResultSchema: GenMessage<UserTranscriptionResult> = /*@__PURE__*/
-  messageDesc(file_realtime, 39);
+  messageDesc(file_realtime, 44);
 
 /**
  *
@@ -1636,7 +1852,7 @@ export type SessionReady = Message<"eu.deepslate.realtime.speeq.SessionReady"> &
  * Use `create(SessionReadySchema)` to create a new message.
  */
 export const SessionReadySchema: GenMessage<SessionReady> = /*@__PURE__*/
-  messageDesc(file_realtime, 40);
+  messageDesc(file_realtime, 45);
 
 /**
  *
@@ -1676,7 +1892,7 @@ export type ContextTruncated = Message<"eu.deepslate.realtime.speeq.ContextTrunc
  * Use `create(ContextTruncatedSchema)` to create a new message.
  */
 export const ContextTruncatedSchema: GenMessage<ContextTruncated> = /*@__PURE__*/
-  messageDesc(file_realtime, 41);
+  messageDesc(file_realtime, 46);
 
 /**
  * @generated from message eu.deepslate.realtime.speeq.ClientBoundMessage
@@ -1769,6 +1985,30 @@ export type ClientBoundMessage = Message<"eu.deepslate.realtime.speeq.ClientBoun
      */
     value: ContextTruncated;
     case: "contextTruncated";
+  } | {
+    /**
+     * @generated from field: eu.deepslate.realtime.speeq.Pong pong = 15;
+     */
+    value: Pong;
+    case: "pong";
+  } | {
+    /**
+     * @generated from field: eu.deepslate.realtime.speeq.ModelSpeechProgress model_speech_progress = 16;
+     */
+    value: ModelSpeechProgress;
+    case: "modelSpeechProgress";
+  } | {
+    /**
+     * @generated from field: eu.deepslate.realtime.speeq.TurnSnapshot turn_snapshot = 17;
+     */
+    value: TurnSnapshot;
+    case: "turnSnapshot";
+  } | {
+    /**
+     * @generated from field: eu.deepslate.realtime.speeq.InferenceComplete inference_complete = 18;
+     */
+    value: InferenceComplete;
+    case: "inferenceComplete";
   } | { case: undefined; value?: undefined };
 };
 
@@ -1777,7 +2017,7 @@ export type ClientBoundMessage = Message<"eu.deepslate.realtime.speeq.ClientBoun
  * Use `create(ClientBoundMessageSchema)` to create a new message.
  */
 export const ClientBoundMessageSchema: GenMessage<ClientBoundMessage> = /*@__PURE__*/
-  messageDesc(file_realtime, 42);
+  messageDesc(file_realtime, 47);
 
 /**
  *

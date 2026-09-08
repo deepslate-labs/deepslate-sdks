@@ -33,7 +33,7 @@ pip install deepslate-livekit
 ### Dependencies (installed automatically)
 
 - `deepslate-core` — Shared Deepslate models and base client
-- `livekit-agents>=1.3.8` — LiveKit Agents framework
+- `livekit-agents>=1.7.1` — LiveKit Agents framework
 
 ---
 
@@ -118,8 +118,29 @@ if __name__ == "__main__":
 | `system_prompt`          | `str`                 | `"You are a helpful assistant."` | System prompt for the model                             |
 | `generate_reply_timeout` | `float`               | `30.0`                           | Timeout in seconds for `generate_reply` (0 = no limit) |
 | `tts_config`             | `ElevenLabsTtsConfig \| HostedTtsConfig` | `None`          | TTS configuration (enables server-side audio output)    |
+| `vad_config`             | `VadConfig`           | `None`                            | Voice activity detection tuning                         |
+| `experiments`            | `Mapping[str, Any]`   | `None`                            | Server-side experiments to enable                       |
 
-You can also pass a `VadConfig` instance to tune voice activity detection — see [VAD Configuration](#vad-configuration) below.
+Pass a `VadConfig` instance to tune voice activity detection — see [VAD Configuration](#vad-configuration) below.
+
+### Experiments
+
+> **No stability guarantees.** Experiments may change or disappear without a version bump or warning.
+
+Server-side experiments are enabled per session by passing `experiments` to the model, a map of experiment name to parameter value. An experiment that takes no parameters is enabled with `None`; one that takes parameters accepts any JSON value, and a parameter object may be filled in partially:
+
+```python
+from deepslate.livekit import RealtimeModel
+
+llm = RealtimeModel(
+    experiments={
+        "example-experiment:1": None,
+        "example-parameterised-experiment:1": {"some_setting": "value"},
+    }
+)
+```
+
+The SDK holds no catalogue of experiments: it sends whatever you pass, and the server ignores names it does not know. Ask your Deepslate contact which experiments are available and what values they accept.
 
 ### VAD Configuration
 
@@ -128,22 +149,22 @@ from deepslate.livekit import RealtimeModel, VadConfig
 
 llm = RealtimeModel(
     vad_config=VadConfig(
-        confidence_threshold=0.5,   # 0.0–1.0: minimum confidence to classify as speech
-        min_volume=0.01,            # 0.0–1.0: minimum volume to classify as speech
-        start_duration_ms=200,      # ms of speech required to trigger start
-        stop_duration_ms=500,       # ms of silence required to trigger stop
+        confidence_threshold=0.4,   # 0.0–1.0: minimum confidence to classify as speech
+        min_volume=0.0,             # 0.0–1.0: minimum volume to classify as speech
+        start_duration_ms=150,      # ms of speech required to trigger start
+        stop_duration_ms=390,       # ms of silence required to trigger stop
         backbuffer_duration_ms=1000 # ms of audio buffered before detection triggers
     )
 )
 ```
 
 | Parameter                    | Type    | Default | Description                                               |
-|------------------------------|---------|---------|-----------------------------------------------------------|
-| `confidence_threshold`       | `float` | `0.5`   | Minimum confidence to consider audio as speech (0.0–1.0)  |
-| `min_volume`                 | `float` | `0.01`  | Minimum volume threshold (0.0–1.0)                        |
-| `start_duration_ms`          | `int`   | `200`   | Duration of speech required to detect start (ms)          |
-| `stop_duration_ms`           | `int`   | `500`   | Duration of silence required to detect end (ms)           |
-| `backbuffer_duration_ms`     | `int`   | `1000`  | Audio buffer captured before speech detection triggers    |
+|-------------------------------|---------|---------|-----------------------------------------------------------|
+| `confidence_threshold`        | `float` | `0.4`   | Minimum confidence to consider audio as speech (0.0–1.0)  |
+| `min_volume`                  | `float` | `0.0`   | Minimum volume threshold (0.0–1.0)                        |
+| `start_duration_ms`           | `int`   | `150`   | Duration of speech required to detect start (ms)          |
+| `stop_duration_ms`            | `int`   | `390`   | Duration of silence required to detect end (ms)           |
+| `backbuffer_duration_ms`      | `int`   | `1000`  | Audio buffer captured before speech detection triggers    |
 
 **Tuning tips:**
 - **Noisy environments:** Increase `confidence_threshold` (0.6–0.8) and `min_volume` (0.02–0.05)
@@ -245,6 +266,86 @@ async def my_agent(ctx: agents.JobContext):
     session = AgentSession(llm=model)
     await session.start(room=ctx.room, agent=Assistant())
 ```
+
+---
+
+## Live Transcripts
+
+The session emits two different text events:
+
+| Event | Pacing | Means |
+|---|---|---|
+| `model_text_fragment` | Faster than realtime, ahead of synthesis | What the model **intends** to say |
+| `audio_transcript` | Playback-paced | **Approximately** what the caller has heard, timed by the server and possibly slightly ahead of or behind actual playback |
+
+```python
+from typing import cast
+
+from deepslate.livekit import DeepslateRealtimeSession
+
+
+rt = cast(DeepslateRealtimeSession, session.current_agent.realtime_llm_session)
+
+
+@rt.on("model_text_fragment")
+def _on_fragment(ev) -> None:
+    # ev.text, ev.turn_id (turn_id is None if the server sent no attribution)
+    print(ev.text, end="", flush=True)
+
+
+@rt.on("audio_transcript")
+def _on_spoken(text: str) -> None:
+    print(f"heard: {text!r}")
+```
+
+> `model_text_fragment` arrives ahead of synthesis, so on an interrupted turn it
+> will usually have emitted text that was never spoken. `audio_transcript`
+> follows playback closely, it can land slightly ahead of or behind what was actually played.
+> Reach for `audio_transcript` when you need what was spoken, and treat
+> `model_text_fragment` as intent.
+
+---
+
+## Exporting Chat History
+
+Call `export_chat_history()` on the realtime session to request the current
+conversation from the server. It returns the exported messages directly, and
+also emits a `chat_history_exported` event for listeners that prefer the
+event-based style:
+
+```python
+from typing import cast
+
+from deepslate.livekit import DeepslateRealtimeSession
+
+
+rt = cast(DeepslateRealtimeSession, session.current_agent.realtime_llm_session)
+
+history = await rt.export_chat_history(
+    await_pending=True,   # wait for any in-flight turn to settle first
+    exclude_audio=True,   # omit tts_audio/input_audio bytes, transcripts only
+)
+
+# Option 1: inspect the raw content blocks (text, tool_call, tool_result, ...)
+for msg in history:
+    print(msg["role"], msg["content"])
+
+# Option 2: print just the text portions of each message
+for msg in history:
+    text = " ".join(c["text"] for c in msg["content"] if c["type"] == "text")
+    print(f"[{msg['role']}] {text}")
+```
+
+Each item is a `ChatMessageDict` (importable from `deepslate.core`) with:
+
+| Field | Description                                                                                                                              |
+|---|------------------------------------------------------------------------------------------------------------------------------------------|
+| `role` | `"system"` \| `"user"` \| `"assistant"`                                                                                                  |
+| `delivery_status` | `DELIVERY_COMPLETE` \| `DELIVERY_IN_PROGRESS` \| `DELIVERY_INTERRUPTED`                                                                  |
+| `ephemeral` | `true` when the message was spoken via `DirectSpeech` with `include_in_history: false`. Audible to the user but not in the LLM’s context |
+| `content` | Ordered content blocks: `text` (with optional `tts_audio`), `input_audio`, `tool_call`, `tool_result`, `thoughts`, `instructions`        |
+| `turn_id` | The model turn this message belongs to, or `None`                                                                                        |
+| `truncated_at_response_turn_id` | Set if this message was cut off by a later interruption                                                                                  |
 
 ---
 

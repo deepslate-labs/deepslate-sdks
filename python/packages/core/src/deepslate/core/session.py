@@ -25,9 +25,10 @@ import aiohttp
 from .client import BaseDeepslateClient
 from .options import DeepslateOptions, ElevenLabsTtsConfig, HostedTtsConfig, HostedVoiceCloneConfig, VadConfig
 from .proto import realtime_pb2 as proto
-from ._types import DeepslateSessionListener, FunctionToolDict, TriggerMode
+from ._types import ChatMessageDict, DeepslateSessionListener, FunctionToolDict, TriggerMode
 from ._user_agent import build_user_agent
 from ._utils import (
+    _parse_chat_message,
     build_initialize_request,
     dict_to_struct,
     parse_chat_history,
@@ -80,6 +81,9 @@ class DeepslateSession:
             asyncio.Queue()
         )
         self._pending_query_ids: deque[str] = deque()
+        self._pending_chat_history: deque[asyncio.Future[list[ChatMessageDict]]] = (
+            deque()
+        )
 
         self._main_task: Optional[asyncio.Task] = None
 
@@ -122,6 +126,9 @@ class DeepslateSession:
             with contextlib.suppress(asyncio.CancelledError):
                 await self._main_task
         self._main_task = None
+        self._fail_pending_chat_history(
+            ConnectionError("DeepslateSession: session closed before chat history export completed")
+        )
         if self._owns_client:
             await self._client.aclose()
 
@@ -314,18 +321,22 @@ class DeepslateSession:
 
     async def export_chat_history(
         self, await_pending: bool = False, exclude_audio: bool = False
-    ) -> None:
-        """Request a chat history export.
+    ) -> list[ChatMessageDict]:
+        """Request a chat history export and wait for the result.
 
-        The result is delivered asynchronously via the ``on_chat_history``
-        callback.
+        Also delivered asynchronously via the ``on_chat_history`` callback.
         """
+        fut: asyncio.Future[list[ChatMessageDict]] = (
+            asyncio.get_event_loop().create_future()
+        )
+        self._pending_chat_history.append(fut)
         req = proto.ExportChatHistoryRequest(
             await_pending=await_pending, exclude_audio=exclude_audio
         )
         await self._enqueue_or_buffer(
             proto.ServiceBoundMessage(export_chat_history_request=req)
         )
+        return await fut
 
     async def send_conversation_query(
         self,
@@ -348,9 +359,14 @@ class DeepslateSession:
             proto.ServiceBoundMessage(conversation_query=query)
         )
 
-    async def report_playback_position(self, bytes_played: int) -> None:
-        """Send a ``PlaybackPositionReport`` for server-side audio truncation."""
-        report = proto.PlaybackPositionReport(bytes_played=bytes_played)
+    async def report_playback_position(self, bytes_played: int, turn_id: int) -> None:
+        """Send a ``PlaybackPositionReport`` for server-side audio truncation.
+
+        ``turn_id`` attributes ``bytes_played`` to a specific assistant turn.
+        """
+        report = proto.PlaybackPositionReport(
+            bytes_played=bytes_played, turn_id=turn_id
+        )
         await self._enqueue_or_buffer(
             proto.ServiceBoundMessage(playback_position_report=report)
         )
@@ -375,6 +391,12 @@ class DeepslateSession:
             # Reconnect after a prior successful session: drop the stale
             # per-connection buffer (e.g. audio queued mid-disconnect).
             self._pending_before_init.clear()
+            self._fail_pending_chat_history(
+                ConnectionError(
+                    "DeepslateSession: connection reset before chat "
+                    "history export completed"
+                )
+            )
         else:
             # Not yet successfully initialized (first connect, incl. retries):
             # keep deliberate control messages (e.g. a trigger_inference from a
@@ -392,6 +414,13 @@ class DeepslateSession:
         # Replace with a fresh queue; the previous send loop has already been
         # cancelled before _run_ws is called again.
         self._send_queue = asyncio.Queue()
+
+    def _fail_pending_chat_history(self, exc: Exception) -> None:
+        """Settle any outstanding export_chat_history() futures with ``exc``."""
+        while self._pending_chat_history:
+            fut = self._pending_chat_history.popleft()
+            if not fut.done():
+                fut.set_exception(exc)
 
     async def _ensure_initialized(self, sample_rate: int, channels: int) -> None:
         """Idempotent session initialization."""
@@ -413,6 +442,7 @@ class DeepslateSession:
             system_prompt=self._options.system_prompt,
             tts_config=self._tts_config,
             temperature=self._options.temperature,
+            experiments=self._options.experiments,
         )
         await self._send_queue.put(
             proto.ServiceBoundMessage(initialize_session_request=init_request)
@@ -420,6 +450,11 @@ class DeepslateSession:
         logger.debug(
             f"DeepslateSession: initializing session ({sample_rate}Hz, {channels}ch)"
         )
+        if self._options.experiments:
+            logger.info(
+                "DeepslateSession: experiments enabled: %s",
+                ", ".join(self._options.experiments),
+            )
 
         if self._current_tools:
             tools_msg = self._build_update_tools_msg(self._current_tools)
@@ -469,10 +504,16 @@ class DeepslateSession:
             self._run_ws,
             should_continue=lambda: not self._should_stop,
             on_fatal_error=self._on_fatal_error,
+            on_connect_attempt=self._on_connecting,
         )
 
     async def _on_fatal_error(self, e: Exception) -> None:
+        self._fail_pending_chat_history(e)
         await self._fire(self._listener.on_fatal_error(e))
+
+    async def _on_connecting(self) -> None:
+        """Notify the listener right before each connection attempt (dial)."""
+        await self._fire(self._listener.on_connecting())
 
     async def _run_ws(self, ws: aiohttp.ClientWebSocketResponse) -> None:
         """Run one WebSocket session.
@@ -593,24 +634,56 @@ class DeepslateSession:
             )
 
         elif payload_type == "model_text_fragment":
+            fragment = msg.model_text_fragment
+            fragment_turn_id: Optional[int] = (
+                fragment.turn_id if fragment.HasField("turn_id") else None
+            )
             await self._fire(
-                self._listener.on_text_fragment(msg.model_text_fragment.text)
+                self._listener.on_text_fragment(fragment.text, fragment_turn_id)
             )
 
         elif payload_type == "model_audio_chunk":
             chunk = msg.model_audio_chunk
             if chunk.audio and chunk.audio.data:
-                transcript: Optional[str] = (
-                    chunk.transcript if chunk.transcript else None
+                chunk_turn_id: Optional[int] = (
+                    chunk.turn_id if chunk.HasField("turn_id") else None
                 )
                 await self._fire(
                     self._listener.on_audio_chunk(
                         chunk.audio.data,
                         self._sample_rate or 24000,
                         self._channels or 1,
-                        transcript,
+                        None,
+                        chunk_turn_id,
                     )
                 )
+
+        elif payload_type == "model_speech_progress":
+            progress = msg.model_speech_progress
+            await self._fire(
+                self._listener.on_model_speech_progress(
+                    progress.turn_id,
+                    progress.text,
+                    progress.audio_bytes_played,
+                    progress.exact,
+                )
+            )
+
+        elif payload_type == "inference_complete":
+            await self._fire(
+                self._listener.on_inference_complete(
+                    msg.inference_complete.turn_id
+                )
+            )
+
+        elif payload_type == "turn_snapshot":
+            snapshot = msg.turn_snapshot
+            await self._fire(
+                self._listener.on_turn_snapshot(
+                    _parse_chat_message(snapshot.message),
+                    snapshot.is_final,
+                )
+            )
 
         elif payload_type == "user_transcription_result":
             result = msg.user_transcription_result
@@ -651,6 +724,10 @@ class DeepslateSession:
 
         elif payload_type == "chat_history":
             messages = parse_chat_history(msg.chat_history)
+            if self._pending_chat_history:
+                fut = self._pending_chat_history.popleft()
+                if not fut.done():
+                    fut.set_result(messages)
             await self._fire(self._listener.on_chat_history(messages))
 
         elif payload_type == "error":

@@ -78,10 +78,10 @@ DEEPSLATE_API_KEY=your_api_key
 from deepslate.core import VadConfig
 
 vad = VadConfig(
-    confidence_threshold=0.5,   # 0.0–1.0
-    min_volume=0.01,            # 0.0–1.0
-    start_duration_ms=200,
-    stop_duration_ms=500,
+    confidence_threshold=0.4,   # 0.0–1.0
+    min_volume=0.0,             # 0.0–1.0
+    start_duration_ms=150,
+    stop_duration_ms=390,
     backbuffer_duration_ms=1000,
 )
 ```
@@ -134,6 +134,32 @@ tts = ElevenLabsTtsConfig(
     location=ElevenLabsLocation.US,  # US (default), EU, or INDIA
 )
 ```
+
+### Experiments
+
+> **No stability guarantees.** Experiments may change or disappear without a version bump or warning.
+
+Deepslate can enable server-side experiments for a session. Pass them as a plain map of experiment name to parameter value. Names are opaque strings; an experiment that takes no parameters is enabled with `None`:
+
+```python
+from deepslate.core import DeepslateOptions
+
+opts = DeepslateOptions.from_env(
+    experiments={"example-experiment:1": None},
+)
+```
+
+Each experiment defines its own value, so what a value means, and whether one is needed at all, depends on the experiment. Values may be any JSON value: `None`, booleans, numbers, strings, lists, or nested objects, and a parameter object may be filled in partially:
+
+```python
+opts = DeepslateOptions.from_env(
+    experiments={
+        "example-experiment:1": {"some_setting": "value", "another_setting": 3},
+    },
+)
+```
+
+The SDK holds no catalogue of experiments: it sends whatever you pass, and the server ignores names it does not know. Ask your Deepslate contact which experiments are available and what values they accept.
 
 ### `DeepslateSession`
 
@@ -277,7 +303,7 @@ Factory that creates a session together with its own `BaseDeepslateClient`. The 
 | `await session.update_tools(tools)` | Sync tool definitions (persisted across reconnects) |
 | `await session.reconfigure(system_prompt=None, temperature=None)` | Live-update inference settings |
 | `await session.send_direct_speech(text, include_in_history=True, uninterruptable=False)` | Speak text directly via TTS, bypassing the LLM |
-| `await session.export_chat_history(await_pending=False, exclude_audio=False)` | Request a history export; result delivered via `on_chat_history`. Set `exclude_audio=True` to omit audio blobs (transcripts only) |
+| `await session.export_chat_history(await_pending=False, exclude_audio=False)` | Request a history export; returns `list[ChatMessageDict]` and is also delivered via `on_chat_history`. Set `exclude_audio=True` to omit audio blobs (transcripts only) |
 | `await session.send_conversation_query(query_id, prompt, instructions)` | Side-channel inference; at least one of `prompt`/`instructions` required; result via `on_conversation_query_result` |
 | `await session.report_playback_position(bytes_played)` | Report audio playback position for server-side truncation |
 
@@ -311,15 +337,16 @@ Subclass this and override only the methods you need. All methods are `async` an
 | `system_prompt` | `str` | `"You are a helpful assistant."` | Default system prompt |
 | `ws_url` | `str \| None` | `None` | Direct WebSocket URL (overrides `base_url`; for local dev) |
 | `max_retries` | `int` | `3` | Maximum reconnection attempts before giving up |
+| `experiments` | `Mapping[str, Any] \| None` | `None` | Server-side experiments to enable |
 
 ### `VadConfig`
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `confidence_threshold` | `float` | `0.5` | Minimum confidence to classify audio as speech (0–1) |
-| `min_volume` | `float` | `0.01` | Minimum volume to classify audio as speech (0–1) |
-| `start_duration_ms` | `int` | `200` | Duration of speech required to trigger start event |
-| `stop_duration_ms` | `int` | `500` | Duration of silence required to trigger stop event |
+| `confidence_threshold` | `float` | `0.4` | Minimum confidence to classify audio as speech (0–1) |
+| `min_volume` | `float` | `0.0` | Minimum volume to classify audio as speech (0–1) |
+| `start_duration_ms` | `int` | `150` | Duration of speech required to trigger start event |
+| `stop_duration_ms` | `int` | `390` | Duration of silence required to trigger stop event |
 | `backbuffer_duration_ms` | `int` | `1000` | Audio buffer captured before speech detection triggers |
 
 ---
