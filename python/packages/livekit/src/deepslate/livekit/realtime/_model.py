@@ -50,16 +50,10 @@ from livekit.agents.metrics import RealtimeModelMetrics
 from livekit.agents.metrics.base import Metadata
 from livekit.agents.types import TimedString
 
-import importlib.metadata
-
-try:
-    __version__ = importlib.metadata.version("deepslate-livekit")
-except importlib.metadata.PackageNotFoundError:
-    __version__ = "unknown"
-
 from deepslate.core import (
     BaseDeepslateClient,
     ChatMessageDict,
+    build_user_agent,
     DeepslateOptions,
     DeepslateSession,
     DeepslateSessionListener,
@@ -276,7 +270,7 @@ class RealtimeModel(llm.RealtimeModel):
 
         self._client = BaseDeepslateClient(
             opts=self._opts,
-            user_agent=f"DeepslateLiveKit/{__version__}",
+            user_agent=build_user_agent("deepslate-livekit", "livekit-agents"),
             http_session=http_session,
         )
 

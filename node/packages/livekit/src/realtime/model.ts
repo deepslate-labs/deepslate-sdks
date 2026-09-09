@@ -21,7 +21,7 @@ import { AudioFrame } from "@livekit/rtc-node";
 // The realtime API is exposed under the `llm` namespace of @livekit/agents, so
 // we re-bind the names this module uses. (Values are destructured; the
 // type-only members are aliased.)
-import { llm } from "@livekit/agents";
+import { llm, version as livekitAgentsVersion } from "@livekit/agents";
 
 const { ChatContext, FunctionCall, ToolContext, isFunctionTool, toJsonSchema } = llm;
 type ChatContext = llm.ChatContext;
@@ -35,6 +35,7 @@ type ToolContext = llm.ToolContext;
 import {
   DeepslateSession,
   TriggerMode,
+  buildUserAgent,
   optionsFromEnv,
   type FunctionTool as DeepslateFunctionTool,
   type Experiments,
@@ -44,6 +45,7 @@ import {
 } from "@deepslate-labs/core";
 
 import { logger } from "../log.js";
+import { VERSION } from "../version.js";
 import { createPushable, type Pushable } from "../stream.js";
 
 const DEEPSLATE_BASE_URL = "https://app.deepslate.eu";
@@ -183,7 +185,13 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
       {
         vadConfig: model.vad,
         ttsConfig: model.ttsConfig,
-        userAgent: "DeepslateLiveKit",
+        userAgent: buildUserAgent({
+          product: { name: "@deepslate-labs/livekit", version: VERSION },
+          framework: {
+            name: "@livekit/agents",
+            version: livekitAgentsVersion,
+          },
+        }),
       },
     );
 

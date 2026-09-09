@@ -70,7 +70,7 @@ export class BaseDeepslateClient extends TypedEventEmitter<BaseDeepslateClientEv
 
   constructor(
     private readonly opts: ResolvedDeepslateOptions,
-    private readonly userAgent: string,
+    readonly userAgent: string,
   ) {
     super();
   }
