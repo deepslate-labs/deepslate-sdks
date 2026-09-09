@@ -1,6 +1,6 @@
 {
   "name": "@deepslate-labs/core",
-  "version": "0.1.0",
+  "version": "0.0.0",
   "description": "Shared core library for Deepslate SDK integrations (TypeScript)",
   "type": "module",
   "main": "./dist/index.js",
