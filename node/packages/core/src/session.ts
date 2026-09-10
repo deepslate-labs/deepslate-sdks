@@ -49,6 +49,7 @@ import {
   buildInitializeRequestFromOptions,
   parseChatHistory,
 } from "./utils.js";
+import { buildUserAgent } from "./userAgent.js";
 
 type ServiceBoundInit = MessageInitShape<typeof ServiceBoundMessageSchema>;
 
@@ -93,7 +94,12 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
     private readonly ttsConfig?: TtsConfig,
   ) {
     super();
+    this.client.on("socketError", this.onSocketError);
   }
+
+  private readonly onSocketError = (err: Error): void => {
+    this.fire("socketError", err);
+  };
 
   /** Create a session together with its own BaseDeepslateClient. */
   static create(
@@ -103,7 +109,7 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
     const resolved = resolveOptions(options);
     const client = new BaseDeepslateClient(
       resolved,
-      opts.userAgent ?? "DeepslateCore",
+      opts.userAgent ?? buildUserAgent(),
     );
     const session = new DeepslateSession(
       client,
@@ -155,6 +161,7 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
     }
     this.mainPromise = undefined;
     if (this.ownsClient) await this.client.aclose();
+    this.client.off("socketError", this.onSocketError);
   }
 
   // ---- public send API ----
@@ -368,6 +375,12 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
     logger.debug(
       `DeepslateSession: initializing session (${sampleRate}Hz, ${channels}ch)`,
     );
+    const experimentNames = Object.keys(this.options.experiments ?? {});
+    if (experimentNames.length > 0) {
+      logger.info(
+        `DeepslateSession: experiments enabled: ${experimentNames.join(", ")}`,
+      );
+    }
 
     if (this.currentTools.length > 0) {
       this.send(this.buildUpdateToolsMessage(this.currentTools));
@@ -431,7 +444,9 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
       this.resetState();
       this.ws = ws;
       let settled = false;
-      logger.info("DeepslateSession: connected to Deepslate Realtime API");
+      logger.info(
+        `DeepslateSession: connected to Deepslate Realtime API (${this.client.userAgent})`,
+      );
 
       if (this.initSampleRate !== null && this.initChannels !== null) {
         this.ensureInitialized(this.initSampleRate, this.initChannels);

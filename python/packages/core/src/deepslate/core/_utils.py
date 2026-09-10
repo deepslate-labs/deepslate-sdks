@@ -14,11 +14,11 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Mapping, Optional
 from urllib.parse import urlparse
 
 from google.protobuf import json_format
-from google.protobuf.struct_pb2 import Struct
+from google.protobuf.struct_pb2 import Struct, Value
 
 from .options import ElevenLabsLocation, ElevenLabsTtsConfig, HostedTtsConfig, HostedTtsMode, HostedVoiceCloneConfig, VadConfig
 from .proto import realtime_pb2 as proto
@@ -203,6 +203,19 @@ def parse_chat_history(chat_history) -> list[ChatMessageDict]:
     return [_parse_chat_message(msg) for msg in chat_history.messages]
 
 
+def encode_experiments(
+    experiments: Optional[Mapping[str, Any]],
+) -> dict[str, Value]:
+    """Encode a caller's experiments map into protobuf ``Value`` entries."""
+    encoded: dict[str, Value] = {}
+    for name, value in (experiments or {}).items():
+        try:
+            encoded[name] = json_format.ParseDict(value, Value())
+        except json_format.ParseError as exc:
+            raise ValueError(f"experiments[{name!r}]: {exc}") from exc
+    return encoded
+
+
 def build_initialize_request(
     sample_rate: int,
     num_channels: int,
@@ -211,6 +224,7 @@ def build_initialize_request(
     tts_config: Optional[ElevenLabsTtsConfig | HostedTtsConfig | HostedVoiceCloneConfig] = None,
     temperature: float = 1.0,
     supports_playback_reporting: bool = False,
+    experiments: Optional[Mapping[str, Any]] = None,
 ) -> proto.InitializeSessionRequest:
     """Build a proto.InitializeSessionRequest from core configuration objects.
 
@@ -273,4 +287,5 @@ def build_initialize_request(
         ),
         tts_configuration=tts_proto,
         supports_playback_reporting=supports_playback_reporting,
+        experiments=encode_experiments(experiments),
     )

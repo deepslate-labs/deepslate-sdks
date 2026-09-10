@@ -111,6 +111,34 @@ const tts = {
 };
 ```
 
+### Experiments
+
+> **No stability guarantees.** Experiments may change or disappear without a version bump or warning.
+
+Deepslate can enable server-side experiments for a session. Pass them as a plain map of experiment name to parameter value. Names are opaque strings; an experiment that takes no parameters is enabled with `null`:
+
+```ts
+import { DeepslateSession } from "@deepslate-labs/core";
+
+const session = DeepslateSession.create({
+  vendorId, organizationId, apiKey,
+  experiments: { "example-experiment:1": null },
+});
+```
+
+Each experiment defines its own value, so what a value means, and whether one is needed at all, depends on the experiment. Values may be any JSON value: `null`, booleans, numbers, strings, arrays, or nested objects, and a parameter object may be filled in partially:
+
+```ts
+const session = DeepslateSession.create({
+  vendorId, organizationId, apiKey,
+  experiments: {
+    "example-experiment:1": { someSetting: "value", anotherSetting: 3 },
+  },
+});
+```
+
+The SDK holds no catalogue of experiments: it sends whatever you pass, and the server ignores names it does not know. Ask your Deepslate contact which experiments are available and what values they accept.
+
 ### `DeepslateSession`
 
 `DeepslateSession` is the recommended entry point for custom integrations. It handles the full protocol
@@ -209,7 +237,7 @@ and closes it when `close()` is called.
 | `options` | `DeepslateOptions` | required | API credentials and settings |
 | `opts.vadConfig` | `VadConfig` | defaults | VAD settings |
 | `opts.ttsConfig` | `TtsConfig` | `undefined` | Enables server-side TTS audio output |
-| `opts.userAgent` | `string` | `"DeepslateCore"` | `User-Agent` header sent on connect |
+| `opts.userAgent` | `string` | `buildUserAgent()` | `User-Agent` header sent on connect |
 
 ### `DeepslateSession` — send methods
 
@@ -250,6 +278,7 @@ Subscribe with `session.on(event, listener)`. Event payloads are strongly typed 
 | `conversationQueryResult` | `(queryId: string, text: string)` | Side-channel query result received |
 | `error` | `(category: string, message: string, traceId: string \| null)` | Server sent an error notification |
 | `fatalError` | `(err: Error)` | All reconnect retries exhausted |
+| `socketError` | `(err: Error)` | Background WebSocket error (logging/observability only; does not affect the run loop) |
 
 ### `DeepslateOptions`
 
@@ -264,6 +293,7 @@ Subscribe with `session.on(event, listener)`. Event payloads are strongly typed 
 | `wsUrl` | `string` | `undefined` | Direct WebSocket URL (overrides `baseUrl`; for local dev) |
 | `maxRetries` | `number` | `3` | Maximum reconnection attempts before giving up |
 | `generateReplyTimeout` | `number` | `30.0` | Timeout in seconds for reply generation (0 = no timeout) |
+| `experiments` | `Experiments` | `undefined` | Server-side experiments to enable |
 
 ### `VadConfig`
 

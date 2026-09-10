@@ -1,6 +1,6 @@
 {
   "name": "@deepslate-labs/proto",
-  "version": "0.1.0",
+  "version": "0.0.0",
   "description": "Generated TypeScript protobuf bindings for the Deepslate realtime API",
   "type": "module",
   "main": "./dist/index.js",

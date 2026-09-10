@@ -17,7 +17,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
+from typing import Any, Mapping, Optional
 
 
 @dataclass
@@ -53,6 +53,18 @@ class DeepslateOptions:
 
     supports_playback_reporting: bool = False
     """Whether this client reports audio playback positions to the server."""
+
+    experiments: Optional[Mapping[str, Any]] = None
+    """Server-side experiments to enable for the session.
+
+    Experiments carry **zero stability guarantees**: they may change or disappear
+    without a version bump. Use at your own risk.
+    """
+
+    def __post_init__(self) -> None:
+        from ._utils import encode_experiments
+
+        encode_experiments(self.experiments)
 
     @classmethod
     def from_env(

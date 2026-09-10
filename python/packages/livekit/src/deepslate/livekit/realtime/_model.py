@@ -23,7 +23,7 @@ import warnings
 from collections import OrderedDict, deque
 from dataclasses import dataclass
 from types import SimpleNamespace
-from typing import Any, Literal
+from typing import Any, Literal, Mapping
 
 import aiohttp
 from livekit import rtc
@@ -50,16 +50,10 @@ from livekit.agents.metrics import RealtimeModelMetrics
 from livekit.agents.metrics.base import Metadata
 from livekit.agents.types import TimedString
 
-import importlib.metadata
-
-try:
-    __version__ = importlib.metadata.version("deepslate-livekit")
-except importlib.metadata.PackageNotFoundError:
-    __version__ = "unknown"
-
 from deepslate.core import (
     BaseDeepslateClient,
     ChatMessageDict,
+    build_user_agent,
     DeepslateOptions,
     DeepslateSession,
     DeepslateSessionListener,
@@ -145,6 +139,7 @@ class RealtimeModel(llm.RealtimeModel):
         supports_playback_reporting: bool = False,
         http_session: aiohttp.ClientSession | None = None,
         ws_url: str | None = None,
+        experiments: Mapping[str, Any] | None = None,
     ):
         """Initialize a Deepslate RealtimeModel.
 
@@ -171,6 +166,9 @@ class RealtimeModel(llm.RealtimeModel):
                         of falling back to elapsed-time estimation which is less precise.
                         Off by default.
             http_session: Optional shared aiohttp session.
+            experiments: Server-side experiments to enable. Experiments carry zero
+                         stability guarantees and may change or disappear without a
+                         version bump.
         """
         super().__init__(
             capabilities=llm.RealtimeCapabilities(
@@ -229,6 +227,7 @@ class RealtimeModel(llm.RealtimeModel):
             ws_url=ws_url,
             generate_reply_timeout=generate_reply_timeout,
             supports_playback_reporting=supports_playback_reporting,
+            experiments=experiments,
         )
 
         deprecated_vad_kwargs = {
@@ -282,7 +281,7 @@ class RealtimeModel(llm.RealtimeModel):
 
         self._client = BaseDeepslateClient(
             opts=self._opts,
-            user_agent=f"DeepslateLiveKit/{__version__}",
+            user_agent=build_user_agent("deepslate-livekit", "livekit-agents"),
             http_session=http_session,
         )
 

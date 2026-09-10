@@ -21,6 +21,7 @@ except importlib.metadata.PackageNotFoundError:
 
 from .client import BaseDeepslateClient
 from .session import DeepslateSession
+from ._user_agent import build_user_agent
 from .options import (
     DeepslateOptions,
     ElevenLabsLocation,
@@ -51,6 +52,7 @@ __all__ = [
     "__version__",
     "BaseDeepslateClient",
     "DeepslateSession",
+    "build_user_agent",
     "DeepslateSessionListener",
     "TriggerMode",
     "ChatMessageDict",

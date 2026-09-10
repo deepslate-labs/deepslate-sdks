@@ -26,6 +26,7 @@ from .client import BaseDeepslateClient
 from .options import DeepslateOptions, ElevenLabsTtsConfig, HostedTtsConfig, HostedVoiceCloneConfig, VadConfig
 from .proto import realtime_pb2 as proto
 from ._types import ChatMessageDict, DeepslateSessionListener, FunctionToolDict, TriggerMode
+from ._user_agent import build_user_agent
 from ._utils import (
     _parse_chat_message,
     build_initialize_request,
@@ -138,7 +139,7 @@ class DeepslateSession:
         *,
         vad_config: Optional[VadConfig] = None,
         tts_config: Optional[ElevenLabsTtsConfig | HostedTtsConfig | HostedVoiceCloneConfig] = None,
-        user_agent: str = "DeepslateCore",
+        user_agent: Optional[str] = None,
         http_session: Optional[Any] = None,
         listener: Optional[DeepslateSessionListener] = None,
     ) -> "DeepslateSession":
@@ -149,7 +150,9 @@ class DeepslateSession:
         and closes it automatically when :meth:`close` is called.
         """
         client = BaseDeepslateClient(
-            opts=options, user_agent=user_agent, http_session=http_session
+            opts=options,
+            user_agent=user_agent or build_user_agent(),
+            http_session=http_session,
         )
         session = cls(
             client=client,
@@ -444,6 +447,7 @@ class DeepslateSession:
             tts_config=self._tts_config,
             temperature=self._options.temperature,
             supports_playback_reporting=self._options.supports_playback_reporting,
+            experiments=self._options.experiments,
         )
         await self._send_queue.put(
             proto.ServiceBoundMessage(initialize_session_request=init_request)
@@ -451,6 +455,11 @@ class DeepslateSession:
         logger.debug(
             f"DeepslateSession: initializing session ({sample_rate}Hz, {channels}ch)"
         )
+        if self._options.experiments:
+            logger.info(
+                "DeepslateSession: experiments enabled: %s",
+                ", ".join(self._options.experiments),
+            )
 
         if self._current_tools:
             tools_msg = self._build_update_tools_msg(self._current_tools)
@@ -526,7 +535,9 @@ class DeepslateSession:
         self._reset_state()
         self._ws = ws
         closing = False
-        logger.info("DeepslateSession: connected to Deepslate Realtime API")
+        logger.info(
+            f"DeepslateSession: connected to Deepslate Realtime API ({self._client.user_agent})"
+        )
 
         # If control messages (e.g. a "speak first" trigger_inference from an
         # early generate_reply) were queued before the socket connected, make

@@ -480,7 +480,7 @@ wheels = [
 
 [[package]]
 name = "deepslate-core"
-version = "0.1.0"
+version = "0.0.0"
 source = { editable = "packages/core" }
 dependencies = [
     { name = "aiohttp" },
@@ -495,7 +495,7 @@ requires-dist = [
 
 [[package]]
 name = "deepslate-livekit"
-version = "0.1.0"
+version = "0.0.0"
 source = { editable = "packages/livekit" }
 dependencies = [
     { name = "deepslate-core" },
@@ -510,7 +510,7 @@ requires-dist = [
 
 [[package]]
 name = "deepslate-pipecat"
-version = "0.1.0"
+version = "0.0.0"
 source = { editable = "packages/pipecat" }
 dependencies = [
     { name = "deepslate-core" },

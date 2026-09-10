@@ -54,6 +54,12 @@ export type DeepslateSessionEvents = {
   sessionInitialized: () => void;
   /** Reconnection exhausted or an unexpected error ended the session. */
   fatalError: (err: Error) => void;
+  /**
+   * A background WebSocket error occurred (e.g. a late teardown failure).
+   * For logging/observability only. Connection and session errors that
+   * affect the run loop are surfaced via `error` and `fatalError`.
+   */
+  socketError: (err: Error) => void;
 };
 
 /* eslint-disable @typescript-eslint/no-explicit-any */

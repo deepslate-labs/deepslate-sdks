@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "deepslate-core"
-version = "0.1.0"
+version = "0.0.0"
 description = "Shared core library for Deepslate SDK integrations"
 readme = "README.md"
 requires-python = ">=3.11"

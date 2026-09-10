@@ -155,10 +155,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build workspace packages
-        run: pnpm run build
-
-      - name: Stamp version in package.json files
+      - name: Stamp version in package.json and version.ts files
         run: |
           NPM_VERSION="${GITHUB_REF_NAME#v}"
           for pkg in \
@@ -167,8 +164,15 @@ jobs:
             packages/livekit
           do
             ( cd "$pkg" && npm pkg set version="${NPM_VERSION}" )
+            if [[ -f "$pkg/src/version.ts" ]]; then
+              sed -i "s/^export const VERSION = \".*\";$/export const VERSION = \"${NPM_VERSION}\";/" \
+                "$pkg/src/version.ts"
+            fi
             echo "Stamped ${pkg} → ${NPM_VERSION}"
           done
+
+      - name: Build workspace packages
+        run: pnpm run build
 
       - name: Configure npm authentication
         run: echo "//registry.npmjs.org/:_authToken=\${NODE_AUTH_TOKEN}" > .npmrc
