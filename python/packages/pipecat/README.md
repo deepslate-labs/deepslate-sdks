@@ -206,6 +206,7 @@ if __name__ == "__main__":
 | `api_key`         | `str`           | env: `DEEPSLATE_API_KEY`         | Deepslate API key                                              |
 | `base_url`        | `str`           | `"https://app.deepslate.eu"`     | Base URL for Deepslate API                                     |
 | `system_prompt`   | `str`           | `"You are a helpful assistant."` | System prompt for the AI assistant                             |
+| `temperature`     | `float`         | `0.3`                            | Sampling temperature (0.0–2.0)                                 |
 | `ws_url`          | `Optional[str]` | `None`                           | Direct WebSocket URL (overrides `base_url`; for local dev/testing) |
 | `max_retries`     | `int`           | `3`                              | Maximum reconnection attempts before giving up                 |
 | `experiments`     | `Mapping[str, Any] \| None` | `None`               | Server-side experiments to enable                              |

@@ -282,18 +282,18 @@ Subscribe with `session.on(event, listener)`. Event payloads are strongly typed 
 
 ### `DeepslateOptions`
 
-| Field | Type | Default | Description |
-|---|---|---|---|
-| `vendorId` | `string` | env: `DEEPSLATE_VENDOR_ID` | Deepslate vendor ID |
-| `organizationId` | `string` | env: `DEEPSLATE_ORGANIZATION_ID` | Deepslate organization ID |
-| `apiKey` | `string` | env: `DEEPSLATE_API_KEY` | Deepslate API key |
-| `baseUrl` | `string` | `"https://app.deepslate.eu"` | Base URL for Deepslate API |
-| `systemPrompt` | `string` | `"You are a helpful assistant."` | Default system prompt |
-| `temperature` | `number` | `1.0` | Sampling temperature (0.0–2.0) |
+| Field | Type | Default | Description                                               |
+|---|---|---|-----------------------------------------------------------|
+| `vendorId` | `string` | env: `DEEPSLATE_VENDOR_ID` | Deepslate vendor ID                                       |
+| `organizationId` | `string` | env: `DEEPSLATE_ORGANIZATION_ID` | Deepslate organization ID                                 |
+| `apiKey` | `string` | env: `DEEPSLATE_API_KEY` | Deepslate API key                                         |
+| `baseUrl` | `string` | `"https://app.deepslate.eu"` | Base URL for Deepslate API                                |
+| `systemPrompt` | `string` | `"You are a helpful assistant."` | Default system prompt                                     |
+| `temperature` | `number` | `0.3` | Sampling temperature (0.0–2.0)                            |
 | `wsUrl` | `string` | `undefined` | Direct WebSocket URL (overrides `baseUrl`; for local dev) |
-| `maxRetries` | `number` | `3` | Maximum reconnection attempts before giving up |
-| `generateReplyTimeout` | `number` | `30.0` | Timeout in seconds for reply generation (0 = no timeout) |
-| `experiments` | `Experiments` | `undefined` | Server-side experiments to enable |
+| `maxRetries` | `number` | `3` | Maximum reconnection attempts before giving up            |
+| `generateReplyTimeout` | `number` | `30.0` | Timeout in seconds for reply generation (0 = no timeout)  |
+| `experiments` | `Experiments` | `undefined` | Server-side experiments to enable                         |
 
 ### `VadConfig`
 

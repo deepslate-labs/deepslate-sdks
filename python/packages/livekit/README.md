@@ -116,6 +116,7 @@ if __name__ == "__main__":
 | `api_key`                | `str`                 | env: `DEEPSLATE_API_KEY`         | Deepslate API key                                       |
 | `base_url`               | `str`                 | `"https://app.deepslate.eu"`     | Base URL for Deepslate API                              |
 | `system_prompt`          | `str`                 | `"You are a helpful assistant."` | System prompt for the model                             |
+| `temperature`            | `float`               | `0.3`                            | Sampling temperature (0.0–2.0)                          |
 | `generate_reply_timeout` | `float`               | `30.0`                           | Timeout in seconds for `generate_reply` (0 = no limit) |
 | `tts_config`             | `ElevenLabsTtsConfig \| HostedTtsConfig` | `None`          | TTS configuration (enables server-side audio output)    |
 | `vad_config`             | `VadConfig`           | `None`                            | Voice activity detection tuning                         |
