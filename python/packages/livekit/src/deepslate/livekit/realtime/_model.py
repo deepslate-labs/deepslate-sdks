@@ -73,7 +73,7 @@ SETTLE_GRACE_PERIOD = 0.5
 
 _BYTES_PER_SAMPLE = 2
 
-_SETTLED_GENERATION_LIMIT = 4
+_PLAYED_AUDIO_LIMIT = 64
 
 ABANDONED_TOOL_RESULT = {
     "error": "tool_call_cancelled",
@@ -108,6 +108,20 @@ class _ResponseGeneration:
     audio_bytes: int = 0
     audio_sample_rate: int | None = None
     audio_channels: int = 1
+
+
+@dataclass(frozen=True)
+class _PlayedAudio:
+    """The little a late truncate() needs once its generation is gone."""
+
+    turn_id: int
+    audio_bytes: int
+    bytes_per_second: int
+
+    def bytes_at(self, audio_end_ms: int) -> int:
+        """Convert a played duration to a byte offset into this turn's audio."""
+        played = int(audio_end_ms / 1000 * self.bytes_per_second)
+        return min(played, self.audio_bytes)
 
 
 class RealtimeModel(llm.RealtimeModel):
@@ -379,9 +393,7 @@ class DeepslateRealtimeSession(
         self._pending_uninterruptable: bool = False
         self._pending_user_text: str | None = None
 
-        self._settled_generations: OrderedDict[str, _ResponseGeneration] = (
-            OrderedDict()
-        )
+        self._played_audio: OrderedDict[str, _PlayedAudio] = OrderedDict()
 
         # Conversation query tracking: query_id → Future[str]
         self._pending_queries: dict[str, asyncio.Future[str]] = {}
@@ -703,45 +715,31 @@ class DeepslateRealtimeSession(
         if not self._realtime_model._opts.supports_playback_reporting:
             return
 
-        if "audio" not in modalities:
-            return
-
-        gen = self._find_generation(message_id)
-        if gen is None:
+        played = self._played_audio.pop(message_id, None)
+        if played is None:
             logger.debug(
-                "playback position not reported: no generation for message",
+                "playback position not reported: no audio recorded for message",
                 extra={"message_id": message_id},
             )
             return
 
         self._session.report_playback_position_nowait(
-            self._playback_bytes(gen, audio_end_ms), gen.turn_id
+            played.bytes_at(audio_end_ms), played.turn_id
         )
 
-    def _find_generation(self, message_id: str) -> _ResponseGeneration | None:
-        """Resolve a livekit message id to its generation, open or just settled."""
-        for gen in self._generations.values():
-            if gen.response_id == message_id:
-                return gen
-        return self._settled_generations.get(message_id)
-
-    def _retain_settled_generation(self, gen: _ResponseGeneration) -> None:
-        """Keep a just-settled generation resolvable by a later truncate()."""
-        self._settled_generations[gen.response_id] = gen
-        self._settled_generations.move_to_end(gen.response_id)
-        while len(self._settled_generations) > _SETTLED_GENERATION_LIMIT:
-            self._settled_generations.popitem(last=False)
-
-    @staticmethod
-    def _playback_bytes(gen: _ResponseGeneration, audio_end_ms: int) -> int:
-        """Convert a played duration to a byte offset into this turn's audio."""
+    def _retain_played_audio(self, gen: _ResponseGeneration) -> None:
+        """Record what a later truncate() needs."""
         if not gen.audio_bytes or gen.audio_sample_rate is None:
-            return 0
-        bytes_per_second = (
-            gen.audio_sample_rate * gen.audio_channels * _BYTES_PER_SAMPLE
+            return
+        self._played_audio[gen.response_id] = _PlayedAudio(
+            turn_id=gen.turn_id,
+            audio_bytes=gen.audio_bytes,
+            bytes_per_second=(
+                gen.audio_sample_rate * gen.audio_channels * _BYTES_PER_SAMPLE
+            ),
         )
-        played = int(audio_end_ms / 1000 * bytes_per_second)
-        return min(played, gen.audio_bytes)
+        while len(self._played_audio) > _PLAYED_AUDIO_LIMIT:
+            self._played_audio.popitem(last=False)
 
     async def aclose(self) -> None:
         """Close the session."""
@@ -779,7 +777,7 @@ class DeepslateRealtimeSession(
         self._generations.clear()
         self._settled_turns.clear()
         self._last_turn_id = None
-        self._settled_generations.clear()
+        self._played_audio.clear()
         self._connection_attempt_started_at = time.monotonic()
 
     async def on_session_initialized(self) -> None:
@@ -1259,7 +1257,7 @@ class DeepslateRealtimeSession(
         with contextlib.suppress(asyncio.InvalidStateError):
             gen.done_fut.set_result(None)
         del self._generations[gen.turn_id]
-        self._retain_settled_generation(gen)
+        self._retain_played_audio(gen)
         if gen.turn_id not in self._settled_turns:
             self._settled_turns.append(gen.turn_id)
         if cancelled:
