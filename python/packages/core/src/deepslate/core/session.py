@@ -364,10 +364,14 @@ class DeepslateSession:
 
         ``turn_id`` attributes ``bytes_played`` to a specific assistant turn.
         """
+        self.report_playback_position_nowait(bytes_played, turn_id)
+
+    def report_playback_position_nowait(self, bytes_played: int, turn_id: int) -> None:
+        """Queue a ``PlaybackPositionReport`` from synchronous code."""
         report = proto.PlaybackPositionReport(
             bytes_played=bytes_played, turn_id=turn_id
         )
-        await self._enqueue_or_buffer(
+        self._enqueue_or_buffer_nowait(
             proto.ServiceBoundMessage(playback_position_report=report)
         )
 
@@ -442,6 +446,7 @@ class DeepslateSession:
             system_prompt=self._options.system_prompt,
             tts_config=self._tts_config,
             temperature=self._options.temperature,
+            supports_playback_reporting=self._options.supports_playback_reporting,
             experiments=self._options.experiments,
         )
         await self._send_queue.put(
@@ -463,8 +468,12 @@ class DeepslateSession:
 
     async def _enqueue_or_buffer(self, msg: proto.ServiceBoundMessage) -> None:
         """Route a message to the send queue or the pre-init buffer."""
+        self._enqueue_or_buffer_nowait(msg)
+
+    def _enqueue_or_buffer_nowait(self, msg: proto.ServiceBoundMessage) -> None:
+        """Route a message without awaiting; the send queue is unbounded."""
         if self._session_initialized:
-            await self._send_queue.put(msg)
+            self._send_queue.put_nowait(msg)
         else:
             self._pending_before_init.append(msg)
 

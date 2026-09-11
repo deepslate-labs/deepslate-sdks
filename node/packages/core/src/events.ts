@@ -35,9 +35,9 @@ export type DeepslateSessionEvents = {
   /** A server-side error notification (connection stays as-is). */
   error: (category: string, message: string, traceId: string | null) => void;
   /** The model began its response. */
-  responseBegin: () => void;
+  responseBegin: (turnId: number) => void;
   /** The model finished its response. */
-  responseEnd: () => void;
+  responseEnd: (turnId: number) => void;
   /** A user audio turn was transcribed. */
   userTranscription: (
     text: string,
