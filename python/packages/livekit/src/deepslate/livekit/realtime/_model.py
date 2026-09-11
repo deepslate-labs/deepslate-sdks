@@ -123,6 +123,19 @@ class _PlayedAudio:
         played = int(audio_end_ms / 1000 * self.bytes_per_second)
         return min(played, self.audio_bytes)
 
+    @classmethod
+    def of(cls, gen: "_ResponseGeneration") -> "_PlayedAudio | None":
+        """Snapshot a generation's audio accounting, if it produced any audio."""
+        if not gen.audio_bytes or gen.audio_sample_rate is None:
+            return None
+        return cls(
+            turn_id=gen.turn_id,
+            audio_bytes=gen.audio_bytes,
+            bytes_per_second=(
+                gen.audio_sample_rate * gen.audio_channels * _BYTES_PER_SAMPLE
+            ),
+        )
+
 
 class RealtimeModel(llm.RealtimeModel):
     """Real-time language model using Deepslate.
@@ -715,7 +728,14 @@ class DeepslateRealtimeSession(
         if not self._realtime_model._opts.supports_playback_reporting:
             return
 
-        played = self._played_audio.pop(message_id, None)
+        self.report_playback_position(
+            message_id=message_id, audio_end_ms=audio_end_ms
+        )
+        self._played_audio.pop(message_id, None)
+
+    def report_playback_position(self, *, message_id: str, audio_end_ms: int) -> None:
+        """Report how much of ``message_id``'s audio the caller has heard."""
+        played = self._played_audio_for(message_id)
         if played is None:
             logger.debug(
                 "playback position not reported: no audio recorded for message",
@@ -727,17 +747,19 @@ class DeepslateRealtimeSession(
             played.bytes_at(audio_end_ms), played.turn_id
         )
 
+    def _played_audio_for(self, message_id: str) -> _PlayedAudio | None:
+        """Resolve a message id to its audio, mid-turn or once the turn settled."""
+        for gen in self._generations.values():
+            if gen.response_id == message_id:
+                return _PlayedAudio.of(gen)
+        return self._played_audio.get(message_id)
+
     def _retain_played_audio(self, gen: _ResponseGeneration) -> None:
-        """Record what a later truncate() needs."""
-        if not gen.audio_bytes or gen.audio_sample_rate is None:
+        """Record what a later report needs."""
+        played = _PlayedAudio.of(gen)
+        if played is None:
             return
-        self._played_audio[gen.response_id] = _PlayedAudio(
-            turn_id=gen.turn_id,
-            audio_bytes=gen.audio_bytes,
-            bytes_per_second=(
-                gen.audio_sample_rate * gen.audio_channels * _BYTES_PER_SAMPLE
-            ),
-        )
+        self._played_audio[gen.response_id] = played
         while len(self._played_audio) > _PLAYED_AUDIO_LIMIT:
             self._played_audio.popitem(last=False)
 
