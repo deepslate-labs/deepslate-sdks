@@ -335,6 +335,7 @@ Subclass this and override only the methods you need. All methods are `async` an
 | `api_key` | `str` | env: `DEEPSLATE_API_KEY` | Deepslate API key |
 | `base_url` | `str` | `"https://app.deepslate.eu"` | Base URL for Deepslate API |
 | `system_prompt` | `str` | `"You are a helpful assistant."` | Default system prompt |
+| `temperature` | `float` | `0.3` | Sampling temperature (0.0–2.0) |
 | `ws_url` | `str \| None` | `None` | Direct WebSocket URL (overrides `base_url`; for local dev) |
 | `max_retries` | `int` | `3` | Maximum reconnection attempts before giving up |
 | `experiments` | `Mapping[str, Any] \| None` | `None` | Server-side experiments to enable |

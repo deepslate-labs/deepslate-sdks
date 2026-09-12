@@ -222,7 +222,7 @@ def build_initialize_request(
     vad_config: VadConfig,
     system_prompt: str,
     tts_config: Optional[ElevenLabsTtsConfig | HostedTtsConfig | HostedVoiceCloneConfig] = None,
-    temperature: float = 1.0,
+    temperature: float = 0.3,
     experiments: Optional[Mapping[str, Any]] = None,
 ) -> proto.InitializeSessionRequest:
     """Build a proto.InitializeSessionRequest from core configuration objects.

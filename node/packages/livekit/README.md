@@ -117,7 +117,7 @@ The constructor takes a single options object (`RealtimeModelOptions`):
 | `apiKey` | `string` | env: `DEEPSLATE_API_KEY` | Deepslate API key |
 | `baseUrl` | `string` | `"https://app.deepslate.eu"` | Base URL for Deepslate API |
 | `systemPrompt` | `string` | `"You are a helpful assistant."` | System prompt for the model |
-| `temperature` | `number` | `1.0` | Sampling temperature (0.0–2.0) |
+| `temperature` | `number` | `0.3` | Sampling temperature (0.0–2.0) |
 | `generateReplyTimeout` | `number` | `30.0` | Timeout in seconds for `generateReply` (0 = no limit) |
 | `vad` | `VadConfig` | defaults | Voice activity detection tuning |
 | `ttsConfig` | `TtsConfig` | `undefined` | TTS configuration (enables server-side audio output) |

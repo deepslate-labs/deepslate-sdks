@@ -120,7 +120,7 @@ class RealtimeModel(llm.RealtimeModel):
         api_key: str | None = None,
         base_url: str = DEEPSLATE_BASE_URL,
         system_prompt: str = "You are a helpful assistant.",
-        temperature: float = 1.0,
+        temperature: float = 0.3,
         generate_reply_timeout: float = 30.0,
         usage_heartbeat_interval_s: float = 20.0,
         # VAD configuration

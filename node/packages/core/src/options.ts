@@ -82,7 +82,7 @@ export interface ResolvedDeepslateOptions {
 export const DEEPSLATE_DEFAULTS = {
   baseUrl: "https://app.deepslate.eu",
   systemPrompt: "You are a helpful assistant.",
-  temperature: 1.0,
+  temperature: 0.3,
   maxRetries: 3,
   generateReplyTimeout: 30.0,
 } as const;

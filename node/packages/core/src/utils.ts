@@ -39,6 +39,7 @@ import {
   ElevenLabsLocation,
   HostedTtsMode,
   TriggerMode,
+  DEEPSLATE_DEFAULTS,
   VAD_DEFAULTS,
 } from "./options.js";
 import type { ChatMessage, ContentBlock } from "./types.js";
@@ -125,7 +126,7 @@ export function buildInitializeRequest(params: {
     },
     inferenceConfiguration: {
       systemPrompt: params.systemPrompt,
-      temperature: params.temperature ?? 1.0,
+      temperature: params.temperature ?? DEEPSLATE_DEFAULTS.temperature,
     },
     ttsConfiguration,
     experiments: Object.fromEntries(
