@@ -20,6 +20,7 @@ except importlib.metadata.PackageNotFoundError:
     __version__ = "unknown"
 
 from deepslate.core.options import (
+    DeepslateModel,
     DeepslateOptions,
     ElevenLabsLocation,
     ElevenLabsTtsConfig,
@@ -48,6 +49,7 @@ DeepslateVadConfig = VadConfig
 
 __all__ = [
     "__version__",
+    "DeepslateModel",
     "DeepslateOptions",
     "DeepslateVadConfig",
     "DeepslateUserTranscriptionFrame",

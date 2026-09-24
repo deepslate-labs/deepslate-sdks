@@ -204,10 +204,11 @@ if __name__ == "__main__":
 | `vendor_id`       | `str`           | env: `DEEPSLATE_VENDOR_ID`       | Deepslate vendor ID                                            |
 | `organization_id` | `str`           | env: `DEEPSLATE_ORGANIZATION_ID` | Deepslate organization ID                                      |
 | `api_key`         | `str`           | env: `DEEPSLATE_API_KEY`         | Deepslate API key                                              |
+| `model`           | `DeepslateModel \| str \| None` | env: `DEEPSLATE_MODEL`, else `None` | Realtime model (`None` = platform default); ignored when `ws_url` is set |
 | `base_url`        | `str`           | `"https://app.deepslate.eu"`     | Base URL for Deepslate API                                     |
 | `system_prompt`   | `str`           | `"You are a helpful assistant."` | System prompt for the AI assistant                             |
 | `temperature`     | `float`         | `0.3`                            | Sampling temperature (0.0–2.0)                                 |
-| `ws_url`          | `Optional[str]` | `None`                           | Direct WebSocket URL (overrides `base_url`; for local dev/testing) |
+| `ws_url`          | `Optional[str]` | `None`                           | Direct WebSocket URL (overrides `base_url` and `model`; for local dev/testing) |
 | `max_retries`     | `int`           | `3`                              | Maximum reconnection attempts before giving up                 |
 | `experiments`     | `Mapping[str, Any] \| None` | `None`               | Server-side experiments to enable                              |
 
@@ -231,6 +232,27 @@ opts = DeepslateOptions.from_env(
 ```
 
 Experiments carry no stability guarantees and may change or disappear without a version bump or warning. The SDK holds no catalogue of them: ask your Deepslate contact which experiments are available and what values they accept.
+
+### Model Selection
+
+Pick the realtime model with `model`:
+
+```python
+from deepslate.pipecat import DeepslateModel, DeepslateOptions
+
+opts = DeepslateOptions.from_env(model=DeepslateModel.OPAL_V3_0_PREVIEW)
+```
+
+| Model | Notes |
+|---|---|
+| `opal-v2.1` (`DeepslateModel.OPAL_V2_1`) | Platform default |
+| `opal-v3.0-preview` (`DeepslateModel.OPAL_V3_0_PREVIEW`) | Requires to be enabled for your organization. Contact Deepslate to enable it |
+
+- Leaving `model` unset (the default) lets the platform choose its default model.
+- `model` also accepts any model id as a plain string, so newly released models work without an SDK update.
+- `from_env()` falls back to the `DEEPSLATE_MODEL` environment variable when `model` isn't passed.
+- `ws_url` takes precedence: when it is set, `model` is ignored (a warning is logged).
+- If the handshake is rejected (HTTP 4xx other than 408/429 — e.g. the organization can't use the requested model, or the credentials are wrong), the service does not retry: it fails fast with a `HandshakeRejectedError` and pushes an `ErrorFrame("Connection failed: …")` whose message names the status and model.
 
 ### VAD Configuration
 
