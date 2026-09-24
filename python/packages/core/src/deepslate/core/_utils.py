@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from typing import Any, Mapping, Optional
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 
 from google.protobuf import json_format
 from google.protobuf.struct_pb2 import Struct, Value
@@ -83,7 +83,7 @@ def build_ws_url(
 
     url = f"{scheme}://{host}/api/v1/vendors/{vendor_id}/organizations/{organization_id}/realtime"
     if model:
-        url = f"{url}/{model}"
+        url = f"{url}/{quote(model, safe='')}"
     return url
 
 

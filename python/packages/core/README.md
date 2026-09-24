@@ -83,12 +83,12 @@ opts = DeepslateOptions.from_env(model=DeepslateModel.OPAL_V3_0_PREVIEW)
 | Model | Notes |
 |---|---|
 | `opal-v2.1` (`DeepslateModel.OPAL_V2_1`) | Platform default |
-| `opal-v3.0-preview` (`DeepslateModel.OPAL_V3_0_PREVIEW`) | Requires to be enabled for your organization. Contact Deepslate to enable it |
+| `opal-v3.0-preview` (`DeepslateModel.OPAL_V3_0_PREVIEW`) | Must be enabled for your organization. Contact Deepslate to enable it |
 
 - Leaving `model` unset (the default) lets the platform choose its default model; the connection URL is unchanged.
 - `model` also accepts any model id as a plain string, so newly released models work without an SDK update.
 - `from_env()` falls back to the `DEEPSLATE_MODEL` environment variable when `model` isn't passed.
-- `ws_url` takes precedence: when it is set, `model` is ignored (a warning is logged).
+- `ws_url` takes precedence: when it is set, `DEEPSLATE_MODEL` is not consulted and an explicitly passed `model` is dropped with a warning.
 - If the organization can't use the requested model, the handshake is rejected and the connection fails fast with a `HandshakeRejectedError` — see [Reconnection](#reconnection).
 
 ### VAD Configuration

@@ -15,6 +15,8 @@
 // Core Deepslate connection and model options.
 import type { JsonValue } from "@bufbuild/protobuf";
 
+import { logger } from "./log.js";
+
 /**
  * Server-side experiments to enable for a session.
  *
@@ -89,7 +91,7 @@ export interface ResolvedDeepslateOptions {
   vendorId: string;
   organizationId: string;
   apiKey: string;
-  /** Unset means the platform default model. */
+  /** Unset means the platform default model. Always unset when `wsUrl` is set. */
   model?: DeepslateModelId;
   baseUrl: string;
   systemPrompt: string;
@@ -108,20 +110,22 @@ export const DEEPSLATE_DEFAULTS = {
   generateReplyTimeout: 30.0,
 } as const;
 
+/** Trim a model id and map ""/null to unset. */
+function normalizeModel(model: string | undefined): string | undefined {
+  return String(model ?? "").trim() || undefined;
+}
+
 /**
- * Trim a model id, map "" to unset, and (when `validate`) reject ids that
- * would break the URL.
+ * Resolve the effective model. `wsUrl` already names the endpoint, so a model
+ * passed alongside it is dropped (with a warning).
  */
-function normalizeModel(model: string | undefined, validate = true): string | undefined {
-  if (model === undefined || model === null) return undefined;
-  const trimmed = String(model).trim();
-  if (!trimmed) return undefined;
-  if (validate && /[/?#\s]/.test(trimmed)) {
-    throw new Error(
-      `Invalid Deepslate model id '${trimmed}': must not contain '/', '?', '#' or whitespace.`,
-    );
+function resolveModel(opts: DeepslateOptions): string | undefined {
+  const model = normalizeModel(opts.model);
+  if (opts.wsUrl && model) {
+    logger.warn(`both wsUrl and model are set; ignoring model '${model}' and connecting to wsUrl as-is`);
+    return undefined;
   }
-  return trimmed;
+  return model;
 }
 
 /** Apply defaults to a partially-specified options object. */
@@ -130,7 +134,7 @@ export function resolveOptions(opts: DeepslateOptions): ResolvedDeepslateOptions
     vendorId: opts.vendorId,
     organizationId: opts.organizationId,
     apiKey: opts.apiKey,
-    model: normalizeModel(opts.model, !opts.wsUrl),
+    model: resolveModel(opts),
     baseUrl: opts.baseUrl ?? DEEPSLATE_DEFAULTS.baseUrl,
     systemPrompt: opts.systemPrompt ?? DEEPSLATE_DEFAULTS.systemPrompt,
     temperature: opts.temperature ?? DEEPSLATE_DEFAULTS.temperature,
@@ -169,7 +173,9 @@ export function optionsFromEnv(
       "Deepslate API key required. Provide apiKey or set DEEPSLATE_API_KEY.",
     );
   }
-  const model = overrides.model ?? (process.env.DEEPSLATE_MODEL || undefined);
+  const model = overrides.wsUrl
+    ? overrides.model
+    : overrides.model || process.env.DEEPSLATE_MODEL || undefined;
   return resolveOptions({ ...overrides, vendorId, organizationId, apiKey, model });
 }
 

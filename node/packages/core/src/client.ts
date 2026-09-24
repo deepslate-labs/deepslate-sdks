@@ -51,12 +51,15 @@ export class HandshakeRejectedError extends Error {
 
 function handshakeRejectedMessage(status: number, model?: string): string {
   const prefix = `Deepslate rejected the WebSocket handshake (HTTP ${status})`;
-  if (status === 401) return `${prefix}: check DEEPSLATE_API_KEY / api_key.`;
+  if (status === 401) return `${prefix}: check DEEPSLATE_API_KEY / apiKey.`;
   if (status === 403 || status === 404) {
     if (model) {
-      return `${prefix} for model '${model}': the organization may not have access to this model.`;
+      return (
+        `${prefix} for model '${model}': check vendorId / organizationId, ` +
+        "or the organization may not have access to this model."
+      );
     }
-    return `${prefix}: check vendor_id / organization_id.`;
+    return `${prefix}: check vendorId / organizationId.`;
   }
   return `${prefix}.`;
 }
@@ -103,8 +106,6 @@ export class BaseDeepslateClient extends TypedEventEmitter<BaseDeepslateClientEv
   private aborted = false;
   /** Callbacks that wake any in-flight backoff sleep on shutdown. */
   private readonly abortListeners = new Set<() => void>();
-  /** Whether the "wsUrl overrides model" warning has been logged. */
-  private warnedModelIgnored = false;
 
   constructor(
     private readonly opts: ResolvedDeepslateOptions,
@@ -151,16 +152,7 @@ export class BaseDeepslateClient extends TypedEventEmitter<BaseDeepslateClientEv
   }
 
   private buildWsUrl(): string {
-    if (this.opts.wsUrl) {
-      if (this.opts.model && !this.warnedModelIgnored) {
-        this.warnedModelIgnored = true;
-        logger.warn(
-          `both wsUrl and model are set; ignoring model '${this.opts.model}' ` +
-            "and connecting to wsUrl as-is",
-        );
-      }
-      return this.opts.wsUrl;
-    }
+    if (this.opts.wsUrl) return this.opts.wsUrl;
     return buildWsUrl(
       this.opts.baseUrl,
       this.opts.vendorId,
@@ -222,7 +214,7 @@ export class BaseDeepslateClient extends TypedEventEmitter<BaseDeepslateClientEv
         req.destroy();
         const status = res.statusCode ?? 0;
         if (status >= 400 && status < 500 && !RETRIABLE_4XX.has(status)) {
-          reject(new HandshakeRejectedError(status, this.opts.wsUrl ? undefined : this.opts.model));
+          reject(new HandshakeRejectedError(status, this.opts.model));
         } else {
           reject(new RetriableError(`Unexpected server response: ${status}`));
         }

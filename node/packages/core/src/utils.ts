@@ -88,7 +88,7 @@ export function buildWsUrl(
   else if (parsed.protocol === "http:") scheme = "ws:";
   else scheme = parsed.protocol;
   const url = `${scheme}//${parsed.host}/api/v1/vendors/${vendorId}/organizations/${organizationId}/realtime`;
-  return model ? `${url}/${model}` : url;
+  return model ? `${url}/${encodeURIComponent(model)}` : url;
 }
 
 /** Build an InitializeSessionRequest from core configuration objects. */

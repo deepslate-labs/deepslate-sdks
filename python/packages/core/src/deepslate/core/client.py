@@ -49,8 +49,8 @@ def _handshake_rejected_message(status: int, model: Optional[str]) -> str:
     if status in (403, 404):
         if model:
             return (
-                f"{prefix} for model '{model}': "
-                "the organization may not have access to this model."
+                f"{prefix} for model '{model}': check vendor_id / organization_id, "
+                "or the organization may not have access to this model."
             )
         return f"{prefix}: check vendor_id / organization_id."
     return f"{prefix}."
@@ -76,7 +76,6 @@ class BaseDeepslateClient:
         # If a session is injected we don't own it and won't close it.
         self._http_session = http_session
         self._http_session_owned = http_session is None
-        self._warned_model_ignored = False
 
     @property
     def user_agent(self) -> str:
@@ -90,12 +89,6 @@ class BaseDeepslateClient:
 
     def _build_ws_url(self) -> str:
         if self._opts.ws_url:
-            if self._opts.model and not self._warned_model_ignored:
-                self._warned_model_ignored = True
-                logger.warning(
-                    f"both ws_url and model are set; ignoring model '{self._opts.model}' "
-                    "and connecting to ws_url as-is"
-                )
             return self._opts.ws_url
         return build_ws_url(
             self._opts.base_url,
@@ -125,8 +118,7 @@ class BaseDeepslateClient:
             return await self._ensure_http_session().ws_connect(url=url, headers=headers)
         except aiohttp.WSServerHandshakeError as e:
             if 400 <= e.status < 500 and e.status not in _RETRIABLE_4XX:
-                model = None if self._opts.ws_url else self._opts.model
-                raise HandshakeRejectedError(e.status, model) from e
+                raise HandshakeRejectedError(e.status, self._opts.model) from e
             raise
 
     async def run_with_retry(

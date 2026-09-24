@@ -119,7 +119,6 @@ class RealtimeModel(llm.RealtimeModel):
         organization_id: str | None = None,
         api_key: str | None = None,
         base_url: str = DEEPSLATE_BASE_URL,
-        model: str | None = None,
         system_prompt: str = "You are a helpful assistant.",
         temperature: float = 0.3,
         generate_reply_timeout: float = 30.0,
@@ -136,6 +135,7 @@ class RealtimeModel(llm.RealtimeModel):
         http_session: aiohttp.ClientSession | None = None,
         ws_url: str | None = None,
         experiments: Mapping[str, Any] | None = None,
+        model: str | None = None,
     ):
         """Initialize a Deepslate RealtimeModel.
 
@@ -144,10 +144,6 @@ class RealtimeModel(llm.RealtimeModel):
             organization_id: Deepslate organization ID. Falls back to DEEPSLATE_ORGANIZATION_ID env var.
             api_key: Deepslate API key. Falls back to DEEPSLATE_API_KEY env var.
             base_url: Base URL for Deepslate API.
-            model: Realtime model to use: a ``DeepslateModel`` (e.g.
-                   ``DeepslateModel.OPAL_V3_0_PREVIEW``) or any model id string.
-                   Falls back to DEEPSLATE_MODEL env var; when neither is set the
-                   platform default is used. Ignored when ``ws_url`` is set.
             system_prompt: System prompt for the model.
             temperature: Sampling temperature (0.0 to 2.0). Higher values produce more random output.
             generate_reply_timeout: Timeout in seconds for generate_reply (0 = no timeout).
@@ -164,6 +160,10 @@ class RealtimeModel(llm.RealtimeModel):
             experiments: Server-side experiments to enable. Experiments carry zero
                          stability guarantees and may change or disappear without a
                          version bump.
+            model: Realtime model to use: a ``DeepslateModel`` (e.g.
+                   ``DeepslateModel.OPAL_V3_0_PREVIEW``) or any model id string.
+                   Falls back to the DEEPSLATE_MODEL env var; when neither is set the
+                   platform default is used. Not used when ``ws_url`` is set.
         """
         super().__init__(
             capabilities=llm.RealtimeCapabilities(
@@ -183,8 +183,6 @@ class RealtimeModel(llm.RealtimeModel):
 
         self._tts_config = tts_config
         self._usage_heartbeat_interval_s = usage_heartbeat_interval_s
-
-        deepslate_model = model or os.environ.get("DEEPSLATE_MODEL")
 
         if ws_url:
             deepslate_vendor_id = vendor_id or ""
@@ -213,6 +211,8 @@ class RealtimeModel(llm.RealtimeModel):
                     "Deepslate API key is required. "
                     "Provide it via the api_key parameter or set the DEEPSLATE_API_KEY environment variable."
                 )
+
+        deepslate_model = model if ws_url else (model or os.environ.get("DEEPSLATE_MODEL"))
 
         self._opts = DeepslateOptions(
             vendor_id=deepslate_vendor_id,

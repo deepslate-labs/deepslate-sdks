@@ -155,12 +155,12 @@ const model = new RealtimeModel({ model: DeepslateModel.OPAL_V3_0_PREVIEW });
 | Model | Notes |
 |---|---|
 | `opal-v2.1` (`DeepslateModel.OPAL_V2_1`) | Platform default |
-| `opal-v3.0-preview` (`DeepslateModel.OPAL_V3_0_PREVIEW`) | Requires to be enabled for your organization. Contact Deepslate to enable it |
+| `opal-v3.0-preview` (`DeepslateModel.OPAL_V3_0_PREVIEW`) | Must be enabled for your organization. Contact Deepslate to enable it |
 
 - Leaving `model` unset (the default) lets the platform choose its default model.
 - `model` is typed `DeepslateModelId`, which also accepts any model id string, so newly released models work without an SDK update.
 - Falls back to the `DEEPSLATE_MODEL` environment variable when `model` isn't passed.
-- `wsUrl` takes precedence: when it is set, `model` is ignored (a warning is logged).
+- `wsUrl` takes precedence: when it is set, `DEEPSLATE_MODEL` is not consulted and an explicitly passed `model` is dropped with a warning.
 - The configured id is reported as the model name in LiveKit usage metrics (`"deepslate-realtime"` when unset).
 - If the handshake is rejected (HTTP 4xx other than 408/429 — e.g. the organization can't use the requested model, or the credentials are wrong), the session does not retry: it fails fast with a `HandshakeRejectedError` (exported by `@deepslate-labs/core`), surfaced as a non-recoverable `realtime_model_error` whose message names the status and model.
 

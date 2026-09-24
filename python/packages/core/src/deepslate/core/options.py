@@ -14,10 +14,13 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass
 from enum import Enum, StrEnum
 from typing import Any, Mapping, Optional
+
+logger = logging.getLogger("deepslate.core")
 
 
 class DeepslateModel(StrEnum):
@@ -34,22 +37,11 @@ class DeepslateModel(StrEnum):
     """Opal v3.0 preview."""
 
 
-_INVALID_MODEL_CHARS = frozenset("/?#")
-
-
-def _normalize_model(model: Optional[str], *, validate: bool = True) -> Optional[str]:
+def _normalize_model(model: Optional[str]) -> Optional[str]:
+    """Trim a model id and map ``None``/blank to unset."""
     if model is None:
         return None
-    if isinstance(model, Enum):
-        model = model.value
-    model = str(model).strip()
-    if not model:
-        return None
-    if validate and any(c in _INVALID_MODEL_CHARS or c.isspace() for c in model):
-        raise ValueError(
-            f"Invalid Deepslate model id {model!r}: must not contain '/', '?', '#' or whitespace."
-        )
-    return model
+    return str(model).strip() or None
 
 
 @dataclass
@@ -64,13 +56,6 @@ class DeepslateOptions:
 
     api_key: str
     """Deepslate API key."""
-
-    model: Optional[str] = None
-    """Realtime model to use: a ``DeepslateModel`` or any model id string.
-
-    ``None`` (the default) lets the platform pick its default model.
-    Ignored when ``ws_url`` is set.
-    """
 
     base_url: str = "https://app.deepslate.eu"
     """Base URL for the Deepslate API."""
@@ -97,11 +82,24 @@ class DeepslateOptions:
     without a version bump. Use at your own risk.
     """
 
+    model: Optional[str] = None
+    """Realtime model to use: a ``DeepslateModel`` or any model id string.
+
+    ``None`` (the default) lets the platform pick its default model.
+    Dropped when ``ws_url`` is set, since ``ws_url`` already names the endpoint.
+    """
+
     def __post_init__(self) -> None:
         from ._utils import encode_experiments
 
         encode_experiments(self.experiments)
-        self.model = _normalize_model(self.model, validate=not self.ws_url)
+        self.model = _normalize_model(self.model)
+        if self.ws_url and self.model:
+            logger.warning(
+                f"both ws_url and model are set; ignoring model '{self.model}' "
+                "and connecting to ws_url as-is"
+            )
+            self.model = None
 
     @classmethod
     def from_env(
@@ -133,7 +131,8 @@ class DeepslateOptions:
                 "Provide api_key or set DEEPSLATE_API_KEY env var."
             )
 
-        kwargs["model"] = kwargs.get("model") or os.environ.get("DEEPSLATE_MODEL")
+        if not kwargs.get("ws_url"):
+            kwargs["model"] = kwargs.get("model") or os.environ.get("DEEPSLATE_MODEL")
 
         return cls(
             vendor_id=resolved_vendor_id,
