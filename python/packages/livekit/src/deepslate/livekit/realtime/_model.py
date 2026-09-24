@@ -119,6 +119,7 @@ class RealtimeModel(llm.RealtimeModel):
         organization_id: str | None = None,
         api_key: str | None = None,
         base_url: str = DEEPSLATE_BASE_URL,
+        model: str | None = None,
         system_prompt: str = "You are a helpful assistant.",
         temperature: float = 0.3,
         generate_reply_timeout: float = 30.0,
@@ -143,6 +144,10 @@ class RealtimeModel(llm.RealtimeModel):
             organization_id: Deepslate organization ID. Falls back to DEEPSLATE_ORGANIZATION_ID env var.
             api_key: Deepslate API key. Falls back to DEEPSLATE_API_KEY env var.
             base_url: Base URL for Deepslate API.
+            model: Realtime model to use: a ``DeepslateModel`` (e.g.
+                   ``DeepslateModel.OPAL_V3_0_PREVIEW``) or any model id string.
+                   Falls back to DEEPSLATE_MODEL env var; when neither is set the
+                   platform default is used. Ignored when ``ws_url`` is set.
             system_prompt: System prompt for the model.
             temperature: Sampling temperature (0.0 to 2.0). Higher values produce more random output.
             generate_reply_timeout: Timeout in seconds for generate_reply (0 = no timeout).
@@ -179,6 +184,8 @@ class RealtimeModel(llm.RealtimeModel):
         self._tts_config = tts_config
         self._usage_heartbeat_interval_s = usage_heartbeat_interval_s
 
+        deepslate_model = model or os.environ.get("DEEPSLATE_MODEL")
+
         if ws_url:
             deepslate_vendor_id = vendor_id or ""
             deepslate_organization_id = organization_id or ""
@@ -211,6 +218,7 @@ class RealtimeModel(llm.RealtimeModel):
             vendor_id=deepslate_vendor_id,
             organization_id=deepslate_organization_id,
             api_key=deepslate_api_key,
+            model=deepslate_model,
             base_url=base_url,
             system_prompt=system_prompt,
             temperature=temperature,
@@ -282,7 +290,7 @@ class RealtimeModel(llm.RealtimeModel):
     @property
     def model(self) -> str:
         """Return the model identifier used in emitted usage/metrics metadata."""
-        return "opal"
+        return self._opts.model or "opal"
 
     def session(
         self, *, turn_detection_disabled: bool = False
