@@ -37,7 +37,7 @@ class DeepslateModel(StrEnum):
 _INVALID_MODEL_CHARS = frozenset("/?#")
 
 
-def _normalize_model(model: Optional[str]) -> Optional[str]:
+def _normalize_model(model: Optional[str], *, validate: bool = True) -> Optional[str]:
     if model is None:
         return None
     if isinstance(model, Enum):
@@ -45,7 +45,7 @@ def _normalize_model(model: Optional[str]) -> Optional[str]:
     model = str(model).strip()
     if not model:
         return None
-    if any(c in _INVALID_MODEL_CHARS or c.isspace() for c in model):
+    if validate and any(c in _INVALID_MODEL_CHARS or c.isspace() for c in model):
         raise ValueError(
             f"Invalid Deepslate model id {model!r}: must not contain '/', '?', '#' or whitespace."
         )
@@ -101,7 +101,7 @@ class DeepslateOptions:
         from ._utils import encode_experiments
 
         encode_experiments(self.experiments)
-        self.model = _normalize_model(self.model)
+        self.model = _normalize_model(self.model, validate=not self.ws_url)
 
     @classmethod
     def from_env(

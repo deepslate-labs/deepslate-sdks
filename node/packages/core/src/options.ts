@@ -108,12 +108,15 @@ export const DEEPSLATE_DEFAULTS = {
   generateReplyTimeout: 30.0,
 } as const;
 
-/** Trim a model id, map "" to unset, and reject ids that would break the URL. */
-function normalizeModel(model: string | undefined): string | undefined {
+/**
+ * Trim a model id, map "" to unset, and (when `validate`) reject ids that
+ * would break the URL.
+ */
+function normalizeModel(model: string | undefined, validate = true): string | undefined {
   if (model === undefined || model === null) return undefined;
   const trimmed = String(model).trim();
   if (!trimmed) return undefined;
-  if (/[/?#\s]/.test(trimmed)) {
+  if (validate && /[/?#\s]/.test(trimmed)) {
     throw new Error(
       `Invalid Deepslate model id '${trimmed}': must not contain '/', '?', '#' or whitespace.`,
     );
@@ -127,7 +130,7 @@ export function resolveOptions(opts: DeepslateOptions): ResolvedDeepslateOptions
     vendorId: opts.vendorId,
     organizationId: opts.organizationId,
     apiKey: opts.apiKey,
-    model: normalizeModel(opts.model),
+    model: normalizeModel(opts.model, !opts.wsUrl),
     baseUrl: opts.baseUrl ?? DEEPSLATE_DEFAULTS.baseUrl,
     systemPrompt: opts.systemPrompt ?? DEEPSLATE_DEFAULTS.systemPrompt,
     temperature: opts.temperature ?? DEEPSLATE_DEFAULTS.temperature,
