@@ -53,13 +53,19 @@ def dict_to_struct(d: dict) -> Struct:
     return struct
 
 
-def build_ws_url(base_url: str, vendor_id: str, organization_id: str) -> str:
+def build_ws_url(
+    base_url: str,
+    vendor_id: str,
+    organization_id: str,
+    model: Optional[str] = None,
+) -> str:
     """Build WebSocket URL for Deepslate realtime endpoint.
 
     Args:
         base_url: Base URL (e.g., "https://app.deepslate.eu")
         vendor_id: Vendor ID
         organization_id: Organization ID
+        model: Optional model id. When omitted the platform uses its default model.
 
     Returns:
         WebSocket URL for the realtime endpoint
@@ -75,7 +81,10 @@ def build_ws_url(base_url: str, vendor_id: str, organization_id: str) -> str:
 
     host = parsed.netloc or parsed.path
 
-    return f"{scheme}://{host}/api/v1/vendors/{vendor_id}/organizations/{organization_id}/realtime"
+    url = f"{scheme}://{host}/api/v1/vendors/{vendor_id}/organizations/{organization_id}/realtime"
+    if model:
+        url = f"{url}/{model}"
+    return url
 
 
 ELEVENLABS_LOCATION_MAP: dict[ElevenLabsLocation, proto.ElevenLabsLocation] = {

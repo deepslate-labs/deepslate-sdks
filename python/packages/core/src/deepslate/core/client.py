@@ -26,6 +26,35 @@ from ._utils import build_ws_url
 
 logger = logging.getLogger("deepslate.core")
 
+_RETRIABLE_4XX = frozenset({408, 429})
+
+
+class HandshakeRejectedError(Exception):
+    """The Deepslate server permanently rejected the WebSocket handshake.
+
+    Raised for 4xx responses other than 408/429 (e.g. bad credentials, an
+    unknown vendor/organization, or a model the organization cannot use).
+    """
+
+    def __init__(self, status: int, model: Optional[str] = None) -> None:
+        super().__init__(_handshake_rejected_message(status, model))
+        self.status = status
+        self.model = model
+
+
+def _handshake_rejected_message(status: int, model: Optional[str]) -> str:
+    prefix = f"Deepslate rejected the WebSocket handshake (HTTP {status})"
+    if status == 401:
+        return f"{prefix}: check DEEPSLATE_API_KEY / api_key."
+    if status in (403, 404):
+        if model:
+            return (
+                f"{prefix} for model '{model}': "
+                "the organization may not have access to this model."
+            )
+        return f"{prefix}: check vendor_id / organization_id."
+    return f"{prefix}."
+
 
 class BaseDeepslateClient:
     """Manages WebSocket connectivity to the Deepslate Realtime API.
@@ -47,6 +76,7 @@ class BaseDeepslateClient:
         # If a session is injected we don't own it and won't close it.
         self._http_session = http_session
         self._http_session_owned = http_session is None
+        self._warned_model_ignored = False
 
     @property
     def user_agent(self) -> str:
@@ -60,11 +90,18 @@ class BaseDeepslateClient:
 
     def _build_ws_url(self) -> str:
         if self._opts.ws_url:
+            if self._opts.model and not self._warned_model_ignored:
+                self._warned_model_ignored = True
+                logger.warning(
+                    f"both ws_url and model are set; ignoring model '{self._opts.model}' "
+                    "and connecting to ws_url as-is"
+                )
             return self._opts.ws_url
         return build_ws_url(
             self._opts.base_url,
             self._opts.vendor_id,
             self._opts.organization_id,
+            self._opts.model,
         )
 
     def _build_headers(self) -> dict[str, str]:
@@ -74,11 +111,23 @@ class BaseDeepslateClient:
         return headers
 
     async def connect(self) -> aiohttp.ClientWebSocketResponse:
-        """Open a WebSocket connection to Deepslate and return it."""
+        """Open a WebSocket connection to Deepslate and return it.
+
+        Raises:
+            HandshakeRejectedError: the server answered the handshake with a
+                non-retriable 4xx status.
+            aiohttp.ClientError: any other (retriable) connection failure.
+        """
         url = self._build_ws_url()
         headers = self._build_headers()
         logger.debug(f"connecting to Deepslate: {url}")
-        return await self._ensure_http_session().ws_connect(url=url, headers=headers)
+        try:
+            return await self._ensure_http_session().ws_connect(url=url, headers=headers)
+        except aiohttp.WSServerHandshakeError as e:
+            if 400 <= e.status < 500 and e.status not in _RETRIABLE_4XX:
+                model = None if self._opts.ws_url else self._opts.model
+                raise HandshakeRejectedError(e.status, model) from e
+            raise
 
     async def run_with_retry(
         self,
@@ -94,8 +143,8 @@ class BaseDeepslateClient:
         should block until the connection ends (cleanly or otherwise).
 
         On a retriable ``aiohttp.ClientError``, the loop waits and
-        reconnects.  Once ``max_retries`` is exceeded, or on any
-        unexpected exception, ``on_fatal_error`` is called and the loop
+        reconnects.  Once ``max_retries`` is exceeded, on a
+        ``HandshakeRejectedError``, or on any unexpected exception, ``on_fatal_error`` is called and the loop
         exits.  ``should_continue`` is checked before every attempt so the
         caller can stop the loop externally.  ``on_connect_attempt``, if
         given, is awaited immediately before each dial (not before the
@@ -124,6 +173,10 @@ class BaseDeepslateClient:
                     f"retrying in {retry_interval}s: {e}"
                 )
                 await asyncio.sleep(retry_interval)
+            except HandshakeRejectedError as e:
+                logger.error(f"connection rejected: {e}")
+                await on_fatal_error(e)
+                return
             except Exception as e:
                 logger.error(f"unexpected error in Deepslate session: {e}")
                 await on_fatal_error(e)

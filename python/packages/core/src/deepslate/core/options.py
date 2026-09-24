@@ -16,8 +16,40 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import Any, Mapping, Optional
+
+
+class DeepslateModel(StrEnum):
+    """Known Deepslate realtime model identifiers.
+
+    ``DeepslateOptions.model`` also accepts any other model id as a plain
+    string, so newly released models work without an SDK update.
+    """
+
+    OPAL_V2_1 = "opal-v2.1"
+    """Opal v2.1, the platform default."""
+
+    OPAL_V3_0_PREVIEW = "opal-v3.0-preview"
+    """Opal v3.0 preview."""
+
+
+_INVALID_MODEL_CHARS = frozenset("/?#")
+
+
+def _normalize_model(model: Optional[str]) -> Optional[str]:
+    if model is None:
+        return None
+    if isinstance(model, Enum):
+        model = model.value
+    model = str(model).strip()
+    if not model:
+        return None
+    if any(c in _INVALID_MODEL_CHARS or c.isspace() for c in model):
+        raise ValueError(
+            f"Invalid Deepslate model id {model!r}: must not contain '/', '?', '#' or whitespace."
+        )
+    return model
 
 
 @dataclass
@@ -32,6 +64,13 @@ class DeepslateOptions:
 
     api_key: str
     """Deepslate API key."""
+
+    model: Optional[str] = None
+    """Realtime model to use: a ``DeepslateModel`` or any model id string.
+
+    ``None`` (the default) lets the platform pick its default model.
+    Ignored when ``ws_url`` is set.
+    """
 
     base_url: str = "https://app.deepslate.eu"
     """Base URL for the Deepslate API."""
@@ -62,6 +101,7 @@ class DeepslateOptions:
         from ._utils import encode_experiments
 
         encode_experiments(self.experiments)
+        self.model = _normalize_model(self.model)
 
     @classmethod
     def from_env(
@@ -92,6 +132,8 @@ class DeepslateOptions:
                 "Deepslate API key required. "
                 "Provide api_key or set DEEPSLATE_API_KEY env var."
             )
+
+        kwargs["model"] = kwargs.get("model") or os.environ.get("DEEPSLATE_MODEL")
 
         return cls(
             vendor_id=resolved_vendor_id,
