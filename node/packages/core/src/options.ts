@@ -15,6 +15,8 @@
 // Core Deepslate connection and model options.
 import type { JsonValue } from "@bufbuild/protobuf";
 
+import { logger } from "./log.js";
+
 /**
  * Server-side experiments to enable for a session.
  *
@@ -44,11 +46,30 @@ export enum HostedTtsMode {
   LOW_LATENCY = "LOW_LATENCY",
 }
 
+/**
+ * Known Deepslate realtime model identifiers.
+ *
+ * `DeepslateOptions.model` also accepts any other model id string, so newly
+ * released models work without an SDK update.
+ */
+export const DeepslateModel = {
+  /** Opal v2.1, the platform default. */
+  OPAL_V2_1: "opal-v2.1",
+  /** Opal v3.0 preview. */
+  OPAL_V3_0_PREVIEW: "opal-v3.0-preview",
+} as const;
+
+/** A {@link DeepslateModel} value or any other model id string. */
+export type DeepslateModelId =
+  | (typeof DeepslateModel)[keyof typeof DeepslateModel]
+  | (string & {});
+
 /** Core Deepslate connection and model options (as provided by the caller). */
 export interface DeepslateOptions {
   vendorId: string;
   organizationId: string;
   apiKey: string;
+  model?: DeepslateModelId;
   /** Base URL for the Deepslate API. Default: https://app.deepslate.eu */
   baseUrl?: string;
   /** System prompt dictating model behavior. */
@@ -70,6 +91,8 @@ export interface ResolvedDeepslateOptions {
   vendorId: string;
   organizationId: string;
   apiKey: string;
+  /** Unset means the platform default model. Always unset when `wsUrl` is set. */
+  model?: DeepslateModelId;
   baseUrl: string;
   systemPrompt: string;
   temperature: number;
@@ -87,12 +110,31 @@ export const DEEPSLATE_DEFAULTS = {
   generateReplyTimeout: 30.0,
 } as const;
 
+/** Trim a model id and map ""/null to unset. */
+function normalizeModel(model: string | undefined): string | undefined {
+  return String(model ?? "").trim() || undefined;
+}
+
+/**
+ * Resolve the effective model. `wsUrl` already names the endpoint, so a model
+ * passed alongside it is dropped (with a warning).
+ */
+function resolveModel(opts: DeepslateOptions): string | undefined {
+  const model = normalizeModel(opts.model);
+  if (opts.wsUrl && model) {
+    logger.warn(`both wsUrl and model are set; ignoring model '${model}' and connecting to wsUrl as-is`);
+    return undefined;
+  }
+  return model;
+}
+
 /** Apply defaults to a partially-specified options object. */
 export function resolveOptions(opts: DeepslateOptions): ResolvedDeepslateOptions {
   return {
     vendorId: opts.vendorId,
     organizationId: opts.organizationId,
     apiKey: opts.apiKey,
+    model: resolveModel(opts),
     baseUrl: opts.baseUrl ?? DEEPSLATE_DEFAULTS.baseUrl,
     systemPrompt: opts.systemPrompt ?? DEEPSLATE_DEFAULTS.systemPrompt,
     temperature: opts.temperature ?? DEEPSLATE_DEFAULTS.temperature,
@@ -104,7 +146,11 @@ export function resolveOptions(opts: DeepslateOptions): ResolvedDeepslateOptions
   };
 }
 
-/** Build options from explicit values, falling back to DEEPSLATE_* env vars. */
+/**
+ * Build options from explicit values, falling back to DEEPSLATE_* env vars
+ * (`DEEPSLATE_VENDOR_ID`, `DEEPSLATE_ORGANIZATION_ID`, `DEEPSLATE_API_KEY`,
+ * and `DEEPSLATE_MODEL` for `model`).
+ */
 export function optionsFromEnv(
   overrides: Partial<DeepslateOptions> = {},
 ): ResolvedDeepslateOptions {
@@ -127,7 +173,10 @@ export function optionsFromEnv(
       "Deepslate API key required. Provide apiKey or set DEEPSLATE_API_KEY.",
     );
   }
-  return resolveOptions({ ...overrides, vendorId, organizationId, apiKey });
+  const model = overrides.wsUrl
+    ? overrides.model
+    : overrides.model || process.env.DEEPSLATE_MODEL || undefined;
+  return resolveOptions({ ...overrides, vendorId, organizationId, apiKey, model });
 }
 
 /** Voice Activity Detection configuration handled server-side by Deepslate. */

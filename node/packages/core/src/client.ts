@@ -13,6 +13,8 @@
 // limitations under the License.
 
 // WebSocket connectivity with exponential-backoff reconnection.
+import type { ClientRequest, IncomingMessage } from "node:http";
+
 import WebSocket from "ws";
 
 import { TypedEventEmitter } from "./events.js";
@@ -31,10 +33,47 @@ export class RetriableError extends Error {
   }
 }
 
+/**
+ * The Deepslate server permanently rejected the WebSocket handshake.
+ *
+ * Raised for 4xx responses other than 408/429 (e.g. bad credentials, an
+ * unknown vendor/organization, or a model the organization cannot use).
+ */
+export class HandshakeRejectedError extends Error {
+  constructor(
+    readonly status: number,
+    readonly model?: string,
+  ) {
+    super(handshakeRejectedMessage(status, model));
+    this.name = "HandshakeRejectedError";
+  }
+}
+
+function handshakeRejectedMessage(status: number, model?: string): string {
+  const prefix = `Deepslate rejected the WebSocket handshake (HTTP ${status})`;
+  if (status === 401) return `${prefix}: check DEEPSLATE_API_KEY / apiKey.`;
+  if (status === 403 || status === 404) {
+    if (model) {
+      return (
+        `${prefix} for model '${model}': check vendorId / organizationId, ` +
+        "or the organization may not have access to this model."
+      );
+    }
+    return `${prefix}: check vendorId / organizationId.`;
+  }
+  return `${prefix}.`;
+}
+
+/** 4xx statuses that are transient and still worth retrying. */
+const RETRIABLE_4XX = new Set([408, 429]);
+
 export interface RunWithRetryHandlers {
   /** Checked before every attempt; return false to stop the loop. */
   shouldContinue: () => boolean;
-  /** Called once when retries are exhausted or an unexpected error occurs. */
+  /**
+   * Called once when retries are exhausted, the handshake is rejected
+   * (HandshakeRejectedError), or an unexpected error occurs.
+   */
   onFatalError: (err: Error) => void | Promise<void>;
 }
 
@@ -118,6 +157,7 @@ export class BaseDeepslateClient extends TypedEventEmitter<BaseDeepslateClientEv
       this.opts.baseUrl,
       this.opts.vendorId,
       this.opts.organizationId,
+      this.opts.model,
     );
   }
 
@@ -127,7 +167,12 @@ export class BaseDeepslateClient extends TypedEventEmitter<BaseDeepslateClientEv
     return headers;
   }
 
-  /** Open a WebSocket connection and resolve once it is OPEN. */
+  /**
+   * Open a WebSocket connection and resolve once it is OPEN.
+   *
+   * Rejects with HandshakeRejectedError when the server answers the handshake
+   * with a non-retriable 4xx status, and with RetriableError otherwise.
+   */
   connect(): Promise<WebSocket> {
     const url = this.buildWsUrl();
     const headers = this.buildHeaders();
@@ -149,17 +194,34 @@ export class BaseDeepslateClient extends TypedEventEmitter<BaseDeepslateClientEv
       const onOpen = () => {
         this.pendingWs = null;
         ws.off("error", onError);
+        ws.off("unexpected-response", onUnexpectedResponse);
         resolve(ws);
       };
       const onError = (err: Error) => {
         this.pendingWs = null;
         ws.off("open", onOpen);
+        ws.off("unexpected-response", onUnexpectedResponse);
         // Connection-time failures (incl. handshake timeout and shutdown abort)
         // are retriable; runWithRetry() decides whether to stop.
         reject(new RetriableError(err.message));
       };
+      const onUnexpectedResponse = (req: ClientRequest, res: IncomingMessage) => {
+        this.pendingWs = null;
+        ws.off("open", onOpen);
+        ws.off("error", onError);
+        res.on("error", () => {});
+        res.resume();
+        req.destroy();
+        const status = res.statusCode ?? 0;
+        if (status >= 400 && status < 500 && !RETRIABLE_4XX.has(status)) {
+          reject(new HandshakeRejectedError(status, this.opts.model));
+        } else {
+          reject(new RetriableError(`Unexpected server response: ${status}`));
+        }
+      };
       ws.once("open", onOpen);
       ws.once("error", onError);
+      ws.once("unexpected-response", onUnexpectedResponse);
     });
   }
 
@@ -190,6 +252,12 @@ export class BaseDeepslateClient extends TypedEventEmitter<BaseDeepslateClientEv
 
         // Shutdown requested while connecting/running — exit without retrying.
         if (this.aborted || !shouldContinue()) return;
+
+        if (error instanceof HandshakeRejectedError) {
+          logger.error(`connection rejected: ${error.message}`);
+          await onFatalError(error);
+          return;
+        }
 
         if (!(error instanceof RetriableError)) {
           logger.error(`unexpected error in Deepslate session: ${error.message}`);

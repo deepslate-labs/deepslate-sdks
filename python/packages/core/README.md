@@ -17,7 +17,7 @@ Shared core library for [Deepslate's](https://deepslate.eu/) realtime voice AI S
 `deepslate-core` provides everything needed to connect to the Deepslate Realtime API from any async Python application:
 
 - **`DeepslateSession`** — High-level session that manages the full WebSocket lifecycle, protobuf framing, session initialization, reconnection, and callback dispatch. The primary building block for custom integrations.
-- **`DeepslateOptions`** — API credentials and connection configuration
+- **`DeepslateOptions`** / **`DeepslateModel`** — API credentials, model selection and connection configuration
 - **`VadConfig`** — Server-side Voice Activity Detection parameters
 - **`HostedTtsConfig` / `HostedTtsMode`** — Deepslate-hosted (cloned) voice TTS configuration
 - **`ElevenLabsTtsConfig` / `ElevenLabsLocation`** — ElevenLabs TTS configuration
@@ -71,6 +71,25 @@ DEEPSLATE_VENDOR_ID=your_vendor_id
 DEEPSLATE_ORGANIZATION_ID=your_organization_id
 DEEPSLATE_API_KEY=your_api_key
 ```
+
+### Model Selection
+
+```python
+from deepslate.core import DeepslateModel, DeepslateOptions
+
+opts = DeepslateOptions.from_env(model=DeepslateModel.OPAL_V3_0_PREVIEW)
+```
+
+| Model | Notes |
+|---|---|
+| `opal-v2.1` (`DeepslateModel.OPAL_V2_1`) | Platform default |
+| `opal-v3.0-preview` (`DeepslateModel.OPAL_V3_0_PREVIEW`) | Must be enabled for your organization. Contact Deepslate to enable it |
+
+- Leaving `model` unset (the default) lets the platform choose its default model; the connection URL is unchanged.
+- `model` also accepts any model id as a plain string, so newly released models work without an SDK update.
+- `from_env()` falls back to the `DEEPSLATE_MODEL` environment variable when `model` isn't passed.
+- `ws_url` takes precedence: when it is set, `DEEPSLATE_MODEL` is not consulted and an explicitly passed `model` is dropped with a warning.
+- If the organization can't use the requested model, the handshake is rejected and the connection fails fast with a `HandshakeRejectedError` — see [Reconnection](#reconnection).
 
 ### VAD Configuration
 
@@ -274,6 +293,8 @@ Tool definitions are re-synced automatically after every reconnect.
 
 `start()` drives `BaseDeepslateClient.run_with_retry()` internally. On a dropped connection the session resets its state, re-sends `InitializeSessionRequest`, re-syncs tool definitions, and resumes — all without any action required from your code. Call `close()` to stop the retry loop permanently.
 
+A handshake the server permanently rejects (HTTP 4xx other than 408/429 — e.g. a bad API key, an unknown vendor/organization, or a model the organization has no access to) is not retried: `on_fatal_error` is called immediately with a `HandshakeRejectedError` whose `.status` and `.model` describe the rejection and whose message says what to check.
+
 ---
 
 ## API Reference
@@ -324,7 +345,7 @@ Subclass this and override only the methods you need. All methods are `async` an
 | `on_chat_history` | `(messages: list[ChatMessageDict])` | Chat history export received |
 | `on_conversation_query_result` | `(query_id: str, text: str)` | Side-channel query result received |
 | `on_error` | `(category: str, message: str, trace_id: str \| None)` | Server sent an error notification |
-| `on_fatal_error` | `(e: Exception)` | All reconnect retries exhausted |
+| `on_fatal_error` | `(e: Exception)` | All reconnect retries exhausted, or the handshake was rejected (`HandshakeRejectedError`) |
 
 ### `DeepslateOptions`
 
@@ -333,10 +354,11 @@ Subclass this and override only the methods you need. All methods are `async` an
 | `vendor_id` | `str` | env: `DEEPSLATE_VENDOR_ID` | Deepslate vendor ID |
 | `organization_id` | `str` | env: `DEEPSLATE_ORGANIZATION_ID` | Deepslate organization ID |
 | `api_key` | `str` | env: `DEEPSLATE_API_KEY` | Deepslate API key |
+| `model` | `DeepslateModel \| str \| None` | env: `DEEPSLATE_MODEL`, else `None` (platform default) | Realtime model; ignored when `ws_url` is set |
 | `base_url` | `str` | `"https://app.deepslate.eu"` | Base URL for Deepslate API |
 | `system_prompt` | `str` | `"You are a helpful assistant."` | Default system prompt |
 | `temperature` | `float` | `0.3` | Sampling temperature (0.0–2.0) |
-| `ws_url` | `str \| None` | `None` | Direct WebSocket URL (overrides `base_url`; for local dev) |
+| `ws_url` | `str \| None` | `None` | Direct WebSocket URL (overrides `base_url` and `model`; for local dev) |
 | `max_retries` | `int` | `3` | Maximum reconnection attempts before giving up |
 | `experiments` | `Mapping[str, Any] \| None` | `None` | Server-side experiments to enable |
 

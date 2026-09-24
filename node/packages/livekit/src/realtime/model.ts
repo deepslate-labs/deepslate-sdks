@@ -37,6 +37,7 @@ import {
   TriggerMode,
   buildUserAgent,
   optionsFromEnv,
+  type DeepslateModelId,
   type FunctionTool as DeepslateFunctionTool,
   type Experiments,
   type ResolvedDeepslateOptions,
@@ -55,6 +56,7 @@ export interface RealtimeModelOptions {
   organizationId?: string;
   apiKey?: string;
   baseUrl?: string;
+  model?: DeepslateModelId;
   systemPrompt?: string;
   temperature?: number;
   generateReplyTimeout?: number;
@@ -110,6 +112,7 @@ export class RealtimeModel extends llm.RealtimeModel {
       vendorId: options.vendorId,
       organizationId: options.organizationId,
       apiKey: options.apiKey,
+      model: options.model,
       baseUrl: options.baseUrl ?? DEEPSLATE_BASE_URL,
       systemPrompt: options.systemPrompt,
       temperature: options.temperature,
@@ -122,7 +125,7 @@ export class RealtimeModel extends llm.RealtimeModel {
   }
 
   get model(): string {
-    return "deepslate-realtime";
+    return this.opts.model ?? "deepslate-realtime";
   }
 
   override get provider(): string {
@@ -174,6 +177,7 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
         vendorId: model.opts.vendorId,
         organizationId: model.opts.organizationId,
         apiKey: model.opts.apiKey,
+        model: model.opts.model,
         baseUrl: model.opts.baseUrl,
         systemPrompt: model.opts.systemPrompt,
         temperature: model.opts.temperature,

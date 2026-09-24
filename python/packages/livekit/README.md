@@ -115,6 +115,7 @@ if __name__ == "__main__":
 | `organization_id`        | `str`                 | env: `DEEPSLATE_ORGANIZATION_ID` | Deepslate organization ID                               |
 | `api_key`                | `str`                 | env: `DEEPSLATE_API_KEY`         | Deepslate API key                                       |
 | `base_url`               | `str`                 | `"https://app.deepslate.eu"`     | Base URL for Deepslate API                              |
+| `model`                  | `DeepslateModel \| str` | env: `DEEPSLATE_MODEL`, else `None` | Realtime model (`None` = platform default) — see [Model Selection](#model-selection) |
 | `system_prompt`          | `str`                 | `"You are a helpful assistant."` | System prompt for the model                             |
 | `temperature`            | `float`               | `0.3`                            | Sampling temperature (0.0–2.0)                          |
 | `generate_reply_timeout` | `float`               | `30.0`                           | Timeout in seconds for `generate_reply` (0 = no limit) |
@@ -142,6 +143,26 @@ llm = RealtimeModel(
 ```
 
 The SDK holds no catalogue of experiments: it sends whatever you pass, and the server ignores names it does not know. Ask your Deepslate contact which experiments are available and what values they accept.
+
+### Model Selection
+
+```python
+from deepslate.livekit import DeepslateModel, RealtimeModel
+
+llm = RealtimeModel(model=DeepslateModel.OPAL_V3_0_PREVIEW)
+```
+
+| Model | Notes |
+|---|---|
+| `opal-v2.1` (`DeepslateModel.OPAL_V2_1`) | Platform default |
+| `opal-v3.0-preview` (`DeepslateModel.OPAL_V3_0_PREVIEW`) | Must be enabled for your organization. Contact Deepslate to enable it |
+
+- Leaving `model` unset (the default) lets the platform choose its default model.
+- `model` also accepts any model id as a plain string, so newly released models work without an SDK update.
+- Falls back to the `DEEPSLATE_MODEL` environment variable when `model` isn't passed.
+- `ws_url` takes precedence: when it is set, `DEEPSLATE_MODEL` is not consulted and an explicitly passed `model` is dropped with a warning.
+- The configured id is reported as the model name in LiveKit usage metrics (`"opal"` when unset).
+- If the handshake is rejected (HTTP 4xx other than 408/429 — e.g. the organization can't use the requested model, or the credentials are wrong), the session does not retry: it fails fast with a `HandshakeRejectedError`, surfaced as a non-recoverable `realtime_model_error` whose message names the status and model.
 
 ### VAD Configuration
 

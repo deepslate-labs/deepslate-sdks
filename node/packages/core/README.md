@@ -22,7 +22,7 @@ Shared core library for [Deepslate's](https://deepslate.eu/) realtime voice AI S
 `@deepslate-labs/core` provides everything needed to connect to the Deepslate Realtime API from any Node application:
 
 - **`DeepslateSession`** — High-level session that manages the full WebSocket lifecycle, protobuf framing, session initialization, reconnection, and event dispatch. A typed `EventEmitter`. The primary building block for custom integrations.
-- **`DeepslateOptions`** — API credentials and connection configuration, with `resolveOptions()` / `optionsFromEnv()` normalizers.
+- **`DeepslateOptions` / `DeepslateModel`** — API credentials, model selection and connection configuration, with `resolveOptions()` / `optionsFromEnv()` normalizers.
 - **`VadConfig`** — Server-side Voice Activity Detection parameters.
 - **`HostedTtsConfig` / `HostedTtsMode`** — Deepslate-hosted (cloned) voice TTS configuration.
 - **`ElevenLabsTtsConfig` / `ElevenLabsLocation`** — ElevenLabs TTS configuration (`elevenLabsConfigFromEnv()` loads from env).
@@ -76,6 +76,25 @@ DEEPSLATE_VENDOR_ID=your_vendor_id
 DEEPSLATE_ORGANIZATION_ID=your_organization_id
 DEEPSLATE_API_KEY=your_api_key
 ```
+
+### Model Selection
+
+```ts
+import { DeepslateModel, optionsFromEnv } from "@deepslate-labs/core";
+
+const opts = optionsFromEnv({ model: DeepslateModel.OPAL_V3_0_PREVIEW });
+```
+
+| Model | Notes                                                                        |
+|---|------------------------------------------------------------------------------|
+| `opal-v2.1` (`DeepslateModel.OPAL_V2_1`) | Platform default                                                             |
+| `opal-v3.0-preview` (`DeepslateModel.OPAL_V3_0_PREVIEW`) | Must be enabled for your organization. Contact Deepslate to enable it |
+
+- Leaving `model` unset (the default) lets the platform choose its default model; the connection URL is unchanged.
+- `model` is typed `DeepslateModelId`, which also accepts any model id string, so newly released models work without an SDK update.
+- `optionsFromEnv()` falls back to the `DEEPSLATE_MODEL` environment variable when `model` isn't passed.
+- `wsUrl` takes precedence: when it is set, `DEEPSLATE_MODEL` is not consulted and an explicitly passed `model` is dropped with a warning.
+- If the organization can't use the requested model, the handshake is rejected and the connection fails fast with a `HandshakeRejectedError` — see [Reconnection](#reconnection).
 
 ### TTS Configuration
 
@@ -223,6 +242,11 @@ Tool definitions are re-synced automatically after every reconnect.
 resets its state, re-sends the initialize request, re-syncs tool definitions, and resumes — all without
 any action required from your code. Call `close()` to stop the retry loop permanently.
 
+A handshake the server permanently rejects (HTTP 4xx other than 408/429 — e.g. a bad API key, an unknown
+vendor/organization, or a model the organization has no access to) is not retried: `fatalError` fires
+immediately with a `HandshakeRejectedError` whose `status` and `model` describe the rejection and whose
+message says what to check.
+
 ---
 
 ## API Reference
@@ -277,7 +301,7 @@ Subscribe with `session.on(event, listener)`. Event payloads are strongly typed 
 | `chatHistory` | `(messages: ChatMessage[])` | Chat history export received |
 | `conversationQueryResult` | `(queryId: string, text: string)` | Side-channel query result received |
 | `error` | `(category: string, message: string, traceId: string \| null)` | Server sent an error notification |
-| `fatalError` | `(err: Error)` | All reconnect retries exhausted |
+| `fatalError` | `(err: Error)` | All reconnect retries exhausted, or the handshake was rejected (`HandshakeRejectedError`) |
 | `socketError` | `(err: Error)` | Background WebSocket error (logging/observability only; does not affect the run loop) |
 
 ### `DeepslateOptions`
@@ -287,10 +311,11 @@ Subscribe with `session.on(event, listener)`. Event payloads are strongly typed 
 | `vendorId` | `string` | env: `DEEPSLATE_VENDOR_ID` | Deepslate vendor ID                                       |
 | `organizationId` | `string` | env: `DEEPSLATE_ORGANIZATION_ID` | Deepslate organization ID                                 |
 | `apiKey` | `string` | env: `DEEPSLATE_API_KEY` | Deepslate API key                                         |
+| `model` | `DeepslateModelId` | env: `DEEPSLATE_MODEL`, else `undefined` (platform default) | Realtime model; ignored when `wsUrl` is set |
 | `baseUrl` | `string` | `"https://app.deepslate.eu"` | Base URL for Deepslate API                                |
 | `systemPrompt` | `string` | `"You are a helpful assistant."` | Default system prompt                                     |
 | `temperature` | `number` | `0.3` | Sampling temperature (0.0–2.0)                            |
-| `wsUrl` | `string` | `undefined` | Direct WebSocket URL (overrides `baseUrl`; for local dev) |
+| `wsUrl` | `string` | `undefined` | Direct WebSocket URL (overrides `baseUrl` and `model`; for local dev) |
 | `maxRetries` | `number` | `3` | Maximum reconnection attempts before giving up            |
 | `generateReplyTimeout` | `number` | `30.0` | Timeout in seconds for reply generation (0 = no timeout)  |
 | `experiments` | `Experiments` | `undefined` | Server-side experiments to enable                         |

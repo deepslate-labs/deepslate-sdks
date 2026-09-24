@@ -135,6 +135,7 @@ class RealtimeModel(llm.RealtimeModel):
         http_session: aiohttp.ClientSession | None = None,
         ws_url: str | None = None,
         experiments: Mapping[str, Any] | None = None,
+        model: str | None = None,
     ):
         """Initialize a Deepslate RealtimeModel.
 
@@ -159,6 +160,10 @@ class RealtimeModel(llm.RealtimeModel):
             experiments: Server-side experiments to enable. Experiments carry zero
                          stability guarantees and may change or disappear without a
                          version bump.
+            model: Realtime model to use: a ``DeepslateModel`` (e.g.
+                   ``DeepslateModel.OPAL_V3_0_PREVIEW``) or any model id string.
+                   Falls back to the DEEPSLATE_MODEL env var; when neither is set the
+                   platform default is used. Not used when ``ws_url`` is set.
         """
         super().__init__(
             capabilities=llm.RealtimeCapabilities(
@@ -207,10 +212,13 @@ class RealtimeModel(llm.RealtimeModel):
                     "Provide it via the api_key parameter or set the DEEPSLATE_API_KEY environment variable."
                 )
 
+        deepslate_model = model if ws_url else (model or os.environ.get("DEEPSLATE_MODEL"))
+
         self._opts = DeepslateOptions(
             vendor_id=deepslate_vendor_id,
             organization_id=deepslate_organization_id,
             api_key=deepslate_api_key,
+            model=deepslate_model,
             base_url=base_url,
             system_prompt=system_prompt,
             temperature=temperature,
@@ -282,7 +290,7 @@ class RealtimeModel(llm.RealtimeModel):
     @property
     def model(self) -> str:
         """Return the model identifier used in emitted usage/metrics metadata."""
-        return "opal"
+        return self._opts.model or "opal"
 
     def session(
         self, *, turn_detection_disabled: bool = False
