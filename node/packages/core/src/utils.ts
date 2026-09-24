@@ -73,19 +73,22 @@ export function durationFromMs(ms: number): { seconds: bigint; nanos: number } {
 
 /**
  * Build the WebSocket URL for the Deepslate realtime endpoint.
- * https → wss, http → ws; preserves host and port.
+ * https → wss, http → ws; preserves host and port. When `model` is given it
+ * is appended as the last path segment; otherwise the platform default is used.
  */
 export function buildWsUrl(
   baseUrl: string,
   vendorId: string,
   organizationId: string,
+  model?: string,
 ): string {
   const parsed = new URL(baseUrl);
   let scheme: string;
   if (parsed.protocol === "https:") scheme = "wss:";
   else if (parsed.protocol === "http:") scheme = "ws:";
   else scheme = parsed.protocol;
-  return `${scheme}//${parsed.host}/api/v1/vendors/${vendorId}/organizations/${organizationId}/realtime`;
+  const url = `${scheme}//${parsed.host}/api/v1/vendors/${vendorId}/organizations/${organizationId}/realtime`;
+  return model ? `${url}/${model}` : url;
 }
 
 /** Build an InitializeSessionRequest from core configuration objects. */
