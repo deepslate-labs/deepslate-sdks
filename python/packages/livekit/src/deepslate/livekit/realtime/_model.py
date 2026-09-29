@@ -367,6 +367,9 @@ class DeepslateRealtimeSession(
         self._pending_user_generation: bool = False
         self._pending_uninterruptable: bool = False
         self._pending_user_text: str | None = None
+        
+        self._speech_starting_at: float | None = None
+        self._user_turn_started_at: float | None = None
 
         # Conversation query tracking: query_id → Future[str]
         self._pending_queries: dict[str, asyncio.Future[str]] = {}
@@ -719,6 +722,8 @@ class DeepslateRealtimeSession(
         self._generations.clear()
         self._settled_turns.clear()
         self._last_turn_id = None
+        self._speech_starting_at = None
+        self._user_turn_started_at = None
         self._connection_attempt_started_at = time.monotonic()
 
     async def on_session_initialized(self) -> None:
@@ -916,8 +921,10 @@ class DeepslateRealtimeSession(
                 item_id=utils.shortuuid("item_"),
                 transcript=text,
                 is_final=True,
+                turn_started_at=self._user_turn_started_at,
             ),
         )
+        self._user_turn_started_at = None
 
     async def on_chat_history(self, messages) -> None:
         """Emit the exported chat history to listeners."""
@@ -969,7 +976,10 @@ class DeepslateRealtimeSession(
     ) -> None:
         """Handle a VAD state transition, interrupting on confirmed user speech."""
         open_gens = list(self._generations.values())
-        if from_state == "SPEECH_STARTING" and to_state == "SPEECH":
+        if to_state == "SPEECH_STARTING":
+            self._speech_starting_at = time.time()
+        elif from_state == "SPEECH_STARTING" and to_state == "SPEECH":
+            self._user_turn_started_at = self._speech_starting_at
             protected = any(
                 gen.uninterruptable and not self._audio_drained(gen)
                 for gen in open_gens
