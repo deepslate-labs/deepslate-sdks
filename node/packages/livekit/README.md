@@ -116,12 +116,13 @@ The constructor takes a single options object (`RealtimeModelOptions`):
 | `organizationId` | `string` | env: `DEEPSLATE_ORGANIZATION_ID` | Deepslate organization ID |
 | `apiKey` | `string` | env: `DEEPSLATE_API_KEY` | Deepslate API key |
 | `baseUrl` | `string` | `"https://app.deepslate.eu"` | Base URL for Deepslate API |
+| `model` | `DeepslateModelId` | env: `DEEPSLATE_MODEL`, else `undefined` (platform default) | Realtime model — see [Model Selection](#model-selection) |
 | `systemPrompt` | `string` | `"You are a helpful assistant."` | System prompt for the model |
 | `temperature` | `number` | `0.3` | Sampling temperature (0.0–2.0) |
 | `generateReplyTimeout` | `number` | `30.0` | Timeout in seconds for `generateReply` (0 = no limit) |
 | `vad` | `VadConfig` | defaults | Voice activity detection tuning |
 | `ttsConfig` | `TtsConfig` | `undefined` | TTS configuration (enables server-side audio output) |
-| `wsUrl` | `string` | `undefined` | Direct WebSocket URL (for local dev/testing) |
+| `wsUrl` | `string` | `undefined` | Direct WebSocket URL (overrides `baseUrl` and `model`; for local dev/testing) |
 | `experiments` | `Experiments` | `undefined` | Server-side experiments to enable |
 
 ### Experiments
@@ -142,6 +143,18 @@ const model = new RealtimeModel({
 ```
 
 The SDK holds no catalogue of experiments: it sends whatever you pass, and the server ignores names it does not know. Ask your Deepslate contact which experiments are available and what values they accept.
+
+### Model Selection
+
+```ts
+import { DeepslateModel, RealtimeModel } from "@deepslate-labs/livekit";
+
+const model = new RealtimeModel({ model: DeepslateModel.OPAL_V2_1 });
+```
+
+If `model` is not set, the platform default is used. `wsUrl` takes precedence over `model`.
+
+See [docs.deepslate.eu/opal#available-models](https://docs.deepslate.eu/opal#available-models) for the complete list of models.
 
 ### VAD Configuration
 

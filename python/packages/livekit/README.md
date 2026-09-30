@@ -115,6 +115,7 @@ if __name__ == "__main__":
 | `organization_id`        | `str`                 | env: `DEEPSLATE_ORGANIZATION_ID` | Deepslate organization ID                               |
 | `api_key`                | `str`                 | env: `DEEPSLATE_API_KEY`         | Deepslate API key                                       |
 | `base_url`               | `str`                 | `"https://app.deepslate.eu"`     | Base URL for Deepslate API                              |
+| `model`                  | `DeepslateModel \| str` | env: `DEEPSLATE_MODEL`, else `None` | Realtime model (`None` = platform default) — see [Model Selection](#model-selection) |
 | `system_prompt`          | `str`                 | `"You are a helpful assistant."` | System prompt for the model                             |
 | `temperature`            | `float`               | `0.3`                            | Sampling temperature (0.0–2.0)                          |
 | `generate_reply_timeout` | `float`               | `30.0`                           | Timeout in seconds for `generate_reply` (0 = no limit) |
@@ -142,6 +143,18 @@ llm = RealtimeModel(
 ```
 
 The SDK holds no catalogue of experiments: it sends whatever you pass, and the server ignores names it does not know. Ask your Deepslate contact which experiments are available and what values they accept.
+
+### Model Selection
+
+```python
+from deepslate.livekit import DeepslateModel, RealtimeModel
+
+llm = RealtimeModel(model=DeepslateModel.OPAL_V2_1)
+```
+
+If `model` is not set, the platform default is used. `ws_url` takes precedence over `model`.
+
+See [docs.deepslate.eu/opal#available-models](https://docs.deepslate.eu/opal#available-models) for the complete list of models.
 
 ### VAD Configuration
 
