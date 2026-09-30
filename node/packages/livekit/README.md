@@ -149,13 +149,10 @@ The SDK holds no catalogue of experiments: it sends whatever you pass, and the s
 ```ts
 import { DeepslateModel, RealtimeModel } from "@deepslate-labs/livekit";
 
-const model = new RealtimeModel({ model: DeepslateModel.OPAL_V3_0_PREVIEW });
+const model = new RealtimeModel({ model: DeepslateModel.OPAL_V2_1 });
 ```
 
-| Model | Notes |
-|---|---|
-| `opal-v2.1` (`DeepslateModel.OPAL_V2_1`) | Platform default |
-| `opal-v3.0-preview` (`DeepslateModel.OPAL_V3_0_PREVIEW`) | Must be enabled for your organization. Contact Deepslate to enable it |
+See [docs.deepslate.eu/opal#available-models](https://docs.deepslate.eu/opal#available-models) for the complete list of models.
 
 - Leaving `model` unset (the default) lets the platform choose its default model.
 - `model` is typed `DeepslateModelId`, which also accepts any model id string, so newly released models work without an SDK update.

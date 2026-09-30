@@ -77,13 +77,10 @@ DEEPSLATE_API_KEY=your_api_key
 ```python
 from deepslate.core import DeepslateModel, DeepslateOptions
 
-opts = DeepslateOptions.from_env(model=DeepslateModel.OPAL_V3_0_PREVIEW)
+opts = DeepslateOptions.from_env(model=DeepslateModel.OPAL_V2_1)
 ```
 
-| Model | Notes |
-|---|---|
-| `opal-v2.1` (`DeepslateModel.OPAL_V2_1`) | Platform default |
-| `opal-v3.0-preview` (`DeepslateModel.OPAL_V3_0_PREVIEW`) | Must be enabled for your organization. Contact Deepslate to enable it |
+See [docs.deepslate.eu/opal#available-models](https://docs.deepslate.eu/opal#available-models) for the complete list of models.
 
 - Leaving `model` unset (the default) lets the platform choose its default model; the connection URL is unchanged.
 - `model` also accepts any model id as a plain string, so newly released models work without an SDK update.

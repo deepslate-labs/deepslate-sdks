@@ -161,7 +161,8 @@ class RealtimeModel(llm.RealtimeModel):
                          stability guarantees and may change or disappear without a
                          version bump.
             model: Realtime model to use: a ``DeepslateModel`` (e.g.
-                   ``DeepslateModel.OPAL_V3_0_PREVIEW``) or any model id string.
+                   ``DeepslateModel.OPAL_V2_1``) or any model id string, which is
+                   how e.g. preview models are selected.
                    Falls back to the DEEPSLATE_MODEL env var; when neither is set the
                    platform default is used. Not used when ``ws_url`` is set.
         """

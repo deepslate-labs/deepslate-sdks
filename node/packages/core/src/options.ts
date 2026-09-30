@@ -47,16 +47,15 @@ export enum HostedTtsMode {
 }
 
 /**
- * Known Deepslate realtime model identifiers.
+ * Released Deepslate realtime model identifiers.
  *
- * `DeepslateOptions.model` also accepts any other model id string, so newly
- * released models work without an SDK update.
+ * Only generally available models are listed. Preview models and models released
+ * after this SDK version can be used by passing their ID directly to
+ * `DeepslateOptions.model`.
  */
 export const DeepslateModel = {
   /** Opal v2.1, the platform default. */
   OPAL_V2_1: "opal-v2.1",
-  /** Opal v3.0 preview. */
-  OPAL_V3_0_PREVIEW: "opal-v3.0-preview",
 } as const;
 
 /** A {@link DeepslateModel} value or any other model id string. */

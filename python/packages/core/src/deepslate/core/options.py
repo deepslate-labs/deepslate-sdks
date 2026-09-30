@@ -24,17 +24,15 @@ logger = logging.getLogger("deepslate.core")
 
 
 class DeepslateModel(StrEnum):
-    """Known Deepslate realtime model identifiers.
+    """Released Deepslate realtime model identifiers.
 
-    ``DeepslateOptions.model`` also accepts any other model id as a plain
-    string, so newly released models work without an SDK update.
+    Only generally available models are listed. Preview models and models released
+    after this SDK version can be used by passing their ID directly to
+    ``DeepslateOptions.model``.
     """
 
     OPAL_V2_1 = "opal-v2.1"
     """Opal v2.1, the platform default."""
-
-    OPAL_V3_0_PREVIEW = "opal-v3.0-preview"
-    """Opal v3.0 preview."""
 
 
 def _normalize_model(model: Optional[str]) -> Optional[str]:
