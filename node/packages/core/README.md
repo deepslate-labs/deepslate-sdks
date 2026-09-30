@@ -85,13 +85,9 @@ import { DeepslateModel, optionsFromEnv } from "@deepslate-labs/core";
 const opts = optionsFromEnv({ model: DeepslateModel.OPAL_V2_1 });
 ```
 
-See [docs.deepslate.eu/opal#available-models](https://docs.deepslate.eu/opal#available-models) for the complete list of models.
+If `model` is not set, the platform default is used. `wsUrl` takes precedence over `model`.
 
-- Leaving `model` unset (the default) lets the platform choose its default model; the connection URL is unchanged.
-- `model` is typed `DeepslateModelId`, which also accepts any model id string, so newly released models work without an SDK update.
-- `optionsFromEnv()` falls back to the `DEEPSLATE_MODEL` environment variable when `model` isn't passed.
-- `wsUrl` takes precedence: when it is set, `DEEPSLATE_MODEL` is not consulted and an explicitly passed `model` is dropped with a warning.
-- If the organization can't use the requested model, the handshake is rejected and the connection fails fast with a `HandshakeRejectedError` — see [Reconnection](#reconnection).
+See [docs.deepslate.eu/opal#available-models](https://docs.deepslate.eu/opal#available-models) for the complete list of models.
 
 ### TTS Configuration
 

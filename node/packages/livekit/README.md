@@ -152,14 +152,9 @@ import { DeepslateModel, RealtimeModel } from "@deepslate-labs/livekit";
 const model = new RealtimeModel({ model: DeepslateModel.OPAL_V2_1 });
 ```
 
-See [docs.deepslate.eu/opal#available-models](https://docs.deepslate.eu/opal#available-models) for the complete list of models.
+If `model` is not set, the platform default is used. `wsUrl` takes precedence over `model`.
 
-- Leaving `model` unset (the default) lets the platform choose its default model.
-- `model` is typed `DeepslateModelId`, which also accepts any model id string, so newly released models work without an SDK update.
-- Falls back to the `DEEPSLATE_MODEL` environment variable when `model` isn't passed.
-- `wsUrl` takes precedence: when it is set, `DEEPSLATE_MODEL` is not consulted and an explicitly passed `model` is dropped with a warning.
-- The configured id is reported as the model name in LiveKit usage metrics (`"deepslate-realtime"` when unset).
-- If the handshake is rejected (HTTP 4xx other than 408/429 — e.g. the organization can't use the requested model, or the credentials are wrong), the session does not retry: it fails fast with a `HandshakeRejectedError` (exported by `@deepslate-labs/core`), surfaced as a non-recoverable `realtime_model_error` whose message names the status and model.
+See [docs.deepslate.eu/opal#available-models](https://docs.deepslate.eu/opal#available-models) for the complete list of models.
 
 ### VAD Configuration
 
