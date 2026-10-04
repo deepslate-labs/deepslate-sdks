@@ -20,6 +20,7 @@ except importlib.metadata.PackageNotFoundError:
     __version__ = "unknown"
 
 from deepslate.core.options import (
+    DeepslateModel,
     DeepslateOptions,
     ElevenLabsLocation,
     ElevenLabsTtsConfig,
@@ -35,6 +36,7 @@ from . import _plugin  # noqa: F401 – triggers Plugin.register_plugin on impor
 
 __all__ = [
     "__version__",
+    "DeepslateModel",
     "DeepslateOptions",
     "ElevenLabsLocation",
     "ElevenLabsTtsConfig",

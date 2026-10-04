@@ -22,7 +22,7 @@ Shared core library for [Deepslate's](https://deepslate.eu/) realtime voice AI S
 `@deepslate-labs/core` provides everything needed to connect to the Deepslate Realtime API from any Node application:
 
 - **`DeepslateSession`** — High-level session that manages the full WebSocket lifecycle, protobuf framing, session initialization, reconnection, and event dispatch. A typed `EventEmitter`. The primary building block for custom integrations.
-- **`DeepslateOptions`** — API credentials and connection configuration, with `resolveOptions()` / `optionsFromEnv()` normalizers.
+- **`DeepslateOptions` / `DeepslateModel`** — API credentials, model selection and connection configuration, with `resolveOptions()` / `optionsFromEnv()` normalizers.
 - **`VadConfig`** — Server-side Voice Activity Detection parameters.
 - **`HostedTtsConfig` / `HostedTtsMode`** — Deepslate-hosted (cloned) voice TTS configuration.
 - **`ElevenLabsTtsConfig` / `ElevenLabsLocation`** — ElevenLabs TTS configuration (`elevenLabsConfigFromEnv()` loads from env).
@@ -76,6 +76,18 @@ DEEPSLATE_VENDOR_ID=your_vendor_id
 DEEPSLATE_ORGANIZATION_ID=your_organization_id
 DEEPSLATE_API_KEY=your_api_key
 ```
+
+### Model Selection
+
+```ts
+import { DeepslateModel, optionsFromEnv } from "@deepslate-labs/core";
+
+const opts = optionsFromEnv({ model: DeepslateModel.OPAL_V2_1 });
+```
+
+If `model` is not set, the platform default is used.
+
+See [docs.deepslate.eu/opal#available-models](https://docs.deepslate.eu/opal#available-models) for the complete list of models.
 
 ### TTS Configuration
 
@@ -223,6 +235,11 @@ Tool definitions are re-synced automatically after every reconnect.
 resets its state, re-sends the initialize request, re-syncs tool definitions, and resumes — all without
 any action required from your code. Call `close()` to stop the retry loop permanently.
 
+A handshake the server permanently rejects (HTTP 4xx other than 408/429 — e.g. a bad API key, an unknown
+vendor/organization, or a model the organization has no access to) is not retried: `fatalError` fires
+immediately with a `HandshakeRejectedError` whose `status` and `model` describe the rejection and whose
+message says what to check.
+
 ---
 
 ## API Reference
@@ -277,7 +294,7 @@ Subscribe with `session.on(event, listener)`. Event payloads are strongly typed 
 | `chatHistory` | `(messages: ChatMessage[])` | Chat history export received |
 | `conversationQueryResult` | `(queryId: string, text: string)` | Side-channel query result received |
 | `error` | `(category: string, message: string, traceId: string \| null)` | Server sent an error notification |
-| `fatalError` | `(err: Error)` | All reconnect retries exhausted |
+| `fatalError` | `(err: Error)` | All reconnect retries exhausted, or the handshake was rejected (`HandshakeRejectedError`) |
 | `socketError` | `(err: Error)` | Background WebSocket error (logging/observability only; does not affect the run loop) |
 
 ### `DeepslateOptions`
@@ -287,6 +304,7 @@ Subscribe with `session.on(event, listener)`. Event payloads are strongly typed 
 | `vendorId` | `string` | env: `DEEPSLATE_VENDOR_ID` | Deepslate vendor ID                                       |
 | `organizationId` | `string` | env: `DEEPSLATE_ORGANIZATION_ID` | Deepslate organization ID                                 |
 | `apiKey` | `string` | env: `DEEPSLATE_API_KEY` | Deepslate API key                                         |
+| `model` | `DeepslateModelId` | env: `DEEPSLATE_MODEL`, else `undefined` (platform default) | Realtime model |
 | `baseUrl` | `string` | `"https://app.deepslate.eu"` | Base URL for Deepslate API                                |
 | `systemPrompt` | `string` | `"You are a helpful assistant."` | Default system prompt                                     |
 | `temperature` | `number` | `0.3` | Sampling temperature (0.0–2.0)                            |

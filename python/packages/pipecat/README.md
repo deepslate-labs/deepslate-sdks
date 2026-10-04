@@ -204,6 +204,7 @@ if __name__ == "__main__":
 | `vendor_id`       | `str`           | env: `DEEPSLATE_VENDOR_ID`       | Deepslate vendor ID                                            |
 | `organization_id` | `str`           | env: `DEEPSLATE_ORGANIZATION_ID` | Deepslate organization ID                                      |
 | `api_key`         | `str`           | env: `DEEPSLATE_API_KEY`         | Deepslate API key                                              |
+| `model`           | `DeepslateModel \| str \| None` | env: `DEEPSLATE_MODEL`, else `None` | Realtime model (`None` = platform default) |
 | `base_url`        | `str`           | `"https://app.deepslate.eu"`     | Base URL for Deepslate API                                     |
 | `system_prompt`   | `str`           | `"You are a helpful assistant."` | System prompt for the AI assistant                             |
 | `temperature`     | `float`         | `0.3`                            | Sampling temperature (0.0–2.0)                                 |
@@ -231,6 +232,20 @@ opts = DeepslateOptions.from_env(
 ```
 
 Experiments carry no stability guarantees and may change or disappear without a version bump or warning. The SDK holds no catalogue of them: ask your Deepslate contact which experiments are available and what values they accept.
+
+### Model Selection
+
+Pick the realtime model with `model`:
+
+```python
+from deepslate.pipecat import DeepslateModel, DeepslateOptions
+
+opts = DeepslateOptions.from_env(model=DeepslateModel.OPAL_V2_1)
+```
+
+If `model` is not set, the platform default is used.
+
+See [docs.deepslate.eu/opal#available-models](https://docs.deepslate.eu/opal#available-models) for the complete list of models.
 
 ### VAD Configuration
 

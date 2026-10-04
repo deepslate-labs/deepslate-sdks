@@ -21,12 +21,14 @@ export {
 
 // Re-export the core config types callers need to construct a model.
 export {
+  DeepslateModel,
   TriggerMode,
   ElevenLabsLocation,
   HostedTtsMode,
   elevenLabsConfigFromEnv,
 } from "@deepslate-labs/core";
 export type {
+  DeepslateModelId,
   DeepslateOptions,
   VadConfig,
   TtsConfig,

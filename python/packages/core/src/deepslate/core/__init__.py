@@ -19,10 +19,11 @@ try:
 except importlib.metadata.PackageNotFoundError:
     __version__ = "unknown"
 
-from .client import BaseDeepslateClient
+from .client import BaseDeepslateClient, HandshakeRejectedError
 from .session import DeepslateSession
 from ._user_agent import build_user_agent
 from .options import (
+    DeepslateModel,
     DeepslateOptions,
     ElevenLabsLocation,
     ElevenLabsTtsConfig,
@@ -51,6 +52,7 @@ from ._types import (
 __all__ = [
     "__version__",
     "BaseDeepslateClient",
+    "HandshakeRejectedError",
     "DeepslateSession",
     "build_user_agent",
     "DeepslateSessionListener",
@@ -59,6 +61,7 @@ __all__ = [
     "ContentBlockDict",
     "FunctionDefinitionDict",
     "FunctionToolDict",
+    "DeepslateModel",
     "DeepslateOptions",
     "ElevenLabsLocation",
     "ElevenLabsTtsConfig",
