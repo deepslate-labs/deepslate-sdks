@@ -80,7 +80,7 @@ from deepslate.core import DeepslateModel, DeepslateOptions
 opts = DeepslateOptions.from_env(model=DeepslateModel.OPAL_V2_1)
 ```
 
-If `model` is not set, the platform default is used. `ws_url` takes precedence over `model`.
+If `model` is not set, the platform default is used.
 
 See [docs.deepslate.eu/opal#available-models](https://docs.deepslate.eu/opal#available-models) for the complete list of models.
 
@@ -347,11 +347,11 @@ Subclass this and override only the methods you need. All methods are `async` an
 | `vendor_id` | `str` | env: `DEEPSLATE_VENDOR_ID` | Deepslate vendor ID |
 | `organization_id` | `str` | env: `DEEPSLATE_ORGANIZATION_ID` | Deepslate organization ID |
 | `api_key` | `str` | env: `DEEPSLATE_API_KEY` | Deepslate API key |
-| `model` | `DeepslateModel \| str \| None` | env: `DEEPSLATE_MODEL`, else `None` (platform default) | Realtime model; ignored when `ws_url` is set |
+| `model` | `DeepslateModel \| str \| None` | env: `DEEPSLATE_MODEL`, else `None` (platform default) | Realtime model |
 | `base_url` | `str` | `"https://app.deepslate.eu"` | Base URL for Deepslate API |
 | `system_prompt` | `str` | `"You are a helpful assistant."` | Default system prompt |
 | `temperature` | `float` | `0.3` | Sampling temperature (0.0–2.0) |
-| `ws_url` | `str \| None` | `None` | Direct WebSocket URL (overrides `base_url` and `model`; for local dev) |
+| `ws_url` | `str \| None` | `None` | Direct WebSocket URL (overrides `base_url`; for local dev) |
 | `max_retries` | `int` | `3` | Maximum reconnection attempts before giving up |
 | `experiments` | `Mapping[str, Any] \| None` | `None` | Server-side experiments to enable |
 

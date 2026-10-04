@@ -122,7 +122,7 @@ The constructor takes a single options object (`RealtimeModelOptions`):
 | `generateReplyTimeout` | `number` | `30.0` | Timeout in seconds for `generateReply` (0 = no limit) |
 | `vad` | `VadConfig` | defaults | Voice activity detection tuning |
 | `ttsConfig` | `TtsConfig` | `undefined` | TTS configuration (enables server-side audio output) |
-| `wsUrl` | `string` | `undefined` | Direct WebSocket URL (overrides `baseUrl` and `model`; for local dev/testing) |
+| `wsUrl` | `string` | `undefined` | Direct WebSocket URL (for local dev/testing) |
 | `experiments` | `Experiments` | `undefined` | Server-side experiments to enable |
 
 ### Experiments
@@ -152,7 +152,7 @@ import { DeepslateModel, RealtimeModel } from "@deepslate-labs/livekit";
 const model = new RealtimeModel({ model: DeepslateModel.OPAL_V2_1 });
 ```
 
-If `model` is not set, the platform default is used. `wsUrl` takes precedence over `model`.
+If `model` is not set, the platform default is used.
 
 See [docs.deepslate.eu/opal#available-models](https://docs.deepslate.eu/opal#available-models) for the complete list of models.
 

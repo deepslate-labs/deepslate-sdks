@@ -152,7 +152,7 @@ from deepslate.livekit import DeepslateModel, RealtimeModel
 llm = RealtimeModel(model=DeepslateModel.OPAL_V2_1)
 ```
 
-If `model` is not set, the platform default is used. `ws_url` takes precedence over `model`.
+If `model` is not set, the platform default is used.
 
 See [docs.deepslate.eu/opal#available-models](https://docs.deepslate.eu/opal#available-models) for the complete list of models.
 

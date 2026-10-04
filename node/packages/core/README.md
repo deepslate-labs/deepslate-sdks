@@ -85,7 +85,7 @@ import { DeepslateModel, optionsFromEnv } from "@deepslate-labs/core";
 const opts = optionsFromEnv({ model: DeepslateModel.OPAL_V2_1 });
 ```
 
-If `model` is not set, the platform default is used. `wsUrl` takes precedence over `model`.
+If `model` is not set, the platform default is used.
 
 See [docs.deepslate.eu/opal#available-models](https://docs.deepslate.eu/opal#available-models) for the complete list of models.
 
@@ -304,11 +304,11 @@ Subscribe with `session.on(event, listener)`. Event payloads are strongly typed 
 | `vendorId` | `string` | env: `DEEPSLATE_VENDOR_ID` | Deepslate vendor ID                                       |
 | `organizationId` | `string` | env: `DEEPSLATE_ORGANIZATION_ID` | Deepslate organization ID                                 |
 | `apiKey` | `string` | env: `DEEPSLATE_API_KEY` | Deepslate API key                                         |
-| `model` | `DeepslateModelId` | env: `DEEPSLATE_MODEL`, else `undefined` (platform default) | Realtime model; ignored when `wsUrl` is set |
+| `model` | `DeepslateModelId` | env: `DEEPSLATE_MODEL`, else `undefined` (platform default) | Realtime model |
 | `baseUrl` | `string` | `"https://app.deepslate.eu"` | Base URL for Deepslate API                                |
 | `systemPrompt` | `string` | `"You are a helpful assistant."` | Default system prompt                                     |
 | `temperature` | `number` | `0.3` | Sampling temperature (0.0–2.0)                            |
-| `wsUrl` | `string` | `undefined` | Direct WebSocket URL (overrides `baseUrl` and `model`; for local dev) |
+| `wsUrl` | `string` | `undefined` | Direct WebSocket URL (overrides `baseUrl`; for local dev) |
 | `maxRetries` | `number` | `3` | Maximum reconnection attempts before giving up            |
 | `generateReplyTimeout` | `number` | `30.0` | Timeout in seconds for reply generation (0 = no timeout)  |
 | `experiments` | `Experiments` | `undefined` | Server-side experiments to enable                         |
