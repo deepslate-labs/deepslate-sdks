@@ -270,10 +270,13 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
     temperature?: number,
   ): Promise<void> {
     if (systemPrompt === undefined && temperature === undefined) return;
-    const inferenceConfiguration: { systemPrompt?: string; temperature?: number } =
-      {};
-    if (systemPrompt !== undefined) inferenceConfiguration.systemPrompt = systemPrompt;
-    if (temperature !== undefined) inferenceConfiguration.temperature = temperature;
+    if (systemPrompt !== undefined) this.options.systemPrompt = systemPrompt;
+    if (temperature !== undefined) this.options.temperature = temperature;
+    if (!this.initRequestSent) return;
+    const inferenceConfiguration = {
+      systemPrompt: this.options.systemPrompt,
+      temperature: this.options.temperature,
+    };
     this.enqueueOrBuffer({
       payload: { case: "reconfigureSessionRequest", value: { inferenceConfiguration } },
     });
