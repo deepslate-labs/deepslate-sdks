@@ -285,17 +285,23 @@ class DeepslateSession:
         system_prompt: Optional[str] = None,
         temperature: Optional[float] = None,
     ) -> None:
-        """Send a ``ReconfigureSessionRequest`` with the provided fields.
+        """Update the system prompt and/or temperature of the session.
 
-        Fields left as ``None`` are omitted from the request.
+        Fields left as ``None`` keep their current value. The new values are
+        stored in the session options, so later (re)initializations use them.
         """
         if system_prompt is None and temperature is None:
             return
-        inference_config = proto.InferenceConfiguration()
         if system_prompt is not None:
-            inference_config.system_prompt = system_prompt
+            self._options.system_prompt = system_prompt
         if temperature is not None:
-            inference_config.temperature = temperature
+            self._options.temperature = temperature
+        if not self._init_request_sent:
+            return
+        inference_config = proto.InferenceConfiguration(
+            system_prompt=self._options.system_prompt,
+            temperature=self._options.temperature,
+        )
         reconfig = proto.ReconfigureSessionRequest(
             inference_configuration=inference_config
         )

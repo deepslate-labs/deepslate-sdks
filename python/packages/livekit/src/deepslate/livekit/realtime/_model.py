@@ -313,8 +313,7 @@ class RealtimeModel(llm.RealtimeModel):
 
         Changes take effect on the next session initialization (e.g., after reconnect).
         To apply immediately to an active session use
-        ``DeepslateRealtimeSession.update_instructions()`` or send a
-        ``ReconfigureSessionRequest`` via the session.
+        ``DeepslateRealtimeSession.update_instructions()``.
         """
         if utils.is_given(system_prompt):
             self._opts.system_prompt = system_prompt
@@ -411,7 +410,7 @@ class DeepslateRealtimeSession(
         return self._tools.copy()
 
     async def update_instructions(self, instructions: str | Instructions) -> None:
-        """Update system prompt for the next session initialization."""
+        """Update the system prompt, applying it to the running session."""
         if isinstance(instructions, Instructions):
             modality: Literal["audio", "text"] = (
                 "audio" if self._realtime_model.capabilities.audio_output else "text"
@@ -419,8 +418,7 @@ class DeepslateRealtimeSession(
             instructions = instructions.render(modality=modality)
 
         self._instructions = instructions
-        self._opts.system_prompt = instructions
-        logger.debug("instructions updated (will take effect on next session)")
+        await self._session.reconfigure(system_prompt=instructions)
 
     async def update_chat_ctx(self, chat_ctx: llm.ChatContext) -> None:
         """Capture new user messages and handle function call outputs."""

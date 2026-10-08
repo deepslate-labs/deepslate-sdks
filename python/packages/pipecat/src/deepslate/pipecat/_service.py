@@ -320,17 +320,13 @@ class DeepslateRealtimeLLMService(LLMService, DeepslateSessionListener):
 
     async def _handle_update_settings(self, frame: LLMUpdateSettingsFrame):
         """Apply runtime changes to system_prompt and/or temperature."""
-        if self._session is None:
-            return
         new_prompt = frame.settings.get("system_prompt")
         new_temp = frame.settings.get("temperature")
         if new_prompt is not None:
             self._opts.system_prompt = new_prompt
         if new_temp is not None:
             self._opts.temperature = new_temp
-        if (
-            new_prompt is not None or new_temp is not None
-        ) and self._session.session_initialized:
+        if self._session is not None:
             await self._session.reconfigure(
                 system_prompt=new_prompt,
                 temperature=new_temp,
