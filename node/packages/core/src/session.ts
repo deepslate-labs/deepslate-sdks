@@ -532,8 +532,8 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
           this.fire(
             "audioChunk",
             chunk.audio.data,
-            this.sampleRateValue ?? 24000,
-            this.channelsValue ?? 1,
+            this.initSampleRate ?? 24000,
+            this.initChannels ?? 1,
             null,
           );
         }
