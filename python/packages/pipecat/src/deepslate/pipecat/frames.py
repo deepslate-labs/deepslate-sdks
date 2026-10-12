@@ -15,7 +15,8 @@
 from dataclasses import dataclass, field
 from typing import Optional
 
-from pipecat.frames.frames import Frame, TranscriptionFrame
+from pipecat.frames.frames import Frame, TranscriptionFrame, TTSTextFrame
+from pipecat.utils.text.base_text_aggregator import AggregationType
 
 from deepslate.core import ChatMessageDict
 
@@ -116,11 +117,31 @@ class DeepslateUserTranscriptionFrame(TranscriptionFrame):
 
 
 @dataclass
-class DeepslateModelTranscriptionFrame(Frame):
-    """TTS word-alignment transcription for model audio produced by Deepslate."""
+class DeepslateModelTranscriptionFrame(TTSTextFrame):
+    """Text that just became audible (playback-paced)."""
 
-    text: str
-    """The transcribed text aligned to the model's TTS output."""
+    aggregated_by: AggregationType | str = AggregationType.WORD
+    turn_id: Optional[int] = None
+    """The assistant turn this text belongs to."""
+
+    audio_bytes_played: int = 0
+    """Server-side count of the turn's audio bytes played when this text became audible."""
+
+    exact: bool = True
+    """False when the server estimated the text/audio alignment instead of measuring it."""
+
+    def __post_init__(self):
+        super().__post_init__()
+        self.includes_inter_frame_spaces = True
+
+
+@dataclass
+class DeepslateTurnSnapshotFrame(Frame):
+    """The server's authoritative view of one turn (``TurnSnapshot``)."""
+
+    message: ChatMessageDict = field(default_factory=dict)  # type: ignore[assignment]
+    is_final: bool = False
+    """True when the turn's content will not change anymore."""
 
 
 @dataclass

@@ -14,7 +14,7 @@
 
 import asyncio
 import time
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Set
 
 from loguru import logger
 
@@ -41,6 +41,7 @@ from pipecat.adapters.schemas.tools_schema import ToolsSchema
 from pipecat.services.llm_service import FunctionCallParams, LLMService
 
 from deepslate.core import (
+    ChatMessageDict,
     DeepslateOptions,
     DeepslateSession,
     DeepslateSessionListener,
@@ -60,6 +61,7 @@ from .frames import (
     DeepslateSessionInitializedFrame,
     DeepslateUserTranscriptionFrame,
     DeepslateModelTranscriptionFrame,
+    DeepslateTurnSnapshotFrame,
     DeepslateConversationQueryFrame,
     DeepslateConversationQueryResultFrame,
     DeepslateVadStateEventFrame,
@@ -83,6 +85,9 @@ class DeepslateRealtimeLLMService(LLMService, DeepslateSessionListener):
 
         self._session: Optional[DeepslateSession] = None
         self._tools: List[FunctionToolDict] = []
+        self._open_turns: Set[int] = set()
+        self._tool_turns: Set[int] = set()
+        self._deferred_end: Optional[int] = None
 
     async def start(self, frame: StartFrame):
         """Starts the Pipecat service and opens the Deepslate connection."""
@@ -176,16 +181,27 @@ class DeepslateRealtimeLLMService(LLMService, DeepslateSessionListener):
     async def on_session_initialized(self) -> None:
         await self.push_frame(DeepslateSessionInitializedFrame())
 
+    async def on_connecting(self) -> None:
+        self._open_turns.clear()
+        self._tool_turns.clear()
+        self._deferred_end = None
+
     async def on_response_begin(self, turn_id: int = 0) -> None:
+        if self._tts_config is not None:
+            self._open_turns.add(turn_id)
         await self.push_frame(LLMFullResponseStartFrame())
 
     async def on_response_end(self, turn_id: int = 0) -> None:
-        await self.push_frame(LLMFullResponseEndFrame())
+        if self._tts_config is None:
+            await self.push_frame(LLMFullResponseEndFrame())
 
     async def on_text_fragment(
         self, text: str, turn_id: Optional[int] = None
     ) -> None:
-        await self.push_frame(LLMTextFrame(text))
+        frame = LLMTextFrame(text)
+        if self._tts_config is not None:
+            frame.append_to_context = False
+        await self.push_frame(frame)
 
     async def on_audio_chunk(
         self,
@@ -202,8 +218,58 @@ class DeepslateRealtimeLLMService(LLMService, DeepslateSessionListener):
                 num_channels=channels,
             )
         )
-        if transcript:
-            await self.push_frame(DeepslateModelTranscriptionFrame(text=transcript))
+
+    async def on_model_speech_progress(
+        self,
+        turn_id: int,
+        text: str,
+        audio_bytes_played: int,
+        exact: bool,
+    ) -> None:
+        if self._deferred_end not in (None, turn_id):
+            await self._push_deferred_end()
+        if not text:
+            return
+        frame = DeepslateModelTranscriptionFrame(
+            text=text,
+            turn_id=turn_id,
+            audio_bytes_played=audio_bytes_played,
+            exact=exact,
+        )
+        frame.pts = self.get_clock().get_time()
+        await self.push_frame(frame)
+
+    async def on_turn_snapshot(
+        self, message: ChatMessageDict, is_final: bool
+    ) -> None:
+        await self.push_frame(
+            DeepslateTurnSnapshotFrame(message=message, is_final=is_final)
+        )
+        turn_id = message.get("turn_id")
+        if not is_final or turn_id not in self._open_turns:
+            return
+        self._open_turns.discard(turn_id)
+        await self._push_deferred_end()
+        if (
+            turn_id in self._tool_turns
+            and message.get("delivery_status") != "DELIVERY_INTERRUPTED"
+        ):
+            # Finalized at the tool call while its audio still plays; ended once
+            # the next turn becomes audible.
+            self._deferred_end = turn_id
+        else:
+            await self._push_response_end()
+        self._tool_turns.discard(turn_id)
+
+    async def _push_deferred_end(self) -> None:
+        if self._deferred_end is not None:
+            self._deferred_end = None
+            await self._push_response_end()
+
+    async def _push_response_end(self) -> None:
+        frame = LLMFullResponseEndFrame()
+        frame.pts = self.get_clock().get_time()
+        await self.push_frame(frame)
 
     async def on_tool_call(
         self,
@@ -212,6 +278,8 @@ class DeepslateRealtimeLLMService(LLMService, DeepslateSessionListener):
         params: dict,
         turn_id: Optional[int] = None,
     ) -> None:
+        if turn_id in self._open_turns:
+            self._tool_turns.add(turn_id)
         asyncio.create_task(self._dispatch_function_call(call_id, name, params))
 
     async def on_error(
@@ -236,6 +304,7 @@ class DeepslateRealtimeLLMService(LLMService, DeepslateSessionListener):
 
     async def on_playback_buffer_clear(self) -> None:
         await self.push_frame(InterruptionFrame())
+        await self._push_deferred_end()
 
     async def on_chat_history(self, messages) -> None:
         await self.push_frame(DeepslateChatHistoryFrame(messages=messages))
