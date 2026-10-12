@@ -258,7 +258,7 @@ class HostedVoiceCloneConfig:
     """
 
     audio_data: bytes
-    """Raw PCM audio data of the voice sample (20–25 seconds of speech)."""
+    """Raw 16-bit signed little-endian PCM audio data of the voice sample (10–15 seconds of speech)."""
 
     audio_sample_rate: int
     """Sample rate of the audio sample in Hz."""
