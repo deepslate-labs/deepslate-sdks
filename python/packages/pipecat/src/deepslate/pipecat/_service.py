@@ -14,7 +14,7 @@
 
 import asyncio
 import time
-from typing import Any, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set
 
 from loguru import logger
 
@@ -86,7 +86,8 @@ class DeepslateRealtimeLLMService(LLMService, DeepslateSessionListener):
         self._session: Optional[DeepslateSession] = None
         self._tools: List[FunctionToolDict] = []
         self._open_turns: Set[int] = set()
-        self._tool_turns: Set[int] = set()
+        self._audio_sent: Dict[int, int] = {}
+        self._audio_played: Dict[int, int] = {}
         self._deferred_end: Optional[int] = None
 
     async def start(self, frame: StartFrame):
@@ -182,9 +183,12 @@ class DeepslateRealtimeLLMService(LLMService, DeepslateSessionListener):
         await self.push_frame(DeepslateSessionInitializedFrame())
 
     async def on_connecting(self) -> None:
+        await self._push_deferred_end()
+        for _ in self._open_turns:
+            await self._push_response_end()
         self._open_turns.clear()
-        self._tool_turns.clear()
-        self._deferred_end = None
+        self._audio_sent.clear()
+        self._audio_played.clear()
 
     async def on_response_begin(self, turn_id: int = 0) -> None:
         if self._tts_config is not None:
@@ -211,6 +215,9 @@ class DeepslateRealtimeLLMService(LLMService, DeepslateSessionListener):
         transcript: Optional[str],
         turn_id: Optional[int] = None,
     ) -> None:
+        if turn_id in self._open_turns:
+            sent = self._audio_sent.get(turn_id, 0)
+            self._audio_sent[turn_id] = sent + len(pcm_bytes)
         await self.push_frame(
             OutputAudioRawFrame(
                 audio=pcm_bytes,
@@ -228,6 +235,8 @@ class DeepslateRealtimeLLMService(LLMService, DeepslateSessionListener):
     ) -> None:
         if self._deferred_end not in (None, turn_id):
             await self._push_deferred_end()
+        if turn_id in self._open_turns:
+            self._audio_played[turn_id] = audio_bytes_played
         if not text:
             return
         frame = DeepslateModelTranscriptionFrame(
@@ -249,17 +258,15 @@ class DeepslateRealtimeLLMService(LLMService, DeepslateSessionListener):
         if not is_final or turn_id not in self._open_turns:
             return
         self._open_turns.discard(turn_id)
+        sent = self._audio_sent.pop(turn_id, 0)
+        played = self._audio_played.pop(turn_id, 0)
         await self._push_deferred_end()
-        if (
-            turn_id in self._tool_turns
-            and message.get("delivery_status") != "DELIVERY_INTERRUPTED"
-        ):
-            # Finalized at the tool call while its audio still plays; ended once
-            # the next turn becomes audible.
+        if played < sent and message.get("delivery_status") != "DELIVERY_INTERRUPTED":
+            # Finalized early because the next response started while this
+            # turn's audio still plays; it stays open until that response is audible.
             self._deferred_end = turn_id
         else:
             await self._push_response_end()
-        self._tool_turns.discard(turn_id)
 
     async def _push_deferred_end(self) -> None:
         if self._deferred_end is not None:
@@ -278,8 +285,6 @@ class DeepslateRealtimeLLMService(LLMService, DeepslateSessionListener):
         params: dict,
         turn_id: Optional[int] = None,
     ) -> None:
-        if turn_id in self._open_turns:
-            self._tool_turns.add(turn_id)
         asyncio.create_task(self._dispatch_function_call(call_id, name, params))
 
     async def on_error(
