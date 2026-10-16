@@ -270,6 +270,7 @@ and closes it when `close()` is called.
 | `session.sendDirectSpeech(text, includeInHistory?, uninterruptable?)` | Speak text directly via TTS, bypassing the LLM |
 | `session.exportChatHistory(awaitPending?, excludeAudio?)` | Request a history export; result via the `chatHistory` event |
 | `session.sendConversationQuery(queryId, prompt?, instructions?)` | Side-channel inference; result via the `conversationQueryResult` event |
+| `session.reportPlaybackPosition(turnId, bytesPlayed)` | Report how many bytes of turn `turnId`'s audio have played |
 
 ### `DeepslateSession` — events
 
@@ -279,10 +280,10 @@ Subscribe with `session.on(event, listener)`. Event payloads are strongly typed 
 |---|---|-------------------------------------------------------------------|
 | `sessionInitialized` | `()` | Session is fully initialized and ready to accept messages         |
 | `textFragment` | `(text: string, turnId: number \| null)` | Model streams a text token (faster than realtime, see note below) |
-| `audioChunk` | `(pcm: Uint8Array, sampleRate: number, channels: number, transcript: string \| null)` | Model streams a TTS audio chunk                                   |
+| `audioChunk` | `(pcm: Uint8Array, sampleRate: number, channels: number, transcript: string \| null, turnId: number \| null)` | Model streams a TTS audio chunk                                   |
 | `toolCall` | `(callId: string, name: string, params: Record<string, unknown>)` | Model requests a tool invocation                                  |
-| `responseBegin` | `()` | Model response starts                                             |
-| `responseEnd` | `()` | Model response ends                                               |
+| `responseBegin` | `(turnId: number)` | Model response starts                                             |
+| `responseEnd` | `(turnId: number)` | Model response ends                                               |
 
 > **`textFragment` is not a transcript of what was heard.** Fragments arrive
 > faster than realtime, ahead of TTS synthesis, so they carry the model's
@@ -312,6 +313,7 @@ Subscribe with `session.on(event, listener)`. Event payloads are strongly typed 
 | `maxRetries` | `number` | `3` | Maximum reconnection attempts before giving up            |
 | `generateReplyTimeout` | `number` | `30.0` | Timeout in seconds for reply generation (0 = no timeout)  |
 | `experiments` | `Experiments` | `undefined` | Server-side experiments to enable                         |
+| `supportsPlaybackReporting` | `boolean` | `false` | Report playback position to the server |
 
 ### `VadConfig`
 

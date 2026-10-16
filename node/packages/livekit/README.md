@@ -124,7 +124,7 @@ The constructor takes a single options object (`RealtimeModelOptions`):
 | `ttsConfig` | `TtsConfig` | `undefined` | TTS configuration (enables server-side audio output) |
 | `wsUrl` | `string` | `undefined` | Direct WebSocket URL (for local dev/testing) |
 | `experiments` | `Experiments` | `undefined` | Server-side experiments to enable |
-| `supportsPlaybackReporting` | `boolean` | `false` | Report how much of each reply the caller actually heard, so context truncation on barge-in is measured rather than estimated |
+| `supportsPlaybackReporting` | `boolean` | `false` | Report playback position to the server |
 
 ### Experiments
 
