@@ -490,6 +490,39 @@ transport = WebsocketTransport(
 
 ---
 
+## Live Transcripts
+
+With `tts_config` set, the service pushes two different text frames:
+
+| Frame | Pacing | Means |
+|---|---|---|
+| `LLMTextFrame` | Faster than realtime, ahead of synthesis | What the model **intends** to say |
+| `DeepslateModelTranscriptionFrame` | Playback-paced | **Approximately** what the caller has heard, timed by the server and possibly slightly ahead of or behind actual playback |
+
+```python
+from pipecat.frames.frames import LLMTextFrame
+from pipecat.processors.frame_processor import FrameProcessor
+
+from deepslate.pipecat import DeepslateModelTranscriptionFrame
+
+
+class TranscriptLogger(FrameProcessor):  # place after transport.output()
+    async def process_frame(self, frame, direction):
+        await super().process_frame(frame, direction)
+        if isinstance(frame, DeepslateModelTranscriptionFrame):
+            print(f"heard: {frame.text!r}")
+        elif isinstance(frame, LLMTextFrame):
+            print(frame.text, end="", flush=True)
+        await self.push_frame(frame, direction)
+```
+
+> `LLMTextFrame` arrives ahead of synthesis, so on an interrupted turn it will
+> usually carry text that was never spoken. Reach for
+> `DeepslateModelTranscriptionFrame` when you need what was spoken, and treat
+> `LLMTextFrame` as intent.
+
+---
+
 ## Frame Reference
 
 **Input frames consumed by `DeepslateRealtimeLLMService`:**
@@ -508,8 +541,11 @@ transport = WebsocketTransport(
 | Frame | Description |
 |---|---|
 | `DeepslateSessionInitializedFrame` | Session is fully initialized and ready to accept messages |
-| `LLMFullResponseStartFrame` / `LLMFullResponseEndFrame` | Marks the start/end of an AI response |
-| `LLMTextFrame` | Streaming text transcript of the AI response |
+| `LLMFullResponseStartFrame` / `LLMFullResponseEndFrame` | Marks the start/end of an AI response (with `tts_config`, the end follows playback) |
+| `LLMTextFrame` | Streaming model text, faster than realtime (model intent, not a transcript) |
+| `DeepslateModelTranscriptionFrame` | Text that became audible, paced to playback (see [Live Transcripts](#live-transcripts)) |
+| `DeepslateTurnSnapshotFrame` | The server's authoritative content of one turn |
+| `DeepslateUserTranscriptionFrame` | User speech transcription (a `TranscriptionFrame`) |
 | `OutputAudioRawFrame` | PCM audio output (only with server-side TTS configured) |
 | `InterruptionFrame` | User interrupted — signals buffer clearing |
 | `FunctionCallRequestFrame` | Request to execute a function tool |
