@@ -211,6 +211,7 @@ if __name__ == "__main__":
 | `ws_url`          | `Optional[str]` | `None`                           | Direct WebSocket URL (overrides `base_url`; for local dev/testing) |
 | `max_retries`     | `int`           | `3`                              | Maximum reconnection attempts before giving up                 |
 | `experiments`     | `Mapping[str, Any] \| None` | `None`               | Server-side experiments to enable                              |
+| `supports_playback_reporting` | `bool` | `False`                 | Report played audio so interrupted turns truncate where the caller stopped hearing them ([Playback Position Reporting](#playback-position-reporting)) |
 
 Use `DeepslateOptions.from_env()` to load credentials from environment variables:
 
@@ -520,6 +521,42 @@ class TranscriptLogger(FrameProcessor):  # place after transport.output()
 > usually carry text that was never spoken. Reach for
 > `DeepslateModelTranscriptionFrame` when you need what was spoken, and treat
 > `LLMTextFrame` as intent.
+
+---
+
+## Playback Position Reporting
+
+When the caller interrupts, the server truncates the assistant's turn at the
+audio the caller actually heard. Without reports it estimates that from elapsed
+time. Enable reporting and place the reporter right after `transport.output()`:
+
+```python
+opts = DeepslateOptions.from_env(supports_playback_reporting=True)
+llm = DeepslateRealtimeLLMService(options=opts, tts_config=tts)
+
+pipeline = Pipeline([
+    transport.input(),
+    llm,
+    transport.output(),
+    llm.playback_reporter(),
+])
+```
+
+The reporter counts audio the output transport has written, which is not
+exactly audio the caller has heard:
+
+| Transport | Written vs. heard |
+|---|---|
+| Daily, SmallWebRTC, local audio | Paced in real time, close to heard |
+| LiveKit | Up to about 1 s ahead |
+| WebSocket transports (Twilio, Telnyx, generic) | About twice real time, well ahead |
+
+With a transport that writes ahead of playback, reports run ahead too, so a
+barge-in can keep slightly more of the turn than the caller heard.
+
+`playback_reporter()` raises `ValueError` unless `supports_playback_reporting`
+is set. Transports configured with an `audio_out_mixer` are not supported: they
+write mixed audio and silence continuously.
 
 ---
 
