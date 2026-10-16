@@ -322,13 +322,28 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
     this.enqueueOrBuffer({ payload: { case: "conversationQuery", value } });
   }
 
-  async reportPlaybackPosition(bytesPlayed: number): Promise<void> {
-    this.enqueueOrBuffer({
-      payload: {
-        case: "playbackPositionReport",
-        value: { bytesPlayed: BigInt(bytesPlayed) },
-      },
-    });
+  /**
+   * Report that `bytesPlayed` bytes of turn `turnId`'s audio have played,
+   * counted from the turn's first audio chunk in the bytes of the received
+   * audio chunks. Dropped while the session is not initialized: after a reconnect
+   * the turn id would address the new server session's turns.
+   */
+  reportPlaybackPosition(bytesPlayed: number, turnId: number): void {
+    if (!Number.isInteger(turnId) || turnId < 0) {
+      throw new RangeError(`turnId must be an integer >= 0, got ${turnId}`);
+    }
+    if (!Number.isFinite(bytesPlayed) || bytesPlayed < 0) {
+      throw new RangeError(`bytesPlayed must be a finite number >= 0, got ${bytesPlayed}`);
+    }
+    if (!this.sessionInitializedFlag) return;
+    this.send(
+      create(ServiceBoundMessageSchema, {
+        payload: {
+          case: "playbackPositionReport",
+          value: { turnId, bytesPlayed: BigInt(Math.floor(bytesPlayed)) },
+        },
+      }),
+    );
   }
 
   // ---- internals ----
@@ -516,14 +531,14 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
         break;
       }
       case "responseBegin":
-        this.fire("responseBegin");
+        this.fire("responseBegin", msg.payload.value.turnId);
         break;
       case "responseEnd":
-        this.fire("responseEnd");
+        this.fire("responseEnd", msg.payload.value.turnId);
         break;
       case "modelTextFragment": {
         const fragment = msg.payload.value;
-        this.fire("textFragment", fragment.text, fragment.turnId ?? null);
+        this.fire("textFragment", fragment.text, fragment.turnId);
         break;
       }
       case "modelAudioChunk": {
@@ -535,6 +550,7 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
             this.sampleRateValue ?? 24000,
             this.channelsValue ?? 1,
             null,
+            chunk.turnId ?? null,
           );
         }
         break;

@@ -17,6 +17,7 @@ LiveKit Agents plugin for [Deepslate's](https://deepslate.eu/) realtime voice AI
 - **Function Tools** — Define and invoke tools using LiveKit's `@function_tool()` decorator
 - **Flexible TTS** — Server-side TTS via Deepslate-hosted (cloned) voices or ElevenLabs, with automatic context truncation on interruption
 - **Automatic Interruption Handling** — Truncates the in-flight response when users interrupt
+- **Playback Position Reporting** — Optionally report how much of an interrupted reply the caller heard
 
 ---
 
@@ -121,6 +122,7 @@ if __name__ == "__main__":
 | `generate_reply_timeout` | `float`               | `30.0`                           | Timeout in seconds for `generate_reply` (0 = no limit) |
 | `tts_config`             | `ElevenLabsTtsConfig \| HostedTtsConfig` | `None`          | TTS configuration (enables server-side audio output)    |
 | `vad_config`             | `VadConfig`           | `None`                            | Voice activity detection tuning                         |
+| `supports_playback_reporting` | `bool`           | `False`                           | Report playback position to the server |
 | `experiments`            | `Mapping[str, Any]`   | `None`                            | Server-side experiments to enable                       |
 
 Pass a `VadConfig` instance to tune voice activity detection — see [VAD Configuration](#vad-configuration) below.
@@ -362,6 +364,10 @@ Each item is a `ChatMessageDict` (importable from `deepslate.core`) with:
 | `truncated_at_response_turn_id` | Set if this message was cut off by a later interruption                                                                                  |
 
 ---
+
+## Playback Position Reporting
+
+`supports_playback_reporting=True` reports playback automatically. To report it yourself, call `report_playback_position(bytes_played, turn_id)` on the realtime session. Each audio frame carries its turn id in `frame.userdata["deepslate_turn_id"]`.
 
 ## Examples
 

@@ -124,6 +124,7 @@ The constructor takes a single options object (`RealtimeModelOptions`):
 | `ttsConfig` | `TtsConfig` | `undefined` | TTS configuration (enables server-side audio output) |
 | `wsUrl` | `string` | `undefined` | Direct WebSocket URL (for local dev/testing) |
 | `experiments` | `Experiments` | `undefined` | Server-side experiments to enable |
+| `supportsPlaybackReporting` | `boolean` | `false` | Report playback position to the server |
 
 ### Experiments
 
@@ -273,6 +274,10 @@ await session.start({ agent: new Assistant(), room: ctx.room });
 ```
 
 ---
+
+## Playback Position Reporting
+
+`supportsPlaybackReporting: true` reports playback automatically. To report it yourself, call `reportPlaybackPosition(bytesPlayed, turnId)` on the realtime session. Each audio frame carries its turn id in `frame.userdata.deepslateTurnId`.
 
 ## Examples
 

@@ -211,6 +211,7 @@ if __name__ == "__main__":
 | `ws_url`          | `Optional[str]` | `None`                           | Direct WebSocket URL (overrides `base_url`; for local dev/testing) |
 | `max_retries`     | `int`           | `3`                              | Maximum reconnection attempts before giving up                 |
 | `experiments`     | `Mapping[str, Any] \| None` | `None`               | Server-side experiments to enable                              |
+| `supports_playback_reporting` | `bool` | `False`                 | Report playback position to the server ([Playback Position Reporting](#playback-position-reporting)) |
 
 Use `DeepslateOptions.from_env()` to load credentials from environment variables:
 
@@ -520,6 +521,25 @@ class TranscriptLogger(FrameProcessor):  # place after transport.output()
 > usually carry text that was never spoken. Reach for
 > `DeepslateModelTranscriptionFrame` when you need what was spoken, and treat
 > `LLMTextFrame` as intent.
+
+---
+
+## Playback Position Reporting
+
+Enable `supports_playback_reporting` and place the reporter right after `transport.output()`:
+
+```python
+pipeline = Pipeline([
+    transport.input(),
+    llm,
+    transport.output(),
+    llm.playback_reporter(),
+])
+```
+
+Audio counts as played once the transport has written it. Audio mixers are not supported.
+
+To report it yourself instead, call `llm.report_playback_position(bytes_played, turn_id)`. Each audio frame from the service carries its turn id in `frame.metadata["deepslate_turn_id"]`.
 
 ---
 
