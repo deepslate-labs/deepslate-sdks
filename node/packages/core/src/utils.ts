@@ -100,6 +100,7 @@ export function buildInitializeRequest(params: {
   ttsConfig?: TtsConfig;
   temperature?: number;
   experiments?: Experiments;
+  supportsPlaybackReporting?: boolean;
 }): InitializeSessionRequest {
   const audioLine = {
     sampleRate: params.sampleRate,
@@ -138,6 +139,7 @@ export function buildInitializeRequest(params: {
         fromJson(ValueSchema, value ?? null),
       ]),
     ),
+    supportsPlaybackReporting: params.supportsPlaybackReporting ?? false,
   });
 }
 
@@ -157,6 +159,7 @@ export function buildInitializeRequestFromOptions(
     ttsConfig,
     temperature: options.temperature,
     experiments: options.experiments,
+    supportsPlaybackReporting: options.supportsPlaybackReporting,
   });
 }
 

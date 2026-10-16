@@ -366,14 +366,29 @@ class DeepslateSession:
         )
 
     async def report_playback_position(self, bytes_played: int, turn_id: int) -> None:
-        """Send a ``PlaybackPositionReport`` for server-side audio truncation.
+        """Report that ``bytes_played`` bytes of turn ``turn_id``'s audio played.
 
-        ``turn_id`` attributes ``bytes_played`` to a specific assistant turn.
+        ``bytes_played`` counts from the turn's first audio chunk, in the bytes
+        of the received audio chunks.
         """
+        self.report_playback_position_nowait(bytes_played, turn_id)
+
+    def report_playback_position_nowait(self, bytes_played: int, turn_id: int) -> None:
+        """Synchronous :meth:`report_playback_position`.
+
+        Dropped while the session is not initialized: after a reconnect the
+        turn id would address the new server session's turns.
+        """
+        if bytes_played < 0 or turn_id < 0:
+            raise ValueError(
+                f"bytes_played and turn_id must be >= 0, got {bytes_played}, {turn_id}"
+            )
+        if not self._session_initialized:
+            return
         report = proto.PlaybackPositionReport(
             bytes_played=bytes_played, turn_id=turn_id
         )
-        await self._enqueue_or_buffer(
+        self._send_queue.put_nowait(
             proto.ServiceBoundMessage(playback_position_report=report)
         )
 
@@ -449,6 +464,7 @@ class DeepslateSession:
             tts_config=self._tts_config,
             temperature=self._options.temperature,
             experiments=self._options.experiments,
+            supports_playback_reporting=self._options.supports_playback_reporting,
         )
         await self._send_queue.put(
             proto.ServiceBoundMessage(initialize_session_request=init_request)

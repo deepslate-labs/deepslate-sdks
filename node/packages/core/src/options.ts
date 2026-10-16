@@ -83,6 +83,12 @@ export interface DeepslateOptions {
   generateReplyTimeout?: number;
   /** Server-side experiments to enable. See {@link Experiments}. */
   experiments?: Experiments;
+  /**
+   * Report how much of each assistant turn's audio actually played, so the
+   * server truncates an interrupted turn where the user stopped hearing it
+   * instead of estimating from elapsed time. Default: false.
+   */
+  supportsPlaybackReporting?: boolean;
 }
 
 /** Fully-populated options with all defaults applied. */
@@ -99,6 +105,7 @@ export interface ResolvedDeepslateOptions {
   maxRetries: number;
   generateReplyTimeout: number;
   experiments?: Experiments;
+  supportsPlaybackReporting: boolean;
 }
 
 export const DEEPSLATE_DEFAULTS = {
@@ -107,6 +114,7 @@ export const DEEPSLATE_DEFAULTS = {
   temperature: 0.3,
   maxRetries: 3,
   generateReplyTimeout: 30.0,
+  supportsPlaybackReporting: false,
 } as const;
 
 /** Trim a model id and map ""/null to unset. */
@@ -142,6 +150,8 @@ export function resolveOptions(opts: DeepslateOptions): ResolvedDeepslateOptions
     generateReplyTimeout:
       opts.generateReplyTimeout ?? DEEPSLATE_DEFAULTS.generateReplyTimeout,
     experiments: opts.experiments,
+    supportsPlaybackReporting:
+      opts.supportsPlaybackReporting ?? DEEPSLATE_DEFAULTS.supportsPlaybackReporting,
   };
 }
 

@@ -87,6 +87,12 @@ class DeepslateOptions:
     Dropped when ``ws_url`` is set, since ``ws_url`` already names the endpoint.
     """
 
+    supports_playback_reporting: bool = False
+    """Report how much of each assistant turn's audio actually played, so the
+    server truncates an interrupted turn where the user stopped hearing it
+    instead of estimating from elapsed time.
+    """
+
     def __post_init__(self) -> None:
         from ._utils import encode_experiments
 
