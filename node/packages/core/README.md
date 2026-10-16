@@ -100,7 +100,7 @@ import { HostedTtsMode, type HostedTtsConfig } from "@deepslate-labs/core";
 
 const tts: HostedTtsConfig = {
   provider: "hosted",
-  voiceId: "c3dfa73f-a1ab-4aad-b48a-0e9b9fe4a69f",
+  voiceId: "de56bbd1-3ea7-4543-a17c-504664d9116b",
   mode: HostedTtsMode.HIGH_QUALITY, // or HostedTtsMode.LOW_LATENCY
 };
 ```

@@ -290,7 +290,7 @@ from deepslate.pipecat import DeepslateRealtimeLLMService, HostedTtsConfig, Host
 llm = DeepslateRealtimeLLMService(
     options=opts,
     tts_config=HostedTtsConfig(
-        voice_id="c3dfa73f-a1ab-4aad-b48a-0e9b9fe4a69f",
+        voice_id="de56bbd1-3ea7-4543-a17c-504664d9116b",
         mode=HostedTtsMode.HIGH_QUALITY,  # or LOW_LATENCY
     ),
 )
@@ -325,7 +325,7 @@ llm = DeepslateRealtimeLLMService(
 from deepslate.pipecat import DeepslateRealtimeLLMService, ElevenLabsTtsConfig, HostedTtsConfig, HostedTtsMode
 
 # Option A: Deepslate-hosted (cloned) voice — no external credentials needed
-tts_config = HostedTtsConfig(voice_id="c3dfa73f-a1ab-4aad-b48a-0e9b9fe4a69f", mode=HostedTtsMode.HIGH_QUALITY)
+tts_config = HostedTtsConfig(voice_id="de56bbd1-3ea7-4543-a17c-504664d9116b", mode=HostedTtsMode.HIGH_QUALITY)
 
 # Option B: ElevenLabs
 tts_config = ElevenLabsTtsConfig.from_env()

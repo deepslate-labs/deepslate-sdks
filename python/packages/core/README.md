@@ -109,11 +109,11 @@ Use a voice that has been cloned and hosted within Deepslate. No external provid
 ```python
 from deepslate.core import HostedTtsConfig, HostedTtsMode
 
-tts = HostedTtsConfig(voice_id="c3dfa73f-a1ab-4aad-b48a-0e9b9fe4a69f")
+tts = HostedTtsConfig(voice_id="de56bbd1-3ea7-4543-a17c-504664d9116b")
 
 # Explicit mode selection
 tts = HostedTtsConfig(
-    voice_id="c3dfa73f-a1ab-4aad-b48a-0e9b9fe4a69f",
+    voice_id="de56bbd1-3ea7-4543-a17c-504664d9116b",
     mode=HostedTtsMode.HIGH_QUALITY,  # or HostedTtsMode.LOW_LATENCY
 )
 ```
