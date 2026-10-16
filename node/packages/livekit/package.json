@@ -17,7 +17,8 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "test": "node --import tsx --test test/*.test.ts"
   },
   "dependencies": {
     "@deepslate-labs/core": "workspace:*"
