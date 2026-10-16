@@ -328,7 +328,7 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
    * audio chunks. Dropped while the session is not initialized: after a reconnect
    * the turn id would address the new server session's turns.
    */
-  reportPlaybackPosition(turnId: number, bytesPlayed: number): void {
+  reportPlaybackPosition(bytesPlayed: number, turnId: number): void {
     if (!Number.isInteger(turnId) || turnId < 0) {
       throw new RangeError(`turnId must be an integer >= 0, got ${turnId}`);
     }

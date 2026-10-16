@@ -277,7 +277,7 @@ await session.start({ agent: new Assistant(), room: ctx.room });
 
 ## Playback Position Reporting
 
-`supportsPlaybackReporting: true` reports playback automatically. To report it yourself, call `reportPlaybackPosition(turnId, bytesPlayed)` on the realtime session. Each audio frame carries its turn id in `frame.userdata.deepslateTurnId`.
+`supportsPlaybackReporting: true` reports playback automatically. To report it yourself, call `reportPlaybackPosition(bytesPlayed, turnId)` on the realtime session. Each audio frame carries its turn id in `frame.userdata.deepslateTurnId`.
 
 ## Examples
 

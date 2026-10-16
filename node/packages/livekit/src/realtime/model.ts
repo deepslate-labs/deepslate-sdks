@@ -341,8 +341,8 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
    * Report how many bytes of turn `turnId`'s audio have played. The turn id of
    * each audio frame is in `frame.userdata.deepslateTurnId`.
    */
-  reportPlaybackPosition(turnId: number, bytesPlayed: number): void {
-    this.session.reportPlaybackPosition(turnId, bytesPlayed);
+  reportPlaybackPosition(bytesPlayed: number, turnId: number): void {
+    this.session.reportPlaybackPosition(bytesPlayed, turnId);
   }
 
   async truncate(options: {
@@ -362,7 +362,7 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
     for (const run of gen.audioRuns) {
       if (offset <= run.bytes || run === gen.audioRuns.at(-1)) {
         if (run.turnId !== null) {
-          this.session.reportPlaybackPosition(run.turnId, run.start + Math.min(offset, run.bytes));
+          this.session.reportPlaybackPosition(run.start + Math.min(offset, run.bytes), run.turnId);
         }
         return;
       }
@@ -456,7 +456,7 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
         }),
         turnId !== null && this.model.opts.supportsPlaybackReporting
           ? () => {
-              if (turnBytes === this.turnBytes) this.session.reportPlaybackPosition(turnId, end);
+              if (turnBytes === this.turnBytes) this.session.reportPlaybackPosition(end, turnId);
             }
           : undefined,
       );

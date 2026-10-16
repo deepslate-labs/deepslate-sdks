@@ -270,7 +270,7 @@ and closes it when `close()` is called.
 | `session.sendDirectSpeech(text, includeInHistory?, uninterruptable?)` | Speak text directly via TTS, bypassing the LLM |
 | `session.exportChatHistory(awaitPending?, excludeAudio?)` | Request a history export; result via the `chatHistory` event |
 | `session.sendConversationQuery(queryId, prompt?, instructions?)` | Side-channel inference; result via the `conversationQueryResult` event |
-| `session.reportPlaybackPosition(turnId, bytesPlayed)` | Report how many bytes of turn `turnId`'s audio have played |
+| `session.reportPlaybackPosition(bytesPlayed, turnId)` | Report how many bytes of turn `turnId`'s audio have played |
 
 ### `DeepslateSession` — events
 
