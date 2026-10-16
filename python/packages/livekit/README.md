@@ -365,6 +365,10 @@ Each item is a `ChatMessageDict` (importable from `deepslate.core`) with:
 
 ---
 
+## Playback Position Reporting
+
+`supports_playback_reporting=True` reports playback automatically. To report it yourself, call `report_playback_position(bytes_played, turn_id)` on the realtime session. Each audio frame carries its turn id in `frame.userdata["deepslate_turn_id"]`.
+
 ## Examples
 
 The [`examples/`](examples/) directory contains a ready-to-run agent you can use as a starting point.

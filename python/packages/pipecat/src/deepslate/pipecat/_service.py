@@ -92,7 +92,7 @@ class DeepslateRealtimeLLMService(LLMService, DeepslateSessionListener):
         self._deferred_end: Optional[int] = None
         self._response_turn: Optional[int] = None
         self._playback = (
-            _PlaybackTracker(self._report_playback)
+            _PlaybackTracker(self.report_playback_position)
             if options.supports_playback_reporting
             else None
         )
@@ -105,7 +105,11 @@ class DeepslateRealtimeLLMService(LLMService, DeepslateSessionListener):
             )
         return DeepslatePlaybackReporter(self._playback)
 
-    def _report_playback(self, bytes_played: int, turn_id: int) -> None:
+    def report_playback_position(self, bytes_played: int, turn_id: int) -> None:
+        """Report how many bytes of turn ``turn_id``'s audio have played.
+
+        The turn id of each audio frame is in ``frame.metadata["deepslate_turn_id"]``.
+        """
         if self._session is not None:
             self._session.report_playback_position_nowait(bytes_played, turn_id)
 
@@ -241,20 +245,15 @@ class DeepslateRealtimeLLMService(LLMService, DeepslateSessionListener):
         if turn_id in self._open_turns:
             sent = self._audio_sent.get(turn_id, 0)
             self._audio_sent[turn_id] = sent + len(pcm_bytes)
+        if turn_id is None:
+            turn_id = self._response_turn
         if self._playback is not None:
-            self._playback.received(
-                self._response_turn if turn_id is None else turn_id,
-                len(pcm_bytes),
-                sample_rate,
-                channels,
-            )
-        await self.push_frame(
-            OutputAudioRawFrame(
-                audio=pcm_bytes,
-                sample_rate=sample_rate,
-                num_channels=channels,
-            )
+            self._playback.received(turn_id, len(pcm_bytes), sample_rate, channels)
+        frame = OutputAudioRawFrame(
+            audio=pcm_bytes, sample_rate=sample_rate, num_channels=channels
         )
+        frame.metadata["deepslate_turn_id"] = turn_id
+        await self.push_frame(frame)
 
     async def on_model_speech_progress(
         self,

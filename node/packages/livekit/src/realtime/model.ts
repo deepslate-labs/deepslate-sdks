@@ -337,6 +337,14 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
     this.closeCurrentGeneration();
   }
 
+  /**
+   * Report how many bytes of turn `turnId`'s audio have played. The turn id of
+   * each audio frame is in `frame.userdata.deepslateTurnId`.
+   */
+  reportPlaybackPosition(turnId: number, bytesPlayed: number): void {
+    this.session.reportPlaybackPosition(turnId, bytesPlayed);
+  }
+
   async truncate(options: {
     messageId: string;
     audioEndMs: number;
@@ -443,7 +451,9 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
       gen.sampleRate = sampleRate;
       gen.channels = channels;
       gen.audioStream.push(
-        new AudioFrame(int16, sampleRate, channels, samplesPerChannel),
+        new AudioFrame(int16, sampleRate, channels, samplesPerChannel, {
+          deepslateTurnId: turnId,
+        }),
         turnId !== null && this.model.opts.supportsPlaybackReporting
           ? () => {
               if (turnBytes === this.turnBytes) this.session.reportPlaybackPosition(turnId, end);

@@ -689,6 +689,13 @@ class DeepslateRealtimeSession(
         for gen in list(self._generations.values()):
             self._settle_generation(gen, cancelled=True)
 
+    def report_playback_position(self, bytes_played: int, turn_id: int) -> None:
+        """Report how many bytes of turn ``turn_id``'s audio have played.
+
+        The turn id of each audio frame is in ``frame.userdata["deepslate_turn_id"]``.
+        """
+        self._session.report_playback_position_nowait(bytes_played, turn_id)
+
     def truncate(
         self,
         *,
@@ -803,6 +810,7 @@ class DeepslateRealtimeSession(
             sample_rate=sample_rate,
             num_channels=channels,
             samples_per_channel=len(pcm_bytes) // 2 // max(channels, 1),
+            userdata={"deepslate_turn_id": gen.turn_id},
         )
         gen.audio_ch.send_nowait(frame)
         gen.audio_bytes += len(pcm_bytes)

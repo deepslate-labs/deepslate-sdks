@@ -539,6 +539,8 @@ pipeline = Pipeline([
 
 Audio counts as played once the transport has written it. Audio mixers are not supported.
 
+To report it yourself instead, call `llm.report_playback_position(bytes_played, turn_id)`. Each audio frame from the service carries its turn id in `frame.metadata["deepslate_turn_id"]`.
+
 ---
 
 ## Frame Reference
