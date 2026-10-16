@@ -641,11 +641,8 @@ class DeepslateSession:
 
         elif payload_type == "model_text_fragment":
             fragment = msg.model_text_fragment
-            fragment_turn_id: Optional[int] = (
-                fragment.turn_id if fragment.HasField("turn_id") else None
-            )
             await self._fire(
-                self._listener.on_text_fragment(fragment.text, fragment_turn_id)
+                self._listener.on_text_fragment(fragment.text, fragment.turn_id)
             )
 
         elif payload_type == "model_audio_chunk":

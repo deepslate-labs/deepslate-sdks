@@ -523,7 +523,7 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
         break;
       case "modelTextFragment": {
         const fragment = msg.payload.value;
-        this.fire("textFragment", fragment.text, fragment.turnId ?? null);
+        this.fire("textFragment", fragment.text, fragment.turnId);
         break;
       }
       case "modelAudioChunk": {
