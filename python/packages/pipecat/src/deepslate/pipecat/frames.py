@@ -157,7 +157,7 @@ class DeepslateConversationQueryFrame(Frame):
 
 @dataclass
 class DeepslateSessionInitializedFrame(Frame):
-    """Emitted once when the Deepslate session is fully initialized.
+    """Emitted each time the Deepslate session finishes initializing, including after a reconnect.
 
     Push a welcome message or any first-turn logic in response to this frame.
     """

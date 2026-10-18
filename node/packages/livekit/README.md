@@ -286,7 +286,7 @@ A fully working LiveKit agent that demonstrates:
 - Two example function tools: `lookupWeather` and `getCurrentLocation`
 
 ```
-packages/livekit/examples/
+node/packages/livekit/examples/
 ├── chat-agent.ts      # The agent
 └── .env.example       # Required environment variables
 ```
@@ -295,8 +295,8 @@ packages/livekit/examples/
 
 ```bash
 # 1. Configure credentials
-cd packages/livekit/examples
-cp .env.example .env
+cd node/packages/livekit
+cp examples/.env.example .env
 # Edit .env and fill in your credentials
 
 # 2. Run (tsx is included as a workspace dev dependency)

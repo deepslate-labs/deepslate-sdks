@@ -32,9 +32,9 @@ This is a polyglot monorepo. Both languages share a single wire contract — [`p
 
 | Package | npm | Description |
 |---|---|---|
-| [`@deepslate/livekit`](node/packages/livekit/README.md) | `npm install @deepslate/livekit` | `RealtimeModel` plugin for [LiveKit Agents](https://github.com/livekit/agents) (Node) |
-| [`@deepslate/core`](node/packages/core/README.md) | `npm install @deepslate/core` | Shared implementation for integrations; prefer a higher-level package |
-| [`@deepslate/proto`](node/packages/proto/README.md) | (internal) | Generated protobuf bindings; consumed by `@deepslate/core` only |
+| [`@deepslate-labs/livekit`](node/packages/livekit/README.md) | `npm install @deepslate-labs/livekit` | `RealtimeModel` plugin for [LiveKit Agents](https://github.com/livekit/agents) (Node) |
+| [`@deepslate-labs/core`](node/packages/core/README.md) | `npm install @deepslate-labs/core` | Shared implementation for integrations; prefer a higher-level package |
+| [`@deepslate-labs/proto`](node/packages/proto/README.md) | (internal) | Generated protobuf bindings; consumed by `@deepslate-labs/core` only |
 
 ---
 
@@ -55,9 +55,9 @@ deepslate-sdks/
     ├── package.json
     ├── pnpm-workspace.yaml
     └── packages/
-        ├── proto/           # @deepslate/proto (generated)
-        ├── core/            # @deepslate/core
-        └── livekit/         # @deepslate/livekit
+        ├── proto/           # @deepslate-labs/proto (generated)
+        ├── core/            # @deepslate-labs/core
+        └── livekit/         # @deepslate-labs/livekit
 ```
 
 The proto is compiled by each language with its own toolchain (Python via `grpc_tools`, Node via
@@ -85,7 +85,7 @@ pip install deepslate-livekit   # or deepslate-pipecat
 **Node / TypeScript**
 
 ```bash
-npm install @deepslate/livekit @livekit/agents @livekit/rtc-node
+npm install @deepslate-labs/livekit @livekit/agents @livekit/rtc-node
 ```
 
 Then see the package-specific README for a complete usage example:

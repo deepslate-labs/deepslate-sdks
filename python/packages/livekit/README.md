@@ -375,7 +375,7 @@ A fully working LiveKit agent that demonstrates:
 - Two example function tools: `lookup_weather` and `get_current_location`
 
 ```
-packages/livekit/examples/
+python/packages/livekit/examples/
 ├── chat_agent.py      # The agent
 └── .env.example       # Required environment variables
 ```
@@ -387,7 +387,7 @@ packages/livekit/examples/
 pip install deepslate-livekit python-dotenv
 
 # 2. Configure credentials
-cd packages/livekit/examples
+cd python/packages/livekit/examples
 cp .env.example .env
 # Edit .env and fill in your credentials
 

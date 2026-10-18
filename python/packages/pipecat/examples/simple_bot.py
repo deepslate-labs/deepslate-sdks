@@ -44,7 +44,7 @@ from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineParams, PipelineTask
 from pipecat.services.llm_service import FunctionCallParams
-from pipecat.transports.services.daily import DailyParams, DailyTransport
+from pipecat.transports.daily.transport import DailyParams, DailyTransport
 
 from deepslate.pipecat import (
     DeepslateOptions,
@@ -150,7 +150,6 @@ async def main():
             audio_in_enabled=True,
             audio_out_enabled=True,
             camera_out_enabled=False,
-            vad_enabled=False,  # Deepslate handles VAD server-side
         ),
     )
 

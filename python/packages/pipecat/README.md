@@ -36,7 +36,7 @@ pip install deepslate-pipecat
 ### Dependencies (installed automatically)
 
 - `deepslate-core` — Shared Deepslate models and base client
-- `pipecat-ai>=0.0.40` — Core Pipecat framework
+- `pipecat-ai>=0.0.104` — Core Pipecat framework
 - `loguru>=0.7.2` — Structured logging
 - `websockets>=16.0` — WebSocket client
 
@@ -64,7 +64,7 @@ ELEVENLABS_VOICE_ID=your_voice_id        # e.g., '21m00Tcm4TlvDq8ikWAM' for Rach
 ELEVENLABS_MODEL_ID=eleven_turbo_v2      # optional
 ```
 
-> **Note:** Without `ElevenLabsTtsConfig`, the service emits `TTSTextFrame` objects for downstream Pipecat TTS services (Cartesia, Azure TTS, etc.). Context truncation on interruption requires server-side TTS.
+> **Note:** Without `ElevenLabsTtsConfig`, the service emits `LLMTextFrame` objects for downstream Pipecat TTS services (Cartesia, Azure TTS, etc.). Context truncation on interruption requires server-side TTS.
 
 ---
 
@@ -87,7 +87,7 @@ from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineParams, PipelineTask
 from pipecat.services.llm_service import FunctionCallParams
-from pipecat.transports.services.daily import DailyParams, DailyTransport
+from pipecat.transports.daily.transport import DailyParams, DailyTransport
 
 from deepslate.pipecat import DeepslateOptions, DeepslateRealtimeLLMService, ElevenLabsLocation, ElevenLabsTtsConfig
 
@@ -159,7 +159,6 @@ async def main():
             audio_in_enabled=True,
             audio_out_enabled=True,
             camera_out_enabled=False,
-            vad_enabled=False,  # Deepslate handles VAD server-side
         ),
     )
 
@@ -257,11 +256,11 @@ from deepslate.pipecat import DeepslateRealtimeLLMService, VadConfig
 llm = DeepslateRealtimeLLMService(
     options=opts,
     vad_config=VadConfig(
-        confidence_threshold=0.3,  # Lower = more sensitive
-        min_volume=0.005,
-        start_duration_ms=100,
-        stop_duration_ms=300,
-        backbuffer_duration_ms=500,
+        confidence_threshold=0.4,     # 0.0–1.0: minimum confidence to classify as speech
+        min_volume=0.0,               # 0.0–1.0: minimum volume to classify as speech
+        start_duration_ms=150,        # ms of speech required to trigger start
+        stop_duration_ms=390,         # ms of silence required to trigger stop
+        backbuffer_duration_ms=1000,  # ms of audio buffered before detection triggers
     ),
 )
 ```
@@ -338,9 +337,9 @@ pipeline = Pipeline([transport.input(), llm, transport.output()])
 **Client-side TTS (e.g., Cartesia):**
 
 ```python
-from pipecat.services.cartesia import CartesiaTTSService
+from pipecat.services.cartesia.tts import CartesiaTTSService
 
-llm = DeepslateRealtimeLLMService(options=opts)  # No tts_config — emits TTSTextFrame
+llm = DeepslateRealtimeLLMService(options=opts)  # No tts_config — emits LLMTextFrame
 tts = CartesiaTTSService(...)
 
 pipeline = Pipeline([transport.input(), llm, tts, transport.output()])
@@ -429,18 +428,32 @@ await task.queue_frame(
 
 ## Sending a Welcome Message
 
-`DeepslateSessionInitializedFrame` is emitted once the WebSocket session is fully initialized and ready to accept messages. Use it to send a welcome message instead of relying on a fixed delay:
+`DeepslateSessionInitializedFrame` is emitted downstream when the WebSocket session is fully initialized and ready to accept messages. It is emitted again after every reconnect, so guard one-time logic like a welcome message:
 
 ```python
-from deepslate.pipecat import DeepslateRealtimeLLMService, DeepslateSessionInitializedFrame, DeepslateDirectSpeechFrame
+from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
 
-class MyPipeline(FrameProcessor):
+from deepslate.pipecat import DeepslateDirectSpeechFrame, DeepslateSessionInitializedFrame
+
+
+class WelcomeMessage(FrameProcessor):  # place after the Deepslate service
+    def __init__(self):
+        super().__init__()
+        self._greeted = False
+
     async def process_frame(self, frame, direction):
         await super().process_frame(frame, direction)
+        if isinstance(frame, DeepslateSessionInitializedFrame) and not self._greeted:
+            self._greeted = True
+            # Push upstream so the frame reaches the Deepslate service
+            await self.push_frame(
+                DeepslateDirectSpeechFrame(text="Hello! How can I help you today?"),
+                FrameDirection.UPSTREAM,
+            )
+        await self.push_frame(frame, direction)
 
-        if isinstance(frame, DeepslateSessionInitializedFrame):
-            # Session is ready — send a welcome message
-            await self.push_frame(DeepslateDirectSpeechFrame(text="Hello! How can I help you today?"))
+
+pipeline = Pipeline([transport.input(), llm, WelcomeMessage(), transport.output()])
 ```
 
 ---
@@ -450,7 +463,7 @@ class MyPipeline(FrameProcessor):
 ### Daily.co (WebRTC)
 
 ```python
-from pipecat.transports.services.daily import DailyTransport, DailyParams
+from pipecat.transports.daily.transport import DailyParams, DailyTransport
 
 transport = DailyTransport(
     room_url=daily_room_url,
@@ -459,32 +472,24 @@ transport = DailyTransport(
     params=DailyParams(
         audio_in_enabled=True,
         audio_out_enabled=True,
-        vad_enabled=False,  # Deepslate handles VAD
     ),
 )
 ```
 
-### Twilio
+### WebSocket server
 
 ```python
-from pipecat.transports.services.twilio import TwilioTransport
+from pipecat.serializers.protobuf import ProtobufFrameSerializer
+from pipecat.transports.websocket.server import WebsocketServerParams, WebsocketServerTransport
 
-transport = TwilioTransport(
-    account_sid=twilio_account_sid,
-    auth_token=twilio_auth_token,
-    from_number=twilio_from_number,
-)
-```
-
-### Generic WebSocket
-
-```python
-from pipecat.transports.network.websocket import WebsocketTransport, WebsocketParams
-
-transport = WebsocketTransport(
-    host="0.0.0.0",
+transport = WebsocketServerTransport(
+    host="127.0.0.1",
     port=8765,
-    params=WebsocketParams(audio_in_enabled=True, audio_out_enabled=True),
+    params=WebsocketServerParams(
+        audio_in_enabled=True,
+        audio_out_enabled=True,
+        serializer=ProtobufFrameSerializer(),  # required: frames are dropped without a serializer
+    ),
 )
 ```
 
@@ -600,7 +605,7 @@ A fully working Pipecat pipeline that demonstrates:
 - Two example function tools: `lookup_weather` and `get_current_location`
 
 ```
-packages/pipecat/examples/
+python/packages/pipecat/examples/
 ├── simple_bot.py      # The bot
 └── .env.example       # Required environment variables
 ```
@@ -612,7 +617,7 @@ packages/pipecat/examples/
 pip install deepslate-pipecat "pipecat-ai[daily]" aiohttp python-dotenv loguru
 
 # 2. Configure credentials
-cd packages/pipecat/examples
+cd python/packages/pipecat/examples
 cp .env.example .env
 # Edit .env and fill in your credentials
 
@@ -627,14 +632,6 @@ python simple_bot.py
 - [Deepslate Documentation](https://docs.deepslate.eu/)
 - [Pipecat Documentation](https://docs.pipecat.ai/)
 - [API Reference](https://docs.deepslate.eu/api-reference/)
-
----
-
-## Support
-
-- **Issues:** [GitHub Issues](https://github.com/deepslate-labs/deepslate-sdks/issues)
-- **Documentation:** [docs.deepslate.eu](https://docs.deepslate.eu/)
-- **Email:** info@deepslate.eu
 
 ---
 
