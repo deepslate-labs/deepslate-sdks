@@ -36,7 +36,7 @@ pip install deepslate-pipecat
 ### Dependencies (installed automatically)
 
 - `deepslate-core` — Shared Deepslate models and base client
-- `pipecat-ai>=0.0.40` — Core Pipecat framework
+- `pipecat-ai>=0.0.104` — Core Pipecat framework
 - `loguru>=0.7.2` — Structured logging
 - `websockets>=16.0` — WebSocket client
 
@@ -64,7 +64,7 @@ ELEVENLABS_VOICE_ID=your_voice_id        # e.g., '21m00Tcm4TlvDq8ikWAM' for Rach
 ELEVENLABS_MODEL_ID=eleven_turbo_v2      # optional
 ```
 
-> **Note:** Without `ElevenLabsTtsConfig`, the service emits `TTSTextFrame` objects for downstream Pipecat TTS services (Cartesia, Azure TTS, etc.). Context truncation on interruption requires server-side TTS.
+> **Note:** Without `ElevenLabsTtsConfig`, the service emits `LLMTextFrame` objects for downstream Pipecat TTS services (Cartesia, Azure TTS, etc.). Context truncation on interruption requires server-side TTS.
 
 ---
 
@@ -339,7 +339,7 @@ pipeline = Pipeline([transport.input(), llm, transport.output()])
 ```python
 from pipecat.services.cartesia.tts import CartesiaTTSService
 
-llm = DeepslateRealtimeLLMService(options=opts)  # No tts_config — emits TTSTextFrame
+llm = DeepslateRealtimeLLMService(options=opts)  # No tts_config — emits LLMTextFrame
 tts = CartesiaTTSService(...)
 
 pipeline = Pipeline([transport.input(), llm, tts, transport.output()])
@@ -428,7 +428,7 @@ await task.queue_frame(
 
 ## Sending a Welcome Message
 
-`DeepslateSessionInitializedFrame` is emitted downstream once the WebSocket session is fully initialized and ready to accept messages. Use it to send a welcome message instead of relying on a fixed delay:
+`DeepslateSessionInitializedFrame` is emitted downstream when the WebSocket session is fully initialized and ready to accept messages. It is emitted again after every reconnect, so guard one-time logic like a welcome message:
 
 ```python
 from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
@@ -437,9 +437,14 @@ from deepslate.pipecat import DeepslateDirectSpeechFrame, DeepslateSessionInitia
 
 
 class WelcomeMessage(FrameProcessor):  # place after the Deepslate service
+    def __init__(self):
+        super().__init__()
+        self._greeted = False
+
     async def process_frame(self, frame, direction):
         await super().process_frame(frame, direction)
-        if isinstance(frame, DeepslateSessionInitializedFrame):
+        if isinstance(frame, DeepslateSessionInitializedFrame) and not self._greeted:
+            self._greeted = True
             # Push upstream so the frame reaches the Deepslate service
             await self.push_frame(
                 DeepslateDirectSpeechFrame(text="Hello! How can I help you today?"),

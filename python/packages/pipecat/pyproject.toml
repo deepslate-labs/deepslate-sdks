@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "deepslate-core",
-    "pipecat-ai>=0.0.40",
+    "pipecat-ai>=0.0.104",
     "loguru>=0.7.2",
     "websockets>=16.0",
 ]

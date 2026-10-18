@@ -523,7 +523,7 @@ dependencies = [
 requires-dist = [
     { name = "deepslate-core", editable = "packages/core" },
     { name = "loguru", specifier = ">=0.7.2" },
-    { name = "pipecat-ai", specifier = ">=0.0.40" },
+    { name = "pipecat-ai", specifier = ">=0.0.104" },
     { name = "websockets", specifier = ">=16.0" },
 ]
 
