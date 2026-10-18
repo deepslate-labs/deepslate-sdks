@@ -630,14 +630,6 @@ python simple_bot.py
 
 ---
 
-## Support
-
-- **Issues:** [GitHub Issues](https://github.com/deepslate-labs/deepslate-sdks/issues)
-- **Documentation:** [docs.deepslate.eu](https://docs.deepslate.eu/)
-- **Email:** info@deepslate.eu
-
----
-
 ## License
 
 Apache License 2.0 — see [LICENSE](../../LICENSE) for details.
