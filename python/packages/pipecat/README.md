@@ -483,7 +483,7 @@ from pipecat.serializers.protobuf import ProtobufFrameSerializer
 from pipecat.transports.websocket.server import WebsocketServerParams, WebsocketServerTransport
 
 transport = WebsocketServerTransport(
-    host="0.0.0.0",
+    host="127.0.0.1",
     port=8765,
     params=WebsocketServerParams(
         audio_in_enabled=True,
