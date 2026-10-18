@@ -459,7 +459,7 @@ pipeline = Pipeline([transport.input(), llm, WelcomeMessage(), transport.output(
 ### Daily.co (WebRTC)
 
 ```python
-from pipecat.transports.services.daily import DailyTransport, DailyParams
+from pipecat.transports.daily.transport import DailyParams, DailyTransport
 
 transport = DailyTransport(
     room_url=daily_room_url,
@@ -473,27 +473,20 @@ transport = DailyTransport(
 )
 ```
 
-### Twilio
+### WebSocket server
 
 ```python
-from pipecat.transports.services.twilio import TwilioTransport
+from pipecat.serializers.protobuf import ProtobufFrameSerializer
+from pipecat.transports.websocket.server import WebsocketServerParams, WebsocketServerTransport
 
-transport = TwilioTransport(
-    account_sid=twilio_account_sid,
-    auth_token=twilio_auth_token,
-    from_number=twilio_from_number,
-)
-```
-
-### Generic WebSocket
-
-```python
-from pipecat.transports.network.websocket import WebsocketTransport, WebsocketParams
-
-transport = WebsocketTransport(
+transport = WebsocketServerTransport(
     host="0.0.0.0",
     port=8765,
-    params=WebsocketParams(audio_in_enabled=True, audio_out_enabled=True),
+    params=WebsocketServerParams(
+        audio_in_enabled=True,
+        audio_out_enabled=True,
+        serializer=ProtobufFrameSerializer(),  # required: frames are dropped without a serializer
+    ),
 )
 ```
 
