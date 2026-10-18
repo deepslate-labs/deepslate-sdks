@@ -43,7 +43,7 @@ Run from the `node/` workspace root:
 
 ```bash
 pnpm run generate
-# delegates to: pnpm --filter @deepslate/proto run generate
+# delegates to: pnpm --filter @deepslate-labs/proto run generate
 # → buf generate ../../../proto --template ../../buf.gen.yaml
 #   writes node/packages/proto/src/gen/realtime_pb.ts
 ```
@@ -51,7 +51,7 @@ pnpm run generate
 Then rebuild the generated package:
 
 ```bash
-pnpm --filter @deepslate/proto run build
+pnpm --filter @deepslate-labs/proto run build
 ```
 
 See [`node/buf.gen.yaml`](../node/buf.gen.yaml) and [`node/packages/proto`](../node/packages/proto/README.md)
