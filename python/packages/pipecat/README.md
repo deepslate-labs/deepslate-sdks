@@ -87,7 +87,7 @@ from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineParams, PipelineTask
 from pipecat.services.llm_service import FunctionCallParams
-from pipecat.transports.services.daily import DailyParams, DailyTransport
+from pipecat.transports.daily.transport import DailyParams, DailyTransport
 
 from deepslate.pipecat import DeepslateOptions, DeepslateRealtimeLLMService, ElevenLabsLocation, ElevenLabsTtsConfig
 
@@ -159,7 +159,6 @@ async def main():
             audio_in_enabled=True,
             audio_out_enabled=True,
             camera_out_enabled=False,
-            vad_enabled=False,  # Deepslate handles VAD server-side
         ),
     )
 
@@ -338,7 +337,7 @@ pipeline = Pipeline([transport.input(), llm, transport.output()])
 **Client-side TTS (e.g., Cartesia):**
 
 ```python
-from pipecat.services.cartesia import CartesiaTTSService
+from pipecat.services.cartesia.tts import CartesiaTTSService
 
 llm = DeepslateRealtimeLLMService(options=opts)  # No tts_config — emits TTSTextFrame
 tts = CartesiaTTSService(...)
@@ -468,7 +467,6 @@ transport = DailyTransport(
     params=DailyParams(
         audio_in_enabled=True,
         audio_out_enabled=True,
-        vad_enabled=False,  # Deepslate handles VAD
     ),
 )
 ```
@@ -602,7 +600,7 @@ A fully working Pipecat pipeline that demonstrates:
 - Two example function tools: `lookup_weather` and `get_current_location`
 
 ```
-packages/pipecat/examples/
+python/packages/pipecat/examples/
 ├── simple_bot.py      # The bot
 └── .env.example       # Required environment variables
 ```
@@ -614,7 +612,7 @@ packages/pipecat/examples/
 pip install deepslate-pipecat "pipecat-ai[daily]" aiohttp python-dotenv loguru
 
 # 2. Configure credentials
-cd packages/pipecat/examples
+cd python/packages/pipecat/examples
 cp .env.example .env
 # Edit .env and fill in your credentials
 
