@@ -257,11 +257,11 @@ from deepslate.pipecat import DeepslateRealtimeLLMService, VadConfig
 llm = DeepslateRealtimeLLMService(
     options=opts,
     vad_config=VadConfig(
-        confidence_threshold=0.3,  # Lower = more sensitive
-        min_volume=0.005,
-        start_duration_ms=100,
-        stop_duration_ms=300,
-        backbuffer_duration_ms=500,
+        confidence_threshold=0.4,     # 0.0–1.0: minimum confidence to classify as speech
+        min_volume=0.0,               # 0.0–1.0: minimum volume to classify as speech
+        start_duration_ms=150,        # ms of speech required to trigger start
+        stop_duration_ms=390,         # ms of silence required to trigger stop
+        backbuffer_duration_ms=1000,  # ms of audio buffered before detection triggers
     ),
 )
 ```
