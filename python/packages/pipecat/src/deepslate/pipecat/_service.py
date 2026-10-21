@@ -226,11 +226,11 @@ class DeepslateRealtimeLLMService(LLMService, DeepslateSessionListener):
         transcript: Optional[str],
         turn_id: Optional[int] = None,
     ) -> None:
+        if turn_id is None:
+            turn_id = self._response_turn
         if turn_id in self._open_turns:
             sent = self._audio_sent.get(turn_id, 0)
             self._audio_sent[turn_id] = sent + len(pcm_bytes)
-        if turn_id is None:
-            turn_id = self._response_turn
         frame = OutputAudioRawFrame(
             audio=pcm_bytes, sample_rate=sample_rate, num_channels=channels
         )
