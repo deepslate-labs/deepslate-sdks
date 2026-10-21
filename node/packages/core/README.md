@@ -313,7 +313,7 @@ Subscribe with `session.on(event, listener)`. Event payloads are strongly typed 
 | `maxRetries` | `number` | `3` | Maximum reconnection attempts before giving up            |
 | `generateReplyTimeout` | `number` | `30.0` | Timeout in seconds for reply generation (0 = no timeout)  |
 | `experiments` | `Experiments` | `undefined` | Server-side experiments to enable                         |
-| `supportsPlaybackReporting` | `boolean` | `false` | Report playback position to the server |
+| `supportsPlaybackReporting` | `boolean` | `false` | Set when you send playback position reports |
 
 ### `VadConfig`
 

@@ -47,7 +47,7 @@ import {
 
 import { logger } from "../log.js";
 import { VERSION } from "../version.js";
-import { createPullable, createPushable, type Pullable, type Pushable } from "../stream.js";
+import { createPushable, type Pushable } from "../stream.js";
 
 const DEEPSLATE_BASE_URL = "https://app.deepslate.eu";
 
@@ -75,6 +75,9 @@ interface AudioRun {
   bytes: number;
 }
 
+// livekit only truncates the reply it just interrupted, so a few recent ones suffice.
+const MAX_TRUNCATABLE = 8;
+
 /** Internal state for an in-flight response generation. */
 interface ResponseGeneration {
   messageStream: Pushable<MessageGeneration>;
@@ -82,7 +85,7 @@ interface ResponseGeneration {
   // We only ever emit plain strings; ReadableStream<string> is assignable to
   // the framework's ReadableStream<string | TimedString> sink.
   textStream: Pushable<string>;
-  audioStream: Pullable<AudioFrame>;
+  audioStream: Pushable<AudioFrame>;
   audioRuns: AudioRun[];
   sampleRate: number;
   channels: number;
@@ -338,13 +341,14 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
   }
 
   /**
-   * Report how many bytes of turn `turnId`'s audio have played. The turn id of
-   * each audio frame is in `frame.userdata.deepslateTurnId`.
+   * Report how many bytes of turn `turnId`'s audio the listener has heard. The
+   * turn id of each audio frame is in `frame.userdata.deepslateTurnId`.
    */
   reportPlaybackPosition(bytesPlayed: number, turnId: number): void {
     this.session.reportPlaybackPosition(bytesPlayed, turnId);
   }
 
+  /** Report how much of the interrupted reply livekit played. */
   async truncate(options: {
     messageId: string;
     audioEndMs: number;
@@ -442,9 +446,7 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
       const samplesPerChannel = int16.length / Math.max(channels, 1);
       const turnId = chunkTurnId ?? this.lastTurnId;
       const start = turnId === null ? 0 : (this.turnBytes.get(turnId) ?? 0);
-      const end = start + pcm.byteLength;
-      const turnBytes = this.turnBytes;
-      if (turnId !== null) turnBytes.set(turnId, end);
+      if (turnId !== null) this.turnBytes.set(turnId, start + pcm.byteLength);
       const run = gen.audioRuns.at(-1);
       if (run?.turnId === turnId) run.bytes += pcm.byteLength;
       else gen.audioRuns.push({ turnId, start, bytes: pcm.byteLength });
@@ -454,11 +456,6 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
         new AudioFrame(int16, sampleRate, channels, samplesPerChannel, {
           deepslateTurnId: turnId,
         }),
-        turnId !== null && this.model.opts.supportsPlaybackReporting
-          ? () => {
-              if (turnBytes === this.turnBytes) this.session.reportPlaybackPosition(end, turnId);
-            }
-          : undefined,
       );
       gen.firstTokenAt ??= Date.now();
       if (transcript) {
@@ -598,7 +595,7 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
       messageStream: createPushable<MessageGeneration>(),
       functionStream: createPushable<FunctionCall>(),
       textStream: createPushable<string>(),
-      audioStream: createPullable<AudioFrame>(),
+      audioStream: createPushable<AudioFrame>(),
       audioRuns: [],
       sampleRate: 0,
       channels: 0,
@@ -607,7 +604,13 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
       uninterruptable,
     };
     this.currentGeneration = gen;
-    if (this.model.opts.supportsPlaybackReporting) this.truncatable.set(responseId, gen);
+    if (this.model.opts.supportsPlaybackReporting) {
+      this.truncatable.set(responseId, gen);
+      const oldest = this.truncatable.keys().next().value;
+      if (this.truncatable.size > MAX_TRUNCATABLE && oldest !== undefined) {
+        this.truncatable.delete(oldest);
+      }
+    }
 
     const modalities: ("text" | "audio")[] = hasAudio
       ? ["audio", "text"]

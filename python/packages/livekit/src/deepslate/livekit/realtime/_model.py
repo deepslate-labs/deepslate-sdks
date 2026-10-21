@@ -167,9 +167,9 @@ class RealtimeModel(llm.RealtimeModel):
                    Falls back to the DEEPSLATE_MODEL env var; when neither is set the
                    platform default is used. Not used when ``ws_url`` is set.
             supports_playback_reporting: When True, report how much of an
-                        interrupted reply the caller actually heard, so the server
-                        truncates the model's context at that point instead of
-                        estimating it from elapsed time. Off by default.
+                        interrupted reply livekit played, so the server truncates
+                        it there instead of estimating from elapsed time. Off by
+                        default.
         """
         super().__init__(
             capabilities=llm.RealtimeCapabilities(
@@ -374,7 +374,8 @@ class DeepslateRealtimeSession(
         # Generation tracking
         self._generations: dict[int, _ResponseGeneration] = {}
         self._settled_turns: deque[int] = deque(maxlen=64)
-        self._truncatable_generations: dict[str, _ResponseGeneration] = {}
+        # livekit only truncates the reply it just interrupted, so a few recent ones suffice.
+        self._truncatable: deque[_ResponseGeneration] = deque(maxlen=8)
         self._last_turn_id: int | None = None
         self._response_created_futures: dict[
             str, asyncio.Future[GenerationCreatedEvent]
@@ -690,7 +691,7 @@ class DeepslateRealtimeSession(
             self._settle_generation(gen, cancelled=True)
 
     def report_playback_position(self, bytes_played: int, turn_id: int) -> None:
-        """Report how many bytes of turn ``turn_id``'s audio have played.
+        """Report how many bytes of turn ``turn_id``'s audio the listener has heard.
 
         The turn id of each audio frame is in ``frame.userdata["deepslate_turn_id"]``.
         """
@@ -704,14 +705,16 @@ class DeepslateRealtimeSession(
         audio_end_ms: int,
         audio_transcript: NotGivenOr[str] = NOT_GIVEN,
     ) -> None:
-        """Report how much of an interrupted reply the user actually heard."""
-        gen = self._truncatable_generations.get(message_id)
-        if gen is None:
+        """Report how much of the interrupted reply livekit played."""
+        index = next(
+            (i for i, gen in enumerate(self._truncatable) if gen.response_id == message_id),
+            None,
+        )
+        if index is None:
             return
-        for response_id in list(self._truncatable_generations):
-            del self._truncatable_generations[response_id]
-            if response_id == message_id:
-                break
+        gen = self._truncatable[index]
+        for _ in range(index + 1):
+            self._truncatable.popleft()
         if gen.audio_sample_rate is None:
             return
         frame_bytes = gen.audio_channels * 2
@@ -754,7 +757,7 @@ class DeepslateRealtimeSession(
             self._settle_generation(gen, cancelled=True)
         self._generations.clear()
         self._settled_turns.clear()
-        self._truncatable_generations.clear()
+        self._truncatable.clear()
         self._last_turn_id = None
         self._speech_starting_at = None
         self._user_turn_started_at = None
@@ -1091,7 +1094,7 @@ class DeepslateRealtimeSession(
         )
         self._generations[turn_id] = gen
         if self._opts.supports_playback_reporting:
-            self._truncatable_generations[response_id] = gen
+            self._truncatable.append(gen)
         self._last_turn_id = turn_id
 
         has_audio = self._realtime_model._tts_config is not None

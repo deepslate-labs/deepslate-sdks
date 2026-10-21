@@ -66,7 +66,6 @@ from .frames import (
     DeepslateConversationQueryResultFrame,
     DeepslateVadStateEventFrame,
 )
-from ._playback import DeepslatePlaybackReporter, _PlaybackTracker
 
 
 class DeepslateRealtimeLLMService(LLMService, DeepslateSessionListener):
@@ -91,22 +90,9 @@ class DeepslateRealtimeLLMService(LLMService, DeepslateSessionListener):
         self._audio_played: Dict[int, int] = {}
         self._deferred_end: Optional[int] = None
         self._response_turn: Optional[int] = None
-        self._playback = (
-            _PlaybackTracker(self.report_playback_position)
-            if options.supports_playback_reporting
-            else None
-        )
-
-    def playback_reporter(self) -> DeepslatePlaybackReporter:
-        """Processor to place right after ``transport.output()``."""
-        if self._playback is None:
-            raise ValueError(
-                "playback_reporter() requires DeepslateOptions(supports_playback_reporting=True)"
-            )
-        return DeepslatePlaybackReporter(self._playback)
 
     def report_playback_position(self, bytes_played: int, turn_id: int) -> None:
-        """Report how many bytes of turn ``turn_id``'s audio have played.
+        """Report how many bytes of turn ``turn_id``'s audio the listener has heard.
 
         The turn id of each audio frame is in ``frame.metadata["deepslate_turn_id"]``.
         """
@@ -213,8 +199,6 @@ class DeepslateRealtimeLLMService(LLMService, DeepslateSessionListener):
         self._audio_sent.clear()
         self._audio_played.clear()
         self._response_turn = None
-        if self._playback is not None:
-            self._playback.forget_turns()
 
     async def on_response_begin(self, turn_id: int = 0) -> None:
         self._response_turn = turn_id
@@ -247,8 +231,6 @@ class DeepslateRealtimeLLMService(LLMService, DeepslateSessionListener):
             self._audio_sent[turn_id] = sent + len(pcm_bytes)
         if turn_id is None:
             turn_id = self._response_turn
-        if self._playback is not None:
-            self._playback.received(turn_id, len(pcm_bytes), sample_rate, channels)
         frame = OutputAudioRawFrame(
             audio=pcm_bytes, sample_rate=sample_rate, num_channels=channels
         )

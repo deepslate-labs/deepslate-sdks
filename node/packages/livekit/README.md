@@ -124,7 +124,7 @@ The constructor takes a single options object (`RealtimeModelOptions`):
 | `ttsConfig` | `TtsConfig` | `undefined` | TTS configuration (enables server-side audio output) |
 | `wsUrl` | `string` | `undefined` | Direct WebSocket URL (for local dev/testing) |
 | `experiments` | `Experiments` | `undefined` | Server-side experiments to enable |
-| `supportsPlaybackReporting` | `boolean` | `false` | Report playback position to the server |
+| `supportsPlaybackReporting` | `boolean` | `false` | Report how much of an interrupted reply played ([Playback Position Reporting](#playback-position-reporting)) |
 
 ### Experiments
 
@@ -277,7 +277,16 @@ await session.start({ agent: new Assistant(), room: ctx.room });
 
 ## Playback Position Reporting
 
-`supportsPlaybackReporting: true` reports playback automatically. To report it yourself, call `reportPlaybackPosition(bytesPlayed, turnId)` on the realtime session. Each audio frame carries its turn id in `frame.userdata.deepslateTurnId`.
+Without reports, the server estimates how much of an interrupted reply the listener heard from elapsed time. With `supportsPlaybackReporting: true`, the plugin reports how far livekit had played an interrupted reply. livekit passes that position to `truncate()`, and the server cuts the reply there.
+
+- The report counts when the model had finished generating the reply. When the user interrupts a reply the model is still generating, the server commits its own estimate at once and ignores the report.
+- livekit measures audio handed to WebRTC, so the report can run up to a few hundred milliseconds ahead of what a caller hears over the network or a phone line.
+- The plugin reports nothing while audio plays, or when the user interrupts before any audio played.
+
+If your app knows the real playback position, report it yourself with `reportPlaybackPosition(bytesPlayed, turnId)` on the realtime session. Each audio frame carries its turn id in `frame.userdata.deepslateTurnId`.
+
+- `bytesPlayed` counts bytes of the turn's received audio chunks, starting at its first chunk.
+- Report what the listener heard, not what was queued for playback. A report that runs ahead makes the server keep text the listener never heard.
 
 ## Examples
 

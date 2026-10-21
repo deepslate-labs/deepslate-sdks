@@ -355,7 +355,7 @@ Subclass this and override only the methods you need. All methods are `async` an
 | `ws_url` | `str \| None` | `None` | Direct WebSocket URL (overrides `base_url`; for local dev) |
 | `max_retries` | `int` | `3` | Maximum reconnection attempts before giving up |
 | `experiments` | `Mapping[str, Any] \| None` | `None` | Server-side experiments to enable |
-| `supports_playback_reporting` | `bool` | `False` | Report playback position to the server |
+| `supports_playback_reporting` | `bool` | `False` | Set when you send playback position reports |
 
 ### `VadConfig`
 

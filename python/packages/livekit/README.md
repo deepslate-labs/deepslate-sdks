@@ -17,7 +17,7 @@ LiveKit Agents plugin for [Deepslate's](https://deepslate.eu/) realtime voice AI
 - **Function Tools** — Define and invoke tools using LiveKit's `@function_tool()` decorator
 - **Flexible TTS** — Server-side TTS via Deepslate-hosted (cloned) voices or ElevenLabs, with automatic context truncation on interruption
 - **Automatic Interruption Handling** — Truncates the in-flight response when users interrupt
-- **Playback Position Reporting** — Optionally report how much of an interrupted reply the caller heard
+- **Playback Position Reporting** — Optionally report how much of an interrupted reply played, so the server truncates it at that point
 
 ---
 
@@ -122,7 +122,7 @@ if __name__ == "__main__":
 | `generate_reply_timeout` | `float`               | `30.0`                           | Timeout in seconds for `generate_reply` (0 = no limit) |
 | `tts_config`             | `ElevenLabsTtsConfig \| HostedTtsConfig` | `None`          | TTS configuration (enables server-side audio output)    |
 | `vad_config`             | `VadConfig`           | `None`                            | Voice activity detection tuning                         |
-| `supports_playback_reporting` | `bool`           | `False`                           | Report playback position to the server |
+| `supports_playback_reporting` | `bool`           | `False`                           | Report how much of an interrupted reply played ([Playback Position Reporting](#playback-position-reporting)) |
 | `experiments`            | `Mapping[str, Any]`   | `None`                            | Server-side experiments to enable                       |
 
 Pass a `VadConfig` instance to tune voice activity detection — see [VAD Configuration](#vad-configuration) below.
@@ -367,7 +367,17 @@ Each item is a `ChatMessageDict` (importable from `deepslate.core`) with:
 
 ## Playback Position Reporting
 
-`supports_playback_reporting=True` reports playback automatically. To report it yourself, call `report_playback_position(bytes_played, turn_id)` on the realtime session. Each audio frame carries its turn id in `frame.userdata["deepslate_turn_id"]`.
+Without reports, the server estimates how much of an interrupted reply the listener heard from elapsed time. With `supports_playback_reporting=True`, the plugin reports how far livekit had played an interrupted reply. livekit passes that position to `truncate()`, and the server cuts the reply there.
+
+- The report counts when the model had finished generating the reply. When the user interrupts a reply the model is still generating, the server commits its own estimate at once and ignores the report.
+- livekit measures audio handed to WebRTC, so the report can run up to a few hundred milliseconds ahead of what a caller hears over the network or a phone line.
+- The plugin reports nothing while audio plays, or when the user interrupts before any audio played.
+
+If your app knows the real playback position, report it yourself with `report_playback_position(bytes_played, turn_id)` on the realtime session. Each audio frame carries its turn id in `frame.userdata["deepslate_turn_id"]`.
+
+- `bytes_played` counts bytes of the turn's received audio chunks, starting at its first chunk.
+- Report while the audio plays. A report sent after an interruption only counts if the model had finished generating the reply.
+- Report what the listener heard, not what was queued for playback. A report that runs ahead makes the server keep text the listener never heard.
 
 ## Examples
 

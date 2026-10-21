@@ -211,7 +211,7 @@ if __name__ == "__main__":
 | `ws_url`          | `Optional[str]` | `None`                           | Direct WebSocket URL (overrides `base_url`; for local dev/testing) |
 | `max_retries`     | `int`           | `3`                              | Maximum reconnection attempts before giving up                 |
 | `experiments`     | `Mapping[str, Any] \| None` | `None`               | Server-side experiments to enable                              |
-| `supports_playback_reporting` | `bool` | `False`                 | Report playback position to the server ([Playback Position Reporting](#playback-position-reporting)) |
+| `supports_playback_reporting` | `bool` | `False`                 | Set when you send playback position reports ([Playback Position Reporting](#playback-position-reporting)) |
 
 Use `DeepslateOptions.from_env()` to load credentials from environment variables:
 
@@ -526,20 +526,13 @@ class TranscriptLogger(FrameProcessor):  # place after transport.output()
 
 ## Playback Position Reporting
 
-Enable `supports_playback_reporting` and place the reporter right after `transport.output()`:
+Without reports, the server estimates how much of an interrupted reply the listener heard from elapsed time. If your app knows the real playback position, report it and set `supports_playback_reporting=True`. The SDK does not report on its own, because the framework does not expose what the listener has heard.
 
-```python
-pipeline = Pipeline([
-    transport.input(),
-    llm,
-    transport.output(),
-    llm.playback_reporter(),
-])
-```
+Call `llm.report_playback_position(bytes_played, turn_id)`. Each audio frame the service pushes carries its turn id in `frame.metadata["deepslate_turn_id"]`. The output transport re-chunks audio into new frames without it, so read the turn id before `transport.output()`.
 
-Audio counts as played once the transport has written it. Audio mixers are not supported.
-
-To report it yourself instead, call `llm.report_playback_position(bytes_played, turn_id)`. Each audio frame from the service carries its turn id in `frame.metadata["deepslate_turn_id"]`.
+- `bytes_played` counts bytes of the turn's received audio chunks, starting at its first chunk.
+- Report while the audio plays. A report sent after an interruption only counts if the model had finished generating the reply.
+- Report what the listener heard, not what was queued for playback. A report that runs ahead makes the server keep text the listener never heard.
 
 ---
 

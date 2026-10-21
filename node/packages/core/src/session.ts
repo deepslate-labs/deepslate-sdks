@@ -325,8 +325,9 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
   /**
    * Report that `bytesPlayed` bytes of turn `turnId`'s audio have played,
    * counted from the turn's first audio chunk in the bytes of the received
-   * audio chunks. Dropped while the session is not initialized: after a reconnect
-   * the turn id would address the new server session's turns.
+   * audio chunks. Does nothing while the session is not initialized or the
+   * socket is closed, because after a reconnect the turn id would refer to a
+   * turn of the new server session.
    */
   reportPlaybackPosition(bytesPlayed: number, turnId: number): void {
     if (!Number.isInteger(turnId) || turnId < 0) {
@@ -335,7 +336,7 @@ export class DeepslateSession extends TypedEventEmitter<DeepslateSessionEvents> 
     if (!Number.isFinite(bytesPlayed) || bytesPlayed < 0) {
       throw new RangeError(`bytesPlayed must be a finite number >= 0, got ${bytesPlayed}`);
     }
-    if (!this.sessionInitializedFlag) return;
+    if (!this.sessionInitializedFlag || this.ws?.readyState !== WebSocket.OPEN) return;
     this.send(
       create(ServiceBoundMessageSchema, {
         payload: {

@@ -88,9 +88,8 @@ class DeepslateOptions:
     """
 
     supports_playback_reporting: bool = False
-    """Report how much of each assistant turn's audio actually played, so the
-    server truncates an interrupted turn where the user stopped hearing it
-    instead of estimating from elapsed time.
+    """Tell the server that this client reports how much of each turn's audio the
+    listener heard, through :meth:`DeepslateSession.report_playback_position`.
     """
 
     def __post_init__(self) -> None:

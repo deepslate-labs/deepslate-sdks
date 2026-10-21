@@ -376,8 +376,9 @@ class DeepslateSession:
     def report_playback_position_nowait(self, bytes_played: int, turn_id: int) -> None:
         """Synchronous :meth:`report_playback_position`.
 
-        Dropped while the session is not initialized: after a reconnect the
-        turn id would address the new server session's turns.
+        Dropped while the session is not initialized or is reconnecting, because
+        after a reconnect the turn id would refer to a turn of the new server
+        session.
         """
         if bytes_played < 0 or turn_id < 0:
             raise ValueError(
