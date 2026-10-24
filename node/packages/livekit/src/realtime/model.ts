@@ -64,7 +64,17 @@ export interface RealtimeModelOptions {
   ttsConfig?: TtsConfig;
   wsUrl?: string;
   experiments?: Experiments;
+  supportsPlaybackReporting?: boolean;
 }
+
+interface AudioRun {
+  turnId: number | null;
+  turnOffset: number;
+  bytes: number;
+}
+
+// livekit only truncates the reply it just interrupted, so a few recent ones suffice.
+const MAX_TRUNCATABLE = 8;
 
 /** Internal state for an in-flight response generation. */
 interface ResponseGeneration {
@@ -74,6 +84,9 @@ interface ResponseGeneration {
   // the framework's ReadableStream<string | TimedString> sink.
   textStream: Pushable<string>;
   audioStream: Pushable<AudioFrame>;
+  audioRuns: AudioRun[];
+  sampleRate: number;
+  channels: number;
   responseId: string;
   firstTokenAt?: number;
   // Accumulated text fragments + audio transcripts. Used to detect audio-only
@@ -119,6 +132,7 @@ export class RealtimeModel extends llm.RealtimeModel {
       generateReplyTimeout: options.generateReplyTimeout,
       wsUrl: options.wsUrl,
       experiments: options.experiments,
+      supportsPlaybackReporting: options.supportsPlaybackReporting,
     });
     this.vad = options.vad;
     this.ttsConfig = options.ttsConfig;
@@ -151,6 +165,9 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
   private toolChoice: ToolChoice | null = null;
 
   private currentGeneration: ResponseGeneration | null = null;
+  private readonly truncatable = new Map<string, ResponseGeneration>();
+  private turnBytes = new Map<number, number>();
+  private lastTurnId: number | null = null;
   private pendingUserText: string | null = null;
   private pendingUserGeneration = false;
   private pendingUninterruptable = false;
@@ -185,6 +202,7 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
         maxRetries: model.opts.maxRetries,
         generateReplyTimeout: model.opts.generateReplyTimeout,
         experiments: model.opts.experiments,
+        supportsPlaybackReporting: model.opts.supportsPlaybackReporting,
       },
       {
         vadConfig: model.vad,
@@ -320,13 +338,37 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
     this.closeCurrentGeneration();
   }
 
-  async truncate(_options: {
+  /**
+   * Report how many bytes of turn `turnId`'s audio the listener has heard. The
+   * turn id of each audio frame is in `frame.userdata.deepslateTurnId`.
+   */
+  reportPlaybackPosition(bytesPlayed: number, turnId: number): void {
+    this.session.reportPlaybackPosition(bytesPlayed, turnId);
+  }
+
+  async truncate(options: {
     messageId: string;
     audioEndMs: number;
     modalities?: ("text" | "audio")[];
     audioTranscript?: string;
   }): Promise<void> {
-    // Deepslate handles truncation server-side automatically.
+    const gen = this.truncatable.get(options.messageId);
+    if (!gen) return;
+    for (const responseId of this.truncatable.keys()) {
+      this.truncatable.delete(responseId);
+      if (responseId === options.messageId) break;
+    }
+    const frameBytes = gen.channels * Int16Array.BYTES_PER_ELEMENT;
+    let offset = Math.floor((options.audioEndMs * gen.sampleRate) / 1000) * frameBytes;
+    for (const run of gen.audioRuns) {
+      if (offset < run.bytes || run === gen.audioRuns.at(-1)) {
+        if (run.turnId !== null) {
+          this.session.reportPlaybackPosition(run.turnOffset + Math.min(offset, run.bytes), run.turnId);
+        }
+        return;
+      }
+      offset -= run.bytes;
+    }
   }
 
   override async close(): Promise<void> {
@@ -393,14 +435,24 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
       gen.firstTokenAt ??= Date.now();
     });
 
-    this.session.on("audioChunk", (pcm, sampleRate, channels, transcript) => {
+    this.session.on("audioChunk", (pcm, sampleRate, channels, transcript, chunkTurnId) => {
       const gen = this.ensureGeneration();
       const int16 = new Int16Array(
         pcm.buffer.slice(pcm.byteOffset, pcm.byteOffset + pcm.byteLength),
       );
       const samplesPerChannel = int16.length / Math.max(channels, 1);
+      const turnId = chunkTurnId ?? this.lastTurnId;
+      const start = turnId === null ? 0 : (this.turnBytes.get(turnId) ?? 0);
+      if (turnId !== null) this.turnBytes.set(turnId, start + pcm.byteLength);
+      const run = gen.audioRuns.at(-1);
+      if (run?.turnId === turnId) run.bytes += pcm.byteLength;
+      else gen.audioRuns.push({ turnId, turnOffset: start, bytes: pcm.byteLength });
+      gen.sampleRate = sampleRate;
+      gen.channels = channels;
       gen.audioStream.push(
-        new AudioFrame(int16, sampleRate, channels, samplesPerChannel),
+        new AudioFrame(int16, sampleRate, channels, samplesPerChannel, {
+          deepslateTurnId: turnId,
+        }),
       );
       gen.firstTokenAt ??= Date.now();
       if (transcript) {
@@ -418,7 +470,8 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
       this.closeCurrentGeneration();
     });
 
-    this.session.on("responseBegin", () => {
+    this.session.on("responseBegin", (turnId) => {
+      this.lastTurnId = turnId;
       this.ensureGeneration();
     });
 
@@ -433,10 +486,9 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
       // generation for the remaining audio, causing livekit-agents to restart
       // playout mid-utterance (audible stutter) instead of leaving the one
       // continuous stream alone.
-      if (this.currentGeneration && !this.currentGeneration.uninterruptable) {
-        this.emit("input_speech_started", {});
-        this.closeCurrentGeneration();
-      }
+      if (this.currentGeneration?.uninterruptable) return;
+      this.emit("input_speech_started", {});
+      this.closeCurrentGeneration();
     });
 
     this.session.on("userTranscription", (text) => {
@@ -462,6 +514,9 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
     // ---- Deepslate-specific extras (not consumed by the agent loop) ----
 
     this.session.on("sessionInitialized", () => {
+      this.turnBytes = new Map();
+      this.lastTurnId = null;
+      this.truncatable.clear();
       this.emit("session_initialized", undefined);
     });
 
@@ -537,11 +592,21 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
       functionStream: createPushable<FunctionCall>(),
       textStream: createPushable<string>(),
       audioStream: createPushable<AudioFrame>(),
+      audioRuns: [],
+      sampleRate: 0,
+      channels: 0,
       responseId,
       audioTranscript: "",
       uninterruptable,
     };
     this.currentGeneration = gen;
+    if (this.model.opts.supportsPlaybackReporting) {
+      this.truncatable.set(responseId, gen);
+      const oldest = this.truncatable.keys().next().value;
+      if (this.truncatable.size > MAX_TRUNCATABLE && oldest !== undefined) {
+        this.truncatable.delete(oldest);
+      }
+    }
 
     const modalities: ("text" | "audio")[] = hasAudio
       ? ["audio", "text"]
