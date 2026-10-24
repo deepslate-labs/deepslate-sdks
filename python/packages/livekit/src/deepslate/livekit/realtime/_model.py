@@ -705,7 +705,6 @@ class DeepslateRealtimeSession(
         audio_end_ms: int,
         audio_transcript: NotGivenOr[str] = NOT_GIVEN,
     ) -> None:
-        """Report how much of the interrupted reply livekit played."""
         index = next(
             (i for i, gen in enumerate(self._truncatable) if gen.response_id == message_id),
             None,

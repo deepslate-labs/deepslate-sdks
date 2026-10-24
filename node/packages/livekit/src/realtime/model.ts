@@ -67,11 +67,9 @@ export interface RealtimeModelOptions {
   supportsPlaybackReporting?: boolean;
 }
 
-/** Consecutive audio of one server turn within a generation. */
 interface AudioRun {
   turnId: number | null;
-  /** Byte offset of the run's first chunk within its turn's audio. */
-  start: number;
+  turnOffset: number;
   bytes: number;
 }
 
@@ -348,7 +346,6 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
     this.session.reportPlaybackPosition(bytesPlayed, turnId);
   }
 
-  /** Report how much of the interrupted reply livekit played. */
   async truncate(options: {
     messageId: string;
     audioEndMs: number;
@@ -364,9 +361,9 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
     const frameBytes = gen.channels * Int16Array.BYTES_PER_ELEMENT;
     let offset = Math.floor((options.audioEndMs * gen.sampleRate) / 1000) * frameBytes;
     for (const run of gen.audioRuns) {
-      if (offset <= run.bytes || run === gen.audioRuns.at(-1)) {
+      if (offset < run.bytes || run === gen.audioRuns.at(-1)) {
         if (run.turnId !== null) {
-          this.session.reportPlaybackPosition(run.start + Math.min(offset, run.bytes), run.turnId);
+          this.session.reportPlaybackPosition(run.turnOffset + Math.min(offset, run.bytes), run.turnId);
         }
         return;
       }
@@ -449,7 +446,7 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
       if (turnId !== null) this.turnBytes.set(turnId, start + pcm.byteLength);
       const run = gen.audioRuns.at(-1);
       if (run?.turnId === turnId) run.bytes += pcm.byteLength;
-      else gen.audioRuns.push({ turnId, start, bytes: pcm.byteLength });
+      else gen.audioRuns.push({ turnId, turnOffset: start, bytes: pcm.byteLength });
       gen.sampleRate = sampleRate;
       gen.channels = channels;
       gen.audioStream.push(
@@ -489,10 +486,9 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
       // generation for the remaining audio, causing livekit-agents to restart
       // playout mid-utterance (audible stutter) instead of leaving the one
       // continuous stream alone.
-      if (this.currentGeneration && !this.currentGeneration.uninterruptable) {
-        this.emit("input_speech_started", {});
-        this.closeCurrentGeneration();
-      }
+      if (this.currentGeneration?.uninterruptable) return;
+      this.emit("input_speech_started", {});
+      this.closeCurrentGeneration();
     });
 
     this.session.on("userTranscription", (text) => {
