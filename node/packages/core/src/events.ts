@@ -50,6 +50,20 @@ export type DeepslateSessionEvents = {
   ) => void;
   /** The playback buffer should be cleared (user started speaking). */
   playbackBufferClear: () => void;
+  /** The server's voice activity detector changed state. `SPEECH_STARTING` to `SPEECH` means the user is speaking. */
+  vadStateEvent: (
+    fromState: string,
+    toState: string,
+    sessionTimeMs: number,
+    packetId: number,
+  ) => void;
+  /** Text of turn `turnId` became audible. `audioBytesPlayed` is the server's estimate of the bytes played. */
+  modelSpeechProgress: (
+    turnId: number,
+    text: string,
+    audioBytesPlayed: number,
+    exact: boolean,
+  ) => void;
   /** An exported chat history arrived. */
   chatHistory: (messages: ChatMessage[]) => void;
   /** A side-channel conversation query completed. */

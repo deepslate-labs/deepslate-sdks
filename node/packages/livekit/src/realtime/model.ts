@@ -168,9 +168,10 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
   private readonly truncatable = new Map<string, ResponseGeneration>();
   private turnBytes = new Map<number, number>();
   private lastTurnId: number | null = null;
+  private uninterruptablePlayback: { turnId: number; responseEnded: boolean } | null = null;
   private pendingUserText: string | null = null;
   private pendingUserGeneration = false;
-  private pendingUninterruptable = false;
+  private nextGenerationUninterruptable = false;
   private replyWaiters: Array<(ev: GenerationCreatedEvent) => void> = [];
 
   private audioChain: Promise<unknown> = Promise.resolve();
@@ -400,9 +401,7 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
     uninterruptable = false,
   ): Promise<void> {
     await this.session.initialize();
-    // Consumed by the next createGeneration() so the playbackBufferClear
-    // handler can tell this generation apart from a normal, barge-in-able one.
-    this.pendingUninterruptable = uninterruptable;
+    this.nextGenerationUninterruptable = uninterruptable;
     await this.session.sendDirectSpeech(text, includeInHistory, uninterruptable);
   }
 
@@ -442,6 +441,7 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
       );
       const samplesPerChannel = int16.length / Math.max(channels, 1);
       const turnId = chunkTurnId ?? this.lastTurnId;
+      this.protectIfUninterruptable(gen, turnId);
       const start = turnId === null ? 0 : (this.turnBytes.get(turnId) ?? 0);
       if (turnId !== null) this.turnBytes.set(turnId, start + pcm.byteLength);
       const run = gen.audioRuns.at(-1);
@@ -472,21 +472,47 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
 
     this.session.on("responseBegin", (turnId) => {
       this.lastTurnId = turnId;
-      this.ensureGeneration();
+      this.protectIfUninterruptable(this.ensureGeneration(), turnId);
     });
 
-    this.session.on("responseEnd", () => {
+    this.session.on("responseEnd", (turnId) => {
+      if (turnId === this.uninterruptablePlayback?.turnId) this.uninterruptablePlayback.responseEnded = true;
       this.closeCurrentGeneration();
     });
 
+    this.session.on("modelSpeechProgress", (turnId, _text, audioBytesPlayed) => {
+      const playback = this.uninterruptablePlayback;
+      if (!playback) return;
+      const drained =
+        turnId === playback.turnId &&
+        playback.responseEnded &&
+        audioBytesPlayed >= (this.turnBytes.get(turnId) ?? 0);
+      // Progress for a later turn means the uninterruptable turn finished
+      // playing, even when its own last progress never arrived.
+      if (drained || turnId > playback.turnId) this.uninterruptablePlayback = null;
+    });
+
+    this.session.on("vadStateEvent", (fromState, toState) => {
+      if (fromState === "SPEECH_STARTING" && toState === "SPEECH") {
+        // The server reports speech during uninterruptable speech too and
+        // ignores it.
+        if (this.currentGeneration?.uninterruptable || this.uninterruptablePlayback) return;
+        this.emit("input_speech_started", {});
+        this.closeCurrentGeneration();
+      } else if (fromState === "SPEECH_ENDING" && toState === "SILENCE") {
+        this.emit("input_speech_stopped", {
+          userTranscriptionEnabled: this.model.capabilities.userTranscription,
+        });
+      }
+    });
+
     this.session.on("playbackBufferClear", () => {
-      // An uninterruptable generation (speakDirect(..., uninterruptable=true))
-      // keeps streaming audio from the server regardless of user speech;
-      // closing it here would just make ensureGeneration() spin up a new
-      // generation for the remaining audio, causing livekit-agents to restart
-      // playout mid-utterance (audible stutter) instead of leaving the one
-      // continuous stream alone.
-      if (this.currentGeneration?.uninterruptable) return;
+      // User speech interrupts through vadStateEvent, because the server also
+      // sends this clear when a turn starts. While uninterruptable speech
+      // plays, the server sends the clear only when a new direct speech
+      // replaces it, so stop the old speech.
+      if (!this.uninterruptablePlayback) return;
+      this.uninterruptablePlayback = null;
       this.emit("input_speech_started", {});
       this.closeCurrentGeneration();
     });
@@ -516,6 +542,7 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
     this.session.on("sessionInitialized", () => {
       this.turnBytes = new Map();
       this.lastTurnId = null;
+      this.uninterruptablePlayback = null;
       this.truncatable.clear();
       this.emit("session_initialized", undefined);
     });
@@ -581,8 +608,8 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
   private createGeneration(): ResponseGeneration {
     const userInitiated = this.pendingUserGeneration;
     this.pendingUserGeneration = false;
-    const uninterruptable = this.pendingUninterruptable;
-    this.pendingUninterruptable = false;
+    const uninterruptable = this.nextGenerationUninterruptable;
+    this.nextGenerationUninterruptable = false;
 
     const responseId = shortId("resp_");
     const hasAudio = this.model.ttsConfig != null;
@@ -634,6 +661,13 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
     for (const resolve of waiters) resolve(ev);
 
     return gen;
+  }
+
+  private protectIfUninterruptable(gen: ResponseGeneration, turnId: number | null): void {
+    if (!gen.uninterruptable || turnId === null) return;
+    if (!this.uninterruptablePlayback || turnId > this.uninterruptablePlayback.turnId) {
+      this.uninterruptablePlayback = { turnId, responseEnded: false };
+    }
   }
 
   private closeCurrentGeneration(): void {

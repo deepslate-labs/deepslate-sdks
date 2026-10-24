@@ -292,6 +292,8 @@ Subscribe with `session.on(event, listener)`. Event payloads are strongly typed 
 > never sync it straight into a conversation history.
 | `userTranscription` | `(text: string, language: string \| null, turnId: number)` | User speech transcription arrives |
 | `playbackBufferClear` | `()` | Server cleared its audio playback buffer |
+| `vadStateEvent` | `(fromState: string, toState: string, sessionTimeMs: number, packetId: number)` | The server's voice activity detector changed state. A change from `SPEECH_STARTING` to `SPEECH` means the user is speaking |
+| `modelSpeechProgress` | `(turnId: number, text: string, audioBytesPlayed: number, exact: boolean)` | Text of a turn became audible. `audioBytesPlayed` is the server's estimate of how many bytes of the turn have played |
 | `chatHistory` | `(messages: ChatMessage[])` | Chat history export received |
 | `conversationQueryResult` | `(queryId: string, text: string)` | Side-channel query result received |
 | `error` | `(category: string, message: string, traceId: string \| null)` | Server sent an error notification |
