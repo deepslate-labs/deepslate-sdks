@@ -367,16 +367,16 @@ Each item is a `ChatMessageDict` (importable from `deepslate.core`) with:
 
 ## Playback Position Reporting
 
-Without reports, the server estimates how much of an interrupted reply the listener heard from elapsed time. With `supports_playback_reporting=True`, the plugin reports how far livekit had played an interrupted reply. livekit passes that position to `truncate()`, and the server cuts the reply there.
+Without reports, the server estimates how much of an interrupted reply the listener heard from elapsed time. With `supports_playback_reporting=True`, the plugin reports how far livekit had played an interrupted reply. livekit passes that position to `truncate()`, and the plugin sends it to the server. The server moves the cut to that position if it has not committed the cut yet.
 
-- The report counts when the model had finished generating the reply. When the user interrupts a reply the model is still generating, the server commits its own estimate at once and ignores the report.
+- A report sent after an interruption moves the cut only until the server commits it. If the model was still generating the reply, the server can commit the cut while it handles the cancelled generation, before the report arrives. A complete user message or a chat history export also commits the cut. A report that arrives after the commit does not change the cut.
 - livekit measures audio handed to WebRTC, so the report can run up to a few hundred milliseconds ahead of what a caller hears over the network or a phone line.
 - The plugin reports nothing while audio plays, or when the user interrupts before any audio played.
 
 If your app knows the real playback position, report it yourself with `report_playback_position(bytes_played, turn_id)` on the realtime session. Each audio frame carries its turn id in `frame.userdata["deepslate_turn_id"]`.
 
 - `bytes_played` counts bytes of the turn's received audio chunks, starting at its first chunk.
-- Report while the audio plays. A report sent after an interruption only counts if the model had finished generating the reply.
+- Report while the audio plays when possible. A report sent after an interruption can still move the cut if it arrives before the server commits it.
 - Report what the listener heard, not what was queued for playback. A report that runs ahead makes the server keep text the listener never heard.
 
 ## Examples

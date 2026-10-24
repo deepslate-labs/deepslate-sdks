@@ -531,7 +531,8 @@ Without reports, the server estimates how much of an interrupted reply the liste
 Call `llm.report_playback_position(bytes_played, turn_id)`. Each audio frame the service pushes carries its turn id in `frame.metadata["deepslate_turn_id"]`. The output transport re-chunks audio into new frames without it, so read the turn id before `transport.output()`.
 
 - `bytes_played` counts bytes of the turn's received audio chunks, starting at its first chunk.
-- Report while the audio plays. A report sent after an interruption only counts if the model had finished generating the reply.
+- Report while the audio plays when possible. A report sent after an interruption can still move the cut if it arrives before the server commits it.
+- If the model was still generating the reply, the server can commit the cut while it handles the cancelled generation, before the report arrives. A complete user message or a chat history export also commits the cut. A report that arrives after the commit does not change the cut.
 - Report what the listener heard, not what was queued for playback. A report that runs ahead makes the server keep text the listener never heard.
 
 ---

@@ -277,9 +277,9 @@ await session.start({ agent: new Assistant(), room: ctx.room });
 
 ## Playback Position Reporting
 
-Without reports, the server estimates how much of an interrupted reply the listener heard from elapsed time. With `supportsPlaybackReporting: true`, the plugin reports how far livekit had played an interrupted reply. livekit passes that position to `truncate()`, and the server cuts the reply there.
+Without reports, the server estimates how much of an interrupted reply the listener heard from elapsed time. With `supportsPlaybackReporting: true`, the plugin reports how far livekit had played an interrupted reply. livekit passes that position to `truncate()`, and the plugin sends it to the server. The server moves the cut to that position if it has not committed the cut yet.
 
-- The report counts when the model had finished generating the reply. When the user interrupts a reply the model is still generating, the server commits its own estimate at once and ignores the report.
+- A report sent after an interruption moves the cut only until the server commits it. If the model was still generating the reply, the server can commit the cut while it handles the cancelled generation, before the report arrives. A complete user message or a chat history export also commits the cut. A report that arrives after the commit does not change the cut.
 - livekit measures audio handed to WebRTC, so the report can run up to a few hundred milliseconds ahead of what a caller hears over the network or a phone line.
 - The plugin reports nothing while audio plays, or when the user interrupts before any audio played.
 
