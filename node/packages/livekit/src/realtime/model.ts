@@ -487,15 +487,11 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
         turnId === playback.turnId &&
         playback.responseEnded &&
         audioBytesPlayed >= (this.turnBytes.get(turnId) ?? 0);
-      // Progress for a later turn means the uninterruptable turn finished
-      // playing, even when its own last progress never arrived.
       if (drained || turnId > playback.turnId) this.uninterruptablePlayback = null;
     });
 
     this.session.on("vadStateEvent", (fromState, toState) => {
       if (fromState === "SPEECH_STARTING" && toState === "SPEECH") {
-        // The server reports speech during uninterruptable speech too and
-        // ignores it.
         if (this.currentGeneration?.uninterruptable || this.uninterruptablePlayback) return;
         this.emit("input_speech_started", {});
         this.closeCurrentGeneration();
@@ -507,10 +503,6 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
     });
 
     this.session.on("playbackBufferClear", () => {
-      // User speech interrupts through vadStateEvent, because the server also
-      // sends this clear when a turn starts. While uninterruptable speech
-      // plays, the server sends the clear only when a new direct speech
-      // replaces it, so stop the old speech.
       if (!this.uninterruptablePlayback) return;
       this.uninterruptablePlayback = null;
       this.emit("input_speech_started", {});
