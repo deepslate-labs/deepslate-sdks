@@ -540,6 +540,8 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
     // ---- Deepslate-specific extras (not consumed by the agent loop) ----
 
     this.session.on("sessionInitialized", () => {
+      this.closeCurrentGeneration();
+      this.nextGenerationUninterruptable = false;
       this.turnBytes = new Map();
       this.lastTurnId = null;
       this.uninterruptablePlayback = null;
