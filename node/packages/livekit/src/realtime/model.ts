@@ -541,7 +541,6 @@ export class DeepslateRealtimeSession extends llm.RealtimeSession {
 
     this.session.on("sessionInitialized", () => {
       this.closeCurrentGeneration();
-      this.nextGenerationUninterruptable = false;
       this.turnBytes = new Map();
       this.lastTurnId = null;
       this.uninterruptablePlayback = null;
