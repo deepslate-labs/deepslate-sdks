@@ -87,6 +87,11 @@ class DeepslateOptions:
     Dropped when ``ws_url`` is set, since ``ws_url`` already names the endpoint.
     """
 
+    supports_playback_reporting: bool = False
+    """Tell the server that this client reports how much of each turn's audio the
+    listener heard, through :meth:`DeepslateSession.report_playback_position`.
+    """
+
     def __post_init__(self) -> None:
         from ._utils import encode_experiments
 

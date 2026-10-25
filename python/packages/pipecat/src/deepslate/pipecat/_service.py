@@ -89,6 +89,15 @@ class DeepslateRealtimeLLMService(LLMService, DeepslateSessionListener):
         self._audio_sent: Dict[int, int] = {}
         self._audio_played: Dict[int, int] = {}
         self._deferred_end: Optional[int] = None
+        self._response_turn: Optional[int] = None
+
+    def report_playback_position(self, bytes_played: int, turn_id: int) -> None:
+        """Report how many bytes of turn ``turn_id``'s audio the listener has heard.
+
+        The turn id of each audio frame is in ``frame.metadata["deepslate_turn_id"]``.
+        """
+        if self._session is not None:
+            self._session.report_playback_position_nowait(bytes_played, turn_id)
 
     async def start(self, frame: StartFrame):
         """Starts the Pipecat service and opens the Deepslate connection."""
@@ -189,8 +198,10 @@ class DeepslateRealtimeLLMService(LLMService, DeepslateSessionListener):
         self._open_turns.clear()
         self._audio_sent.clear()
         self._audio_played.clear()
+        self._response_turn = None
 
     async def on_response_begin(self, turn_id: int = 0) -> None:
+        self._response_turn = turn_id
         if self._tts_config is not None:
             self._open_turns.add(turn_id)
         await self.push_frame(LLMFullResponseStartFrame())
@@ -215,16 +226,16 @@ class DeepslateRealtimeLLMService(LLMService, DeepslateSessionListener):
         transcript: Optional[str],
         turn_id: Optional[int] = None,
     ) -> None:
+        if turn_id is None:
+            turn_id = self._response_turn
         if turn_id in self._open_turns:
             sent = self._audio_sent.get(turn_id, 0)
             self._audio_sent[turn_id] = sent + len(pcm_bytes)
-        await self.push_frame(
-            OutputAudioRawFrame(
-                audio=pcm_bytes,
-                sample_rate=sample_rate,
-                num_channels=channels,
-            )
+        frame = OutputAudioRawFrame(
+            audio=pcm_bytes, sample_rate=sample_rate, num_channels=channels
         )
+        frame.metadata["deepslate_turn_id"] = turn_id
+        await self.push_frame(frame)
 
     async def on_model_speech_progress(
         self,

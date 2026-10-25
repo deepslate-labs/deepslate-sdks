@@ -136,6 +136,7 @@ class RealtimeModel(llm.RealtimeModel):
         ws_url: str | None = None,
         experiments: Mapping[str, Any] | None = None,
         model: str | None = None,
+        supports_playback_reporting: bool = False,
     ):
         """Initialize a Deepslate RealtimeModel.
 
@@ -165,6 +166,10 @@ class RealtimeModel(llm.RealtimeModel):
                    how e.g. preview models are selected.
                    Falls back to the DEEPSLATE_MODEL env var; when neither is set the
                    platform default is used. Not used when ``ws_url`` is set.
+            supports_playback_reporting: When True, report how much of an
+                        interrupted reply livekit played, so the server truncates
+                        it there instead of estimating from elapsed time. Off by
+                        default.
         """
         super().__init__(
             capabilities=llm.RealtimeCapabilities(
@@ -226,6 +231,7 @@ class RealtimeModel(llm.RealtimeModel):
             ws_url=ws_url,
             generate_reply_timeout=generate_reply_timeout,
             experiments=experiments,
+            supports_playback_reporting=supports_playback_reporting,
         )
 
         deprecated_vad_kwargs = {
@@ -368,6 +374,8 @@ class DeepslateRealtimeSession(
         # Generation tracking
         self._generations: dict[int, _ResponseGeneration] = {}
         self._settled_turns: deque[int] = deque(maxlen=64)
+        # livekit only truncates the reply it just interrupted, so a few recent ones suffice.
+        self._truncatable: deque[_ResponseGeneration] = deque(maxlen=8)
         self._last_turn_id: int | None = None
         self._response_created_futures: dict[
             str, asyncio.Future[GenerationCreatedEvent]
@@ -682,6 +690,13 @@ class DeepslateRealtimeSession(
         for gen in list(self._generations.values()):
             self._settle_generation(gen, cancelled=True)
 
+    def report_playback_position(self, bytes_played: int, turn_id: int) -> None:
+        """Report how many bytes of turn ``turn_id``'s audio the listener has heard.
+
+        The turn id of each audio frame is in ``frame.userdata["deepslate_turn_id"]``.
+        """
+        self._session.report_playback_position_nowait(bytes_played, turn_id)
+
     def truncate(
         self,
         *,
@@ -690,8 +705,21 @@ class DeepslateRealtimeSession(
         audio_end_ms: int,
         audio_transcript: NotGivenOr[str] = NOT_GIVEN,
     ) -> None:
-        """Deepslate handles truncation server-side automatically."""
-        pass
+        index = next(
+            (i for i, gen in enumerate(self._truncatable) if gen.response_id == message_id),
+            None,
+        )
+        if index is None:
+            return
+        gen = self._truncatable[index]
+        for _ in range(index + 1):
+            self._truncatable.popleft()
+        if gen.audio_sample_rate is None:
+            return
+        frame_bytes = gen.audio_channels * 2
+        played = audio_end_ms * gen.audio_sample_rate * frame_bytes // 1000
+        played = min(played - played % frame_bytes, gen.audio_bytes)
+        self._session.report_playback_position_nowait(played, gen.turn_id)
 
     async def aclose(self) -> None:
         """Close the session."""
@@ -728,6 +756,7 @@ class DeepslateRealtimeSession(
             self._settle_generation(gen, cancelled=True)
         self._generations.clear()
         self._settled_turns.clear()
+        self._truncatable.clear()
         self._last_turn_id = None
         self._speech_starting_at = None
         self._user_turn_started_at = None
@@ -783,6 +812,7 @@ class DeepslateRealtimeSession(
             sample_rate=sample_rate,
             num_channels=channels,
             samples_per_channel=len(pcm_bytes) // 2 // max(channels, 1),
+            userdata={"deepslate_turn_id": gen.turn_id},
         )
         gen.audio_ch.send_nowait(frame)
         gen.audio_bytes += len(pcm_bytes)
@@ -1062,6 +1092,8 @@ class DeepslateRealtimeSession(
             uninterruptable=is_uninterruptable,
         )
         self._generations[turn_id] = gen
+        if self._opts.supports_playback_reporting:
+            self._truncatable.append(gen)
         self._last_turn_id = turn_id
 
         has_audio = self._realtime_model._tts_config is not None
