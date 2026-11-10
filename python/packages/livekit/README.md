@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Documentation](https://img.shields.io/badge/docs-deepslate.eu-green)](https://docs.deepslate.eu/)
-[![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
 LiveKit Agents plugin for [Deepslate's](https://deepslate.eu/) realtime voice AI API.
 
@@ -28,7 +28,7 @@ pip install deepslate-livekit
 
 ### Requirements
 
-- Python 3.11 or higher
+- Python 3.10 or higher
 
 ### Dependencies (installed automatically)
 
