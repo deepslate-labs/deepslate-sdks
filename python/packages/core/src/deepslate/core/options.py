@@ -17,19 +17,23 @@ from __future__ import annotations
 import logging
 import os
 from dataclasses import dataclass
-from enum import Enum, StrEnum
+from enum import Enum
 from typing import Any, Mapping, Optional
 
 logger = logging.getLogger("deepslate.core")
 
 
-class DeepslateModel(StrEnum):
+class DeepslateModel(str, Enum):
     """Released Deepslate realtime model identifiers.
 
     Only generally available models are listed. Preview models and models released
     after this SDK version can be used by passing their ID directly to
     ``DeepslateOptions.model``.
     """
+
+    # StrEnum (3.11+) formats as its value. Keep that on 3.10.
+    def __str__(self) -> str:
+        return self.value
 
     OPAL_V2_1 = "opal-v2.1"
     """Opal v2.1, the platform default."""

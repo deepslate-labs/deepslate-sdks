@@ -21,13 +21,29 @@ import os
 import time
 import warnings
 from collections import deque
+from collections.abc import AsyncIterable, Mapping
 from dataclasses import dataclass
 from types import SimpleNamespace
-from typing import Any, Literal, Mapping
+from typing import Any, Literal, TypeVar
 
 import aiohttp
+from deepslate.core import (
+    BaseDeepslateClient,
+    ChatMessageDict,
+    DeepslateOptions,
+    DeepslateSession,
+    DeepslateSessionListener,
+    ElevenLabsTtsConfig,
+    FunctionToolDict,
+    HostedTtsConfig,
+    HostedVoiceCloneConfig,
+    TriggerMode,
+    VadConfig,
+    build_user_agent,
+)
+
 from livekit import rtc
-from livekit.agents import llm, utils, FunctionTool, NOT_GIVEN, NotGivenOr
+from livekit.agents import NOT_GIVEN, FunctionTool, NotGivenOr, llm, utils
 from livekit.agents.llm import (
     FunctionCall,
     GenerationCreatedEvent,
@@ -50,21 +66,6 @@ from livekit.agents.metrics import RealtimeModelMetrics
 from livekit.agents.metrics.base import Metadata
 from livekit.agents.types import TimedString
 
-from deepslate.core import (
-    BaseDeepslateClient,
-    ChatMessageDict,
-    build_user_agent,
-    DeepslateOptions,
-    DeepslateSession,
-    DeepslateSessionListener,
-    ElevenLabsTtsConfig,
-    HostedTtsConfig,
-    HostedVoiceCloneConfig,
-    FunctionToolDict,
-    TriggerMode,
-    VadConfig,
-)
-
 from .._log import logger
 
 DEEPSLATE_BASE_URL = "https://app.deepslate.eu"
@@ -80,12 +81,19 @@ ABANDONED_TOOL_RESULT = {
 }
 
 
+_T = TypeVar("_T")
+
+
+def _coalesce(value: _T | None, default: _T) -> _T:
+    return default if value is None else value
+
+
 @dataclass
 class _ResponseGeneration:
     """Internal state for a response being generated."""
 
-    message_ch: utils.aio.Chan["MessageGeneration"]
-    function_ch: utils.aio.Chan["FunctionCall"]
+    message_ch: utils.aio.Chan[MessageGeneration]
+    function_ch: utils.aio.Chan[FunctionCall]
     text_ch: utils.aio.Chan[str]
     audio_ch: utils.aio.Chan[rtc.AudioFrame]
     done_fut: asyncio.Future[None]
@@ -146,7 +154,7 @@ class RealtimeModel(llm.RealtimeModel):
             base_url: Base URL for Deepslate API.
             system_prompt: System prompt for the model.
             temperature: Sampling temperature (0.0 to 2.0). Higher values produce more random output.
-            generate_reply_timeout: Timeout in seconds for generate_reply (0 = no timeout).
+            generate_reply_timeout: Timeout in seconds for generate_reply and say (0 = no timeout).
             usage_heartbeat_interval_s: Interval in seconds between connected-time
                                         usage reports while a session is active.
             vad_config: Voice activity detection tuning.
@@ -168,7 +176,7 @@ class RealtimeModel(llm.RealtimeModel):
         """
         super().__init__(
             capabilities=llm.RealtimeCapabilities(
-                message_truncation=True,
+                message_truncation=False,
                 turn_detection=True,
                 user_transcription=True,
                 # Corvidae auto-generates the reply after a tool call
@@ -179,6 +187,7 @@ class RealtimeModel(llm.RealtimeModel):
                 audio_output=tts_config is not None,
                 manual_function_calls=False,
                 per_response_tool_choice=False,
+                supports_say=True,
             )
         )
 
@@ -190,15 +199,15 @@ class RealtimeModel(llm.RealtimeModel):
             deepslate_organization_id = organization_id or ""
             deepslate_api_key = api_key or ""
         else:
-            deepslate_vendor_id = vendor_id or os.environ.get("DEEPSLATE_VENDOR_ID")
+            deepslate_vendor_id = vendor_id or os.environ.get("DEEPSLATE_VENDOR_ID") or ""
             if not deepslate_vendor_id:
                 raise ValueError(
                     "Deepslate vendor ID is required. "
                     "Provide it via the vendor_id parameter or set the DEEPSLATE_VENDOR_ID environment variable."
                 )
 
-            deepslate_organization_id = organization_id or os.environ.get(
-                "DEEPSLATE_ORGANIZATION_ID"
+            deepslate_organization_id = (
+                organization_id or os.environ.get("DEEPSLATE_ORGANIZATION_ID") or ""
             )
             if not deepslate_organization_id:
                 raise ValueError(
@@ -206,7 +215,7 @@ class RealtimeModel(llm.RealtimeModel):
                     "Provide it via the organization_id parameter or set the DEEPSLATE_ORGANIZATION_ID environment variable."
                 )
 
-            deepslate_api_key = api_key or os.environ.get("DEEPSLATE_API_KEY")
+            deepslate_api_key = api_key or os.environ.get("DEEPSLATE_API_KEY") or ""
             if not deepslate_api_key:
                 raise ValueError(
                     "Deepslate API key is required. "
@@ -259,18 +268,12 @@ class RealtimeModel(llm.RealtimeModel):
             self._vad_config = vad_config
         else:
             vad_defaults = VadConfig()
-
-            def _coalesce(value, default):
-                return default if value is None else value
-
             self._vad_config = VadConfig(
                 confidence_threshold=_coalesce(
                     vad_confidence_threshold, vad_defaults.confidence_threshold
                 ),
                 min_volume=_coalesce(vad_min_volume, vad_defaults.min_volume),
-                start_duration_ms=_coalesce(
-                    vad_start_duration_ms, vad_defaults.start_duration_ms
-                ),
+                start_duration_ms=_coalesce(vad_start_duration_ms, vad_defaults.start_duration_ms),
                 stop_duration_ms=_coalesce(vad_stop_duration_ms, vad_defaults.stop_duration_ms),
                 backbuffer_duration_ms=_coalesce(
                     vad_backbuffer_duration_ms, vad_defaults.backbuffer_duration_ms
@@ -293,14 +296,10 @@ class RealtimeModel(llm.RealtimeModel):
         """Return the model identifier used in emitted usage/metrics metadata."""
         return self._opts.model or "opal"
 
-    def session(
-        self, *, turn_detection_disabled: bool = False
-    ) -> "DeepslateRealtimeSession":
+    def session(self, *, turn_detection_disabled: bool = False) -> DeepslateRealtimeSession:
         """Create a new Deepslate real-time session."""
         if turn_detection_disabled:
-            logger.warning(
-                "turn_detection_disabled is not supported and will be ignored"
-            )
+            logger.warning("turn_detection_disabled is not supported and will be ignored")
         return DeepslateRealtimeSession(realtime_model=self)
 
     def update_options(
@@ -334,6 +333,7 @@ class DeepslateRealtimeSession(
             "model_text_fragment",
             "session_initialized",
             "turn_snapshot",
+            "chat_history_exported",
         ]
     ],
     DeepslateSessionListener,
@@ -349,7 +349,7 @@ class DeepslateRealtimeSession(
     def __init__(self, realtime_model: RealtimeModel):
         """Initialize the session and start the underlying core session."""
         super().__init__(realtime_model)
-        self._realtime_model = realtime_model
+        self._realtime_model: RealtimeModel = realtime_model
         self._opts = realtime_model._opts
 
         self._session_start_time = time.monotonic()
@@ -369,13 +369,11 @@ class DeepslateRealtimeSession(
         self._generations: dict[int, _ResponseGeneration] = {}
         self._settled_turns: deque[int] = deque(maxlen=64)
         self._last_turn_id: int | None = None
-        self._response_created_futures: dict[
-            str, asyncio.Future[GenerationCreatedEvent]
-        ] = {}
+        self._response_created_futures: dict[str, asyncio.Future[GenerationCreatedEvent]] = {}
         self._pending_user_generation: bool = False
         self._pending_uninterruptable: bool = False
         self._pending_user_text: str | None = None
-        
+
         self._speech_starting_at: float | None = None
         self._user_turn_started_at: float | None = None
 
@@ -436,16 +434,12 @@ class DeepslateRealtimeSession(
 
         self._chat_ctx = chat_ctx.copy()
 
-    async def update_tools(
-        self, tools: list[FunctionTool | RawFunctionTool | Any]
-    ) -> None:
+    async def update_tools(self, tools: list[FunctionTool | RawFunctionTool | Any]) -> None:
         """Sync tool definitions to the server."""
-        tools_dicts = []
+        tools_dicts: list[FunctionToolDict] = []
         for tool in tools:
             if is_function_tool(tool):
-                schema = llm.utils.build_legacy_openai_schema(
-                    tool, internally_tagged=True
-                )
+                schema = llm.utils.build_legacy_openai_schema(tool, internally_tagged=True)
                 tools_dicts.append(
                     {
                         "type": "function",
@@ -472,13 +466,9 @@ class DeepslateRealtimeSession(
         self._tools_dicts = tools_dicts
         self._tools = llm.ToolContext(tools)
         await self._sync_tool_choice()
-        logger.debug(
-            f"updated tools: {[t.get('function', {}).get('name') for t in tools_dicts]}"
-        )
+        logger.debug(f"updated tools: {[t['function']['name'] for t in tools_dicts]}")
 
-    def update_options(
-        self, *, tool_choice: NotGivenOr[ToolChoice | None] = NOT_GIVEN
-    ) -> None:
+    def update_options(self, *, tool_choice: NotGivenOr[ToolChoice | None] = NOT_GIVEN) -> None:
         """Apply a tool_choice constraint.
 
         The base ``RealtimeSession.update_options`` is synchronous and called
@@ -510,11 +500,7 @@ class DeepslateRealtimeSession(
             return []
         if isinstance(tc, dict):  # NamedToolChoice
             name = tc.get("function", {}).get("name")
-            return [
-                t
-                for t in self._tools_dicts
-                if t.get("function", {}).get("name") == name
-            ]
+            return [t for t in self._tools_dicts if t.get("function", {}).get("name") == name]
         # "auto", "required", None → send all tools
         return self._tools_dicts
 
@@ -569,9 +555,7 @@ class DeepslateRealtimeSession(
         # Consumed by the next _create_generation() so on_vad_state_event can
         # tell this generation apart from a normal, barge-in-able one.
         self._pending_uninterruptable = uninterruptable
-        await self._session.send_direct_speech(
-            text, include_in_history, uninterruptable
-        )
+        await self._session.send_direct_speech(text, include_in_history, uninterruptable)
 
     async def query_conversation(
         self,
@@ -583,7 +567,7 @@ class DeepslateRealtimeSession(
         Returns the model's complete text reply.
         """
         query_id = utils.shortuuid("query_")
-        fut: asyncio.Future[str] = asyncio.get_event_loop().create_future()
+        fut: asyncio.Future[str] = asyncio.get_running_loop().create_future()
         self._pending_queries[query_id] = fut
 
         await self._session.initialize()
@@ -624,17 +608,12 @@ class DeepslateRealtimeSession(
     ) -> GenerationCreatedEvent:
         """Async implementation backing :meth:`generate_reply`."""
         if utils.is_given(tool_choice):
-            logger.warning(
-                "tool_choice is not supported in generate_reply and will be ignored"
-            )
+            logger.warning("tool_choice is not supported in generate_reply and will be ignored")
 
         if utils.is_given(tools):
             await self.update_tools(tools)
 
-        fut: asyncio.Future[GenerationCreatedEvent] = asyncio.Future()
-        request_id = utils.shortuuid("gen_")
-        self._response_created_futures[request_id] = fut
-        self._pending_user_generation = True
+        fut = self._expect_generation()
 
         if utils.is_given(instructions):
             self._instructions = instructions
@@ -659,15 +638,38 @@ class DeepslateRealtimeSession(
                 instructions=instructions if utils.is_given(instructions) else None
             )
 
-        timeout = self._opts.generate_reply_timeout
+        return await self._await_generation(fut, "generate_reply")
 
-        if timeout > 0:
-            try:
-                return await asyncio.wait_for(fut, timeout=timeout)
-            except asyncio.TimeoutError:
-                raise TimeoutError(f"generate_reply timed out after {timeout}s")
-        else:
+    def say(self, text: str | AsyncIterable[str]) -> asyncio.Future[GenerationCreatedEvent]:
+        """Speak ``text`` verbatim through Deepslate's TTS, bypassing the LLM."""
+        return asyncio.create_task(self._say(text))
+
+    async def _say(self, text: str | AsyncIterable[str]) -> GenerationCreatedEvent:
+        """Async implementation backing :meth:`say`."""
+        if not isinstance(text, str):
+            text = "".join([chunk async for chunk in text])
+        fut = self._expect_generation()
+        await self.speak_direct(text)
+        return await self._await_generation(fut, "say")
+
+    def _expect_generation(self) -> asyncio.Future[GenerationCreatedEvent]:
+        """Register a future resolved by the next user-initiated generation."""
+        fut: asyncio.Future[GenerationCreatedEvent] = asyncio.Future()
+        self._response_created_futures[utils.shortuuid("gen_")] = fut
+        self._pending_user_generation = True
+        return fut
+
+    async def _await_generation(
+        self, fut: asyncio.Future[GenerationCreatedEvent], operation: str
+    ) -> GenerationCreatedEvent:
+        """Wait for ``fut``, raising ``llm.RealtimeError`` on timeout."""
+        timeout = self._opts.generate_reply_timeout
+        if timeout <= 0:
             return await fut
+        try:
+            return await asyncio.wait_for(fut, timeout=timeout)
+        except asyncio.TimeoutError as e:
+            raise llm.RealtimeError(f"{operation} timed out after {timeout}s") from e
 
     def commit_audio(self) -> None:
         """Deepslate uses server-side VAD for auto-commit."""
@@ -735,14 +737,10 @@ class DeepslateRealtimeSession(
 
     async def on_session_initialized(self) -> None:
         """Emit ``session_initialized`` once the core session is ready."""
-        self._report_connection_acquired(
-            time.monotonic() - self._connection_attempt_started_at
-        )
+        self._report_connection_acquired(time.monotonic() - self._connection_attempt_started_at)
         self.emit("session_initialized", None)
 
-    async def on_text_fragment(
-        self, text: str, turn_id: int | None = None
-    ) -> None:
+    async def on_text_fragment(self, text: str, turn_id: int | None = None) -> None:
         """Accumulate a raw text fragment for its turn."""
         self.emit(
             "model_text_fragment",
@@ -918,9 +916,7 @@ class DeepslateRealtimeSession(
             return
         self._maybe_settle_after_playback(gen)
 
-    async def on_user_transcription(
-        self, text: str, language: str | None, turn_id: int
-    ) -> None:
+    async def on_user_transcription(self, text: str, language: str | None, turn_id: int) -> None:
         """Emit the input-transcription-completed event livekit-agents listens for."""
         self.emit(
             "input_audio_transcription_completed",
@@ -933,7 +929,7 @@ class DeepslateRealtimeSession(
         )
         self._user_turn_started_at = None
 
-    async def on_chat_history(self, messages) -> None:
+    async def on_chat_history(self, messages: list[ChatMessageDict]) -> None:
         """Emit the exported chat history to listeners."""
         self.emit("chat_history_exported", messages)
 
@@ -943,9 +939,7 @@ class DeepslateRealtimeSession(
         if fut is not None and not fut.done():
             fut.set_result(text)
         else:
-            logger.warning(
-                f"received conversation_query_result for unknown query_id: '{query_id}'"
-            )
+            logger.warning(f"received conversation_query_result for unknown query_id: '{query_id}'")
 
     async def on_error(self, category: str, message: str, trace_id: str | None) -> None:
         """Log a server error and emit a recoverable=False error event."""
@@ -988,8 +982,7 @@ class DeepslateRealtimeSession(
         elif from_state == "SPEECH_STARTING" and to_state == "SPEECH":
             self._user_turn_started_at = self._speech_starting_at
             protected = any(
-                gen.uninterruptable and not self._audio_drained(gen)
-                for gen in open_gens
+                gen.uninterruptable and not self._audio_drained(gen) for gen in open_gens
             )
             if not protected:
                 self.emit("input_speech_started", InputSpeechStartedEvent())
@@ -1029,9 +1022,7 @@ class DeepslateRealtimeSession(
             ),
         )
 
-    def _get_or_create_generation(
-        self, turn_id: int | None
-    ) -> _ResponseGeneration | None:
+    def _get_or_create_generation(self, turn_id: int | None) -> _ResponseGeneration | None:
         """Resolve the open generation for ``turn_id``, creating it if needed."""
         if turn_id is None:
             turn_id = self._last_turn_id if self._last_turn_id is not None else 0
@@ -1065,9 +1056,7 @@ class DeepslateRealtimeSession(
         self._last_turn_id = turn_id
 
         has_audio = self._realtime_model._tts_config is not None
-        msg_modalities: asyncio.Future[list[Literal["text", "audio"]]] = (
-            asyncio.Future()
-        )
+        msg_modalities: asyncio.Future[list[Literal["text", "audio"]]] = asyncio.Future()
         if has_audio:
             msg_modalities.set_result(["audio"])
         else:
@@ -1145,9 +1134,7 @@ class DeepslateRealtimeSession(
         """Settle ``gen`` once its audio can no longer be playing."""
         try:
             while True:
-                bytes_per_second = (
-                    (gen.audio_sample_rate or 24000) * (gen.audio_channels or 1) * 2
-                )
+                bytes_per_second = (gen.audio_sample_rate or 24000) * (gen.audio_channels or 1) * 2
                 bytes_seen = gen.audio_bytes
                 played_before = gen.last_audio_bytes_played
                 unplayed = max(bytes_seen - played_before, 0)
@@ -1157,15 +1144,10 @@ class DeepslateRealtimeSession(
                 if self._generations.get(gen.turn_id) is not gen:
                     return
                 if self._delivery_complete(gen):
-                    logger.debug(
-                        f"settling turn_id={gen.turn_id} after full playback"
-                    )
+                    logger.debug(f"settling turn_id={gen.turn_id} after full playback")
                     self._settle_generation(gen)
                     return
-                if (
-                    gen.audio_bytes > bytes_seen
-                    or gen.last_audio_bytes_played != played_before
-                ):
+                if gen.audio_bytes > bytes_seen or gen.last_audio_bytes_played != played_before:
                     continue
 
                 if bool(gen.raw_text) and not self._text_fully_spoken(gen):
@@ -1190,14 +1172,10 @@ class DeepslateRealtimeSession(
         except asyncio.CancelledError:
             pass
         except Exception:
-            logger.exception(
-                f"settle watchdog failed for turn_id={gen.turn_id}; settling"
-            )
+            logger.exception(f"settle watchdog failed for turn_id={gen.turn_id}; settling")
             self._settle_generation(gen)
 
-    def _settle_generation(
-        self, gen: _ResponseGeneration, *, cancelled: bool = False
-    ) -> None:
+    def _settle_generation(self, gen: _ResponseGeneration, *, cancelled: bool = False) -> None:
         """Close one generation's channels and mark it complete"""
         if (watchdog := gen.settle_watchdog) is not None:
             gen.settle_watchdog = None
@@ -1223,7 +1201,7 @@ class DeepslateRealtimeSession(
 
     def _cancel_tool_calls_for(self, turn_id: int) -> None:
         """Answer tool calls livekit-agents is about to throw away."""
-        for call_id, (name, call_turn_id) in list(self._outstanding_tool_calls.items()):
+        for call_id, (_name, call_turn_id) in list(self._outstanding_tool_calls.items()):
             if call_turn_id != turn_id:
                 continue
             del self._outstanding_tool_calls[call_id]
@@ -1246,14 +1224,13 @@ class DeepslateRealtimeSession(
 
         audio_tokens = 0
         if gen.audio_bytes and gen.audio_sample_rate:
-            audio_duration = (
-                gen.audio_bytes / 2 / (gen.audio_channels or 1) / gen.audio_sample_rate
-            )
+            audio_duration = gen.audio_bytes / 2 / (gen.audio_channels or 1) / gen.audio_sample_rate
             audio_tokens = round(audio_duration * 1000)
 
         self.emit(
             "metrics_collected",
             RealtimeModelMetrics(
+                label=self._realtime_model.label,
                 request_id=gen.response_id,
                 timestamp=gen.created_timestamp,
                 duration=duration,
@@ -1289,6 +1266,7 @@ class DeepslateRealtimeSession(
         self.emit(
             "metrics_collected",
             RealtimeModelMetrics(
+                label=self._realtime_model.label,
                 request_id="",
                 timestamp=time.time(),
                 acquire_time=acquire_time,
@@ -1309,6 +1287,7 @@ class DeepslateRealtimeSession(
         self.emit(
             "metrics_collected",
             RealtimeModelMetrics(
+                label=self._realtime_model.label,
                 request_id="",
                 timestamp=time.time(),
                 session_duration=delta,

@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from livekit.agents import Plugin
-
 import importlib.metadata
+
+from livekit.agents import Plugin
 
 from ._log import logger
 
@@ -26,7 +26,7 @@ except importlib.metadata.PackageNotFoundError:
 
 class DeepslatePlugin(Plugin):
     def __init__(self) -> None:
-        super().__init__("deepslate_livekit", __version__, "deepslate_livekit", logger)
+        super().__init__(__package__, __version__, __package__, logger)
 
 
 Plugin.register_plugin(DeepslatePlugin())

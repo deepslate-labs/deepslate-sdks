@@ -7,7 +7,7 @@ name = "deepslate-livekit"
 version = "0.0.0"
 description = "LiveKit plugin for deepslate.eu"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 dependencies = [
     "deepslate-core",
     "livekit-agents>=1.7.1",
@@ -19,6 +19,7 @@ classifiers = [
     "Topic :: Multimedia :: Sound/Audio",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3 :: Only",
 ]
