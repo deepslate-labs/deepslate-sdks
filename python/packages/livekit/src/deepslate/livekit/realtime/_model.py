@@ -21,7 +21,7 @@ import os
 import time
 import warnings
 from collections import deque
-from collections.abc import AsyncIterable, Mapping
+from collections.abc import AsyncIterable, Awaitable, Callable, Mapping
 from dataclasses import dataclass
 from types import SimpleNamespace
 from typing import Any, Literal, TypeVar
@@ -369,8 +369,7 @@ class DeepslateRealtimeSession(
         self._generations: dict[int, _ResponseGeneration] = {}
         self._settled_turns: deque[int] = deque(maxlen=64)
         self._last_turn_id: int | None = None
-        self._response_created_futures: dict[str, asyncio.Future[GenerationCreatedEvent]] = {}
-        self._pending_user_generation: bool = False
+        self._open_requests: deque[asyncio.Future[GenerationCreatedEvent]] = deque()
         self._pending_uninterruptable: bool = False
         self._pending_user_text: str | None = None
 
@@ -613,32 +612,31 @@ class DeepslateRealtimeSession(
         if utils.is_given(tools):
             await self.update_tools(tools)
 
-        fut = self._expect_generation()
-
         if utils.is_given(instructions):
             self._instructions = instructions
 
-        if self._pending_user_text:
-            if utils.is_given(instructions):
-                await self._session.send_text(
-                    self._pending_user_text,
-                    trigger=TriggerMode.NO_TRIGGER,
-                )
-                await self._session.trigger_inference(instructions=instructions)
+        async def submit() -> None:
+            if self._pending_user_text:
+                if utils.is_given(instructions):
+                    await self._session.send_text(
+                        self._pending_user_text,
+                        trigger=TriggerMode.NO_TRIGGER,
+                    )
+                    await self._session.trigger_inference(instructions=instructions)
+                else:
+                    await self._session.initialize()
+                    await self._session.send_text(
+                        self._pending_user_text,
+                        trigger=TriggerMode.IMMEDIATE,
+                    )
+                self._pending_user_text = None
             else:
                 await self._session.initialize()
-                await self._session.send_text(
-                    self._pending_user_text,
-                    trigger=TriggerMode.IMMEDIATE,
+                await self._session.trigger_inference(
+                    instructions=instructions if utils.is_given(instructions) else None
                 )
-            self._pending_user_text = None
-        else:
-            await self._session.initialize()
-            await self._session.trigger_inference(
-                instructions=instructions if utils.is_given(instructions) else None
-            )
 
-        return await self._await_generation(fut, "generate_reply")
+        return await self._request_generation("generate_reply", submit)
 
     def say(self, text: str | AsyncIterable[str]) -> asyncio.Future[GenerationCreatedEvent]:
         """Speak ``text`` verbatim through Deepslate's TTS, bypassing the LLM."""
@@ -646,30 +644,32 @@ class DeepslateRealtimeSession(
 
     async def _say(self, text: str | AsyncIterable[str]) -> GenerationCreatedEvent:
         """Async implementation backing :meth:`say`."""
-        if not isinstance(text, str):
-            text = "".join([chunk async for chunk in text])
-        fut = self._expect_generation()
-        await self.speak_direct(text)
-        return await self._await_generation(fut, "say")
+        spoken = text if isinstance(text, str) else "".join([chunk async for chunk in text])
+        return await self._request_generation("say", lambda: self.speak_direct(spoken))
 
-    def _expect_generation(self) -> asyncio.Future[GenerationCreatedEvent]:
-        """Register a future resolved by the next user-initiated generation."""
-        fut: asyncio.Future[GenerationCreatedEvent] = asyncio.Future()
-        self._response_created_futures[utils.shortuuid("gen_")] = fut
-        self._pending_user_generation = True
-        return fut
-
-    async def _await_generation(
-        self, fut: asyncio.Future[GenerationCreatedEvent], operation: str
+    async def _request_generation(
+        self, operation: str, submit: Callable[[], Awaitable[None]]
     ) -> GenerationCreatedEvent:
-        """Wait for ``fut``, raising ``llm.RealtimeError`` on timeout."""
-        timeout = self._opts.generate_reply_timeout
-        if timeout <= 0:
-            return await fut
+        """Submit a request and wait for the generation that answers it.
+
+        The protocol carries no request id, so requests are answered in the
+        order they were made. A request that times out, is cancelled or fails
+        to send leaves the queue, so a later generation is not taken for it.
+        """
+        fut: asyncio.Future[GenerationCreatedEvent] = asyncio.get_running_loop().create_future()
+        self._open_requests.append(fut)
         try:
-            return await asyncio.wait_for(fut, timeout=timeout)
-        except asyncio.TimeoutError as e:
-            raise llm.RealtimeError(f"{operation} timed out after {timeout}s") from e
+            await submit()
+            timeout = self._opts.generate_reply_timeout
+            if timeout <= 0:
+                return await fut
+            try:
+                return await asyncio.wait_for(fut, timeout=timeout)
+            except asyncio.TimeoutError as e:
+                raise llm.RealtimeError(f"{operation} timed out after {timeout}s") from e
+        finally:
+            with contextlib.suppress(ValueError):
+                self._open_requests.remove(fut)
 
     def commit_audio(self) -> None:
         """Deepslate uses server-side VAD for auto-commit."""
@@ -1035,8 +1035,7 @@ class DeepslateRealtimeSession(
 
     def _create_generation(self, turn_id: int) -> _ResponseGeneration:
         """Create a new response generation for ``turn_id`` and emit ``generation_created``."""
-        is_user_initiated = self._pending_user_generation
-        self._pending_user_generation = False
+        request = self._open_requests.popleft() if self._open_requests else None
         is_uninterruptable = self._pending_uninterruptable
         self._pending_uninterruptable = False
 
@@ -1075,16 +1074,14 @@ class DeepslateRealtimeSession(
         generation_ev = GenerationCreatedEvent(
             message_stream=gen.message_ch,
             function_stream=gen.function_ch,
-            user_initiated=is_user_initiated,
+            user_initiated=request is not None,
             response_id=response_id,
         )
 
         self.emit("generation_created", generation_ev)
 
-        for fut in list(self._response_created_futures.values()):
-            if not fut.done():
-                fut.set_result(generation_ev)
-        self._response_created_futures.clear()
+        if request is not None:
+            request.set_result(generation_ev)
 
         return gen
 
