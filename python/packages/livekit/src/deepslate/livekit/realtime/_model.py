@@ -554,7 +554,12 @@ class DeepslateRealtimeSession(
         # Consumed by the next _create_generation() so on_vad_state_event can
         # tell this generation apart from a normal, barge-in-able one.
         self._pending_uninterruptable = uninterruptable
-        await self._session.send_direct_speech(text, include_in_history, uninterruptable)
+        try:
+            await self._session.send_direct_speech(text, include_in_history, uninterruptable)
+        except BaseException:
+            # Nothing was sent, so no generation will consume the flag.
+            self._pending_uninterruptable = False
+            raise
 
     async def query_conversation(
         self,
@@ -645,7 +650,14 @@ class DeepslateRealtimeSession(
     async def _say(self, text: str | AsyncIterable[str]) -> GenerationCreatedEvent:
         """Async implementation backing :meth:`say`."""
         spoken = text if isinstance(text, str) else "".join([chunk async for chunk in text])
-        return await self._request_generation("say", lambda: self.speak_direct(spoken))
+
+        async def submit() -> None:
+            # Not speak_direct(): say() must not reset the uninterruptable flag of
+            # a direct speech that is still waiting for its generation.
+            await self._session.initialize()
+            await self._session.send_direct_speech(spoken, True, False)
+
+        return await self._request_generation("say", submit)
 
     async def _request_generation(
         self, operation: str, submit: Callable[[], Awaitable[None]]
