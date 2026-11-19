@@ -1080,7 +1080,7 @@ class DeepslateRealtimeSession(
 
         self.emit("generation_created", generation_ev)
 
-        if request is not None:
+        if request is not None and not request.done():
             request.set_result(generation_ev)
 
         return gen
