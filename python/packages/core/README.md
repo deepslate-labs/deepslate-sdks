@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Documentation](https://img.shields.io/badge/docs-deepslate.eu-green)](https://docs.deepslate.eu/)
-[![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
 Shared core library for [Deepslate's](https://deepslate.eu/) realtime voice AI SDKs.
 
@@ -34,12 +34,12 @@ pip install deepslate-core
 
 ### Requirements
 
-- Python 3.11 or higher
+- Python 3.10 or higher
 
 ### Dependencies
 
 - `aiohttp>=3.10.0` — Async HTTP and WebSocket client
-- `protobuf>=5.26.0` — Protocol buffer serialization
+- `protobuf>=5.29.0` — Protocol buffer serialization
 
 ---
 
@@ -364,6 +364,12 @@ Subclass this and override only the methods you need. All methods are `async` an
 | `start_duration_ms` | `int` | `150` | Duration of speech required to trigger start event |
 | `stop_duration_ms` | `int` | `390` | Duration of silence required to trigger stop event |
 | `backbuffer_duration_ms` | `int` | `1000` | Audio buffer captured before speech detection triggers |
+
+---
+
+## Versioning
+
+The public API is everything exported from `deepslate.core`. A breaking change to it bumps the minor version, for example 0.1.x to 0.2.0. Patch releases stay compatible, so integrations can depend on a range such as `deepslate-core>=0.1.24,<0.2`. Experiments are excluded, see [Experiments](#experiments).
 
 ---
 

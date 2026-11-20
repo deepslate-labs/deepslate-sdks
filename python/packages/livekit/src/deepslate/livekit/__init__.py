@@ -30,9 +30,8 @@ from deepslate.core.options import (
     VadConfig,
 )
 
-from .realtime import DeepslateRealtimeSession, RealtimeModel
-
 from . import _plugin  # noqa: F401 – triggers Plugin.register_plugin on import
+from .realtime import DeepslateRealtimeSession, RealtimeModel
 
 __all__ = [
     "__version__",

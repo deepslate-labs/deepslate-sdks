@@ -490,7 +490,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "aiohttp", specifier = ">=3.10.0" },
-    { name = "protobuf", specifier = ">=5.26.0" },
+    { name = "protobuf", specifier = ">=5.29.0" },
 ]
 
 [[package]]
