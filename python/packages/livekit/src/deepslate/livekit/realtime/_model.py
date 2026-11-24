@@ -885,6 +885,15 @@ class DeepslateRealtimeSession(
         self, call_id: str, name: str, params: dict, turn_id: int | None = None
     ) -> None:
         """Forward a server tool-call request into its generation."""
+        if call_id in self._outstanding_tool_calls or call_id in self._carried_tool_calls:
+            logger.warning(
+                "Deepslate: ignoring repeated tool call %s(%s); the first one is "
+                "still running",
+                name,
+                call_id,
+            )
+            return
+
         if turn_id is None:
             turn_id = self._last_turn_id if self._last_turn_id is not None else 0
 
