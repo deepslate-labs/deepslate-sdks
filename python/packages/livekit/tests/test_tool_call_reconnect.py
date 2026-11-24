@@ -222,5 +222,23 @@ class ToolCallAcrossReconnectTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn("CONF-1", responses[0][1])
 
 
+class RepeatedToolCallRequestTest(unittest.IsolatedAsyncioTestCase):
+    async def test_request_repeated_while_the_tool_runs_is_not_run_twice(self) -> None:
+        # The server sends the same ToolCallRequest id twice, 50 ms apart.
+        server = _StubServer(repeat_request=True)
+        await server.start()
+        try:
+            harness = _Harness(server, tool_seconds=1.0)
+            await harness.run(run_seconds=6.0)
+        finally:
+            await server.stop()
+
+        self.assertEqual(harness.function_calls, 1)
+        self.assertEqual(harness.tool_runs, 1)
+        responses = server.tool_responses("call-1")
+        self.assertEqual(len(responses), 1)
+        self.assertIn("CONF-1", responses[0][1])
+
+
 if __name__ == "__main__":
     unittest.main()
