@@ -385,6 +385,9 @@ class DeepslateRealtimeSession(
         self._tool_tasks: set[asyncio.Task[None]] = set()
         self._tool_sync_lock = asyncio.Lock()
         self._outstanding_tool_calls: dict[str, tuple[str, int]] = {}
+        # Tool calls still running when the connection was lost: call id → name.
+        # Their results are sent on the new connection, as the Node core does.
+        self._carried_tool_calls: dict[str, str] = {}
 
         # Core session — owns the WebSocket lifecycle
         self._session = DeepslateSession(
@@ -427,7 +430,9 @@ class DeepslateRealtimeSession(
                     if text := item.text_content:
                         self._pending_user_text = text
                 elif item.type == "function_call_output":
-                    if self._outstanding_tool_calls.pop(item.call_id, None) is None:
+                    answered = self._outstanding_tool_calls.pop(item.call_id, None)
+                    carried = self._carried_tool_calls.pop(item.call_id, None)
+                    if answered is None and carried is None:
                         continue
                     await self._session.send_tool_response(item.call_id, item.output)
 
@@ -710,6 +715,7 @@ class DeepslateRealtimeSession(
     async def aclose(self) -> None:
         """Close the session."""
         self._outstanding_tool_calls.clear()
+        self._carried_tool_calls.clear()
         self._usage_heartbeat_task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
             await self._usage_heartbeat_task
@@ -737,6 +743,10 @@ class DeepslateRealtimeSession(
 
     async def on_connecting(self) -> None:
         """Reset per-connection state at the start of a connection attempt."""
+        # Keep the ids of tool calls that have not been answered. The tool may
+        # still be running and its result belongs on the new connection.
+        for call_id, (name, _turn_id) in self._outstanding_tool_calls.items():
+            self._carried_tool_calls[call_id] = name
         self._outstanding_tool_calls.clear()
         for gen in list(self._generations.values()):
             self._settle_generation(gen, cancelled=True)

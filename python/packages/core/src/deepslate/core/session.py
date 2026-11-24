@@ -395,8 +395,23 @@ class DeepslateSession:
         self._packet_id_counter = 0
         if self._ever_initialized:
             # Reconnect after a prior successful session: drop the stale
-            # per-connection buffer (e.g. audio queued mid-disconnect).
-            self._pending_before_init.clear()
+            # per-connection buffer (e.g. audio queued mid-disconnect). Keep
+            # tool call responses, including any still waiting in the old send
+            # queue: the server must get an answer for every tool call it
+            # sent, and a tool may finish while the connection is down.
+            kept = [
+                m
+                for m in self._pending_before_init
+                if m.WhichOneof("payload") == "tool_call_response"
+            ]
+            while True:
+                try:
+                    queued = self._send_queue.get_nowait()
+                except asyncio.QueueEmpty:
+                    break
+                if queued is not None and queued.WhichOneof("payload") == "tool_call_response":
+                    kept.append(queued)
+            self._pending_before_init = kept
             self._fail_pending_chat_history(
                 ConnectionError(
                     "DeepslateSession: connection reset before chat "
