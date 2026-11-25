@@ -124,6 +124,7 @@ The constructor takes a single options object (`RealtimeModelOptions`):
 | `ttsConfig` | `TtsConfig` | `undefined` | TTS configuration (enables server-side audio output) |
 | `wsUrl` | `string` | `undefined` | Direct WebSocket URL (for local dev/testing) |
 | `experiments` | `Experiments` | `undefined` | Server-side experiments to enable |
+| `supportsPlaybackReporting` | `boolean` | `false` | Report how much of an interrupted reply played ([Playback Position Reporting](#playback-position-reporting)) |
 
 ### Experiments
 
@@ -273,6 +274,19 @@ await session.start({ agent: new Assistant(), room: ctx.room });
 ```
 
 ---
+
+## Playback Position Reporting
+
+Without reports, the server estimates how much of an interrupted reply the listener heard from elapsed time. With `supportsPlaybackReporting: true`, the plugin reports how far livekit had played an interrupted reply. livekit passes that position to `truncate()`, and the plugin sends it to the server. The server moves the cut to that position if it has not committed the cut yet.
+
+- A report sent after an interruption moves the cut only until the server commits it. If the model was still generating the reply, the server can commit the cut while it handles the cancelled generation, before the report arrives. A complete user message or a chat history export also commits the cut. A report that arrives after the commit does not change the cut.
+- livekit measures audio handed to WebRTC, so the report can run up to a few hundred milliseconds ahead of what a caller hears over the network or a phone line.
+- The plugin reports nothing while audio plays, or when the user interrupts before any audio played.
+
+If your app knows the real playback position, report it yourself with `reportPlaybackPosition(bytesPlayed, turnId)` on the realtime session. Each audio frame carries its turn id in `frame.userdata.deepslateTurnId`.
+
+- `bytesPlayed` counts bytes of the turn's received audio chunks, starting at its first chunk.
+- Report what the listener heard, not what was queued for playback. A report that runs ahead makes the server keep text the listener never heard.
 
 ## Examples
 

@@ -23,21 +23,25 @@ import type { ChatMessage } from "./types.js";
 export type DeepslateSessionEvents = {
   /** A fragment of model text streamed as tokens arrive. */
   textFragment: (text: string, turnId: number | null) => void;
-  /** A chunk of model TTS audio (PCM), with optional alignment transcript. */
+  /**
+   * A chunk of model TTS audio (PCM), with optional alignment transcript.
+   * `turnId` is the chunk's own turn id, null when the server omitted it.
+   */
   audioChunk: (
     pcm: Uint8Array,
     sampleRate: number,
     channels: number,
     transcript: string | null,
+    turnId: number | null,
   ) => void;
   /** The model requested a tool call. */
   toolCall: (callId: string, name: string, params: Record<string, unknown>) => void;
   /** A server-side error notification (connection stays as-is). */
   error: (category: string, message: string, traceId: string | null) => void;
   /** The model began its response. */
-  responseBegin: () => void;
+  responseBegin: (turnId: number) => void;
   /** The model finished its response. */
-  responseEnd: () => void;
+  responseEnd: (turnId: number) => void;
   /** A user audio turn was transcribed. */
   userTranscription: (
     text: string,
@@ -46,6 +50,20 @@ export type DeepslateSessionEvents = {
   ) => void;
   /** The playback buffer should be cleared (user started speaking). */
   playbackBufferClear: () => void;
+  /** The server's voice activity detector changed state. `SPEECH_STARTING` to `SPEECH` means the user is speaking. */
+  vadStateEvent: (
+    fromState: string,
+    toState: string,
+    sessionTimeMs: number,
+    packetId: number,
+  ) => void;
+  /** Text of turn `turnId` became audible. `audioBytesPlayed` is the server's estimate of the bytes played. */
+  modelSpeechProgress: (
+    turnId: number,
+    text: string,
+    audioBytesPlayed: number,
+    exact: boolean,
+  ) => void;
   /** An exported chat history arrived. */
   chatHistory: (messages: ChatMessage[]) => void;
   /** A side-channel conversation query completed. */
