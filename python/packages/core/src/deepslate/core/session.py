@@ -68,6 +68,8 @@ class DeepslateSession:
         self._init_request_sent = False
         self._sample_rate: Optional[int] = None
         self._channels: Optional[int] = None
+        self._output_sample_rate: Optional[int] = None
+        self._output_channels: Optional[int] = None
         self._packet_id_counter = 0
         self._pending_before_init: list[proto.ServiceBoundMessage] = []
         # Set True on the first successful session_ready. Until then (first
@@ -392,6 +394,8 @@ class DeepslateSession:
         self._init_request_sent = False
         self._sample_rate = None
         self._channels = None
+        self._output_sample_rate = None
+        self._output_channels = None
         self._packet_id_counter = 0
         if self._ever_initialized:
             # Reconnect after a prior successful session: drop the stale
@@ -439,6 +443,8 @@ class DeepslateSession:
 
         self._sample_rate = sample_rate
         self._channels = channels
+        self._output_sample_rate = sample_rate
+        self._output_channels = channels
         self._init_request_sent = True
 
         init_request = build_initialize_request(
@@ -657,8 +663,8 @@ class DeepslateSession:
                 await self._fire(
                     self._listener.on_audio_chunk(
                         chunk.audio.data,
-                        self._sample_rate or 24000,
-                        self._channels or 1,
+                        self._output_sample_rate or 24000,
+                        self._output_channels or 1,
                         None,
                         chunk_turn_id,
                     )
