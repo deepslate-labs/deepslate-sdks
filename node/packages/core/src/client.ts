@@ -34,6 +34,26 @@ export class RetriableError extends Error {
 }
 
 /**
+ * The organization's concurrent-session limit is reached.
+ *
+ * Raised when Deepslate answers the WebSocket handshake with HTTP 429 because
+ * all concurrent sessions for the organization are in use. It is a
+ * RetriableError, so it is retried up to `maxRetries` times and then
+ * delivered to `onFatalError`.
+ */
+export class ConcurrencyLimitError extends RetriableError {
+  readonly status = 429;
+
+  constructor() {
+    super(
+      "Deepslate concurrency limit reached: all concurrent sessions " +
+        "for this organization are in use (HTTP 429)",
+    );
+    this.name = "ConcurrencyLimitError";
+  }
+}
+
+/**
  * The Deepslate server permanently rejected the WebSocket handshake.
  *
  * Raised for 4xx responses other than 408/429 (e.g. bad credentials, an
@@ -171,7 +191,8 @@ export class BaseDeepslateClient extends TypedEventEmitter<BaseDeepslateClientEv
    * Open a WebSocket connection and resolve once it is OPEN.
    *
    * Rejects with HandshakeRejectedError when the server answers the handshake
-   * with a non-retriable 4xx status, and with RetriableError otherwise.
+   * with a non-retriable 4xx status, with ConcurrencyLimitError on HTTP 429,
+   * and with RetriableError otherwise.
    */
   connect(): Promise<WebSocket> {
     const url = this.buildWsUrl();
@@ -215,6 +236,8 @@ export class BaseDeepslateClient extends TypedEventEmitter<BaseDeepslateClientEv
         const status = res.statusCode ?? 0;
         if (status >= 400 && status < 500 && !RETRIABLE_4XX.has(status)) {
           reject(new HandshakeRejectedError(status, this.opts.model));
+        } else if (status === 429) {
+          reject(new ConcurrencyLimitError());
         } else {
           reject(new RetriableError(`Unexpected server response: ${status}`));
         }

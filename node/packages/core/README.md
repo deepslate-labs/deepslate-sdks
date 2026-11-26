@@ -240,6 +240,10 @@ vendor/organization, or a model the organization has no access to) is not retrie
 immediately with a `HandshakeRejectedError` whose `status` and `model` describe the rejection and whose
 message says what to check.
 
+A handshake answered with HTTP 429 (all concurrent sessions for the organization are in use) rejects with
+`ConcurrencyLimitError`, a `RetriableError` subclass with `status` 429. It is retried up to `maxRetries`
+times like any other connection failure, then delivered to `fatalError`.
+
 ---
 
 ## API Reference

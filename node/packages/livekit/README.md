@@ -120,6 +120,7 @@ The constructor takes a single options object (`RealtimeModelOptions`):
 | `systemPrompt` | `string` | `"You are a helpful assistant."` | System prompt for the model |
 | `temperature` | `number` | `0.3` | Sampling temperature (0.0–2.0) |
 | `generateReplyTimeout` | `number` | `30.0` | Timeout in seconds for `generateReply` (0 = no limit) |
+| `maxRetries` | `number` | `3` | Reconnection attempts before a fatal error (0 = fail on first failure) |
 | `vad` | `VadConfig` | defaults | Voice activity detection tuning |
 | `ttsConfig` | `TtsConfig` | `undefined` | TTS configuration (enables server-side audio output) |
 | `wsUrl` | `string` | `undefined` | Direct WebSocket URL (for local dev/testing) |
@@ -270,6 +271,27 @@ const session = new voice.AgentSession({
   llm: new RealtimeModel({ ttsConfig: elevenLabsConfigFromEnv() }),
 });
 await session.start({ agent: new Assistant(), room: ctx.room });
+```
+
+---
+
+## Concurrency Limit
+
+When all concurrent sessions for your organization are in use, Deepslate answers the connection with
+HTTP 429. The SDK retries up to `maxRetries` times, then emits a non-recoverable `error` event carrying a
+`ConcurrencyLimitError`. Pass `maxRetries: 0` to fail fast:
+
+```ts
+import { voice } from "@livekit/agents";
+import { ConcurrencyLimitError, RealtimeModel } from "@deepslate-labs/livekit";
+
+const session = new voice.AgentSession({ llm: new RealtimeModel({ maxRetries: 0 }) });
+
+session.on(voice.AgentSessionEventTypes.Error, (ev) => {
+  if (ev.error.error instanceof ConcurrencyLimitError) {
+    // e.g. transfer the SIP caller to a human
+  }
+});
 ```
 
 ---

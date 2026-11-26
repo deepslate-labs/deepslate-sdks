@@ -21,6 +21,7 @@ export {
 
 // Re-export the core config types callers need to construct a model.
 export {
+  ConcurrencyLimitError,
   DeepslateModel,
   TriggerMode,
   ElevenLabsLocation,

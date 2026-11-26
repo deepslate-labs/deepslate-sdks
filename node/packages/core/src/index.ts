@@ -14,7 +14,12 @@
 
 // Public API surface for @deepslate-labs/core.
 
-export { BaseDeepslateClient, HandshakeRejectedError, RetriableError } from "./client.js";
+export {
+  BaseDeepslateClient,
+  ConcurrencyLimitError,
+  HandshakeRejectedError,
+  RetriableError,
+} from "./client.js";
 export type { RunWithRetryHandlers, BaseDeepslateClientEvents } from "./client.js";
 
 export {
