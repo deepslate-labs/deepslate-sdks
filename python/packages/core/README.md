@@ -288,6 +288,8 @@ Tool definitions are re-synced automatically after every reconnect.
 
 A handshake the server permanently rejects (HTTP 4xx other than 408/429 — e.g. a bad API key, an unknown vendor/organization, or a model the organization has no access to) is not retried: `on_fatal_error` is called immediately with a `HandshakeRejectedError` whose `.status` and `.model` describe the rejection and whose message says what to check.
 
+A handshake answered with HTTP 429 (all concurrent sessions for the organization are in use) raises `ConcurrencyLimitError`, an `aiohttp.ClientError` subclass: it is retried up to `max_retries` times like any other connection failure, then delivered to `on_fatal_error`.
+
 ---
 
 ## API Reference

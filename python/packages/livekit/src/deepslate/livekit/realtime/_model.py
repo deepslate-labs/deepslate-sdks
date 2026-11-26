@@ -144,6 +144,7 @@ class RealtimeModel(llm.RealtimeModel):
         ws_url: str | None = None,
         experiments: Mapping[str, Any] | None = None,
         model: str | None = None,
+        max_retries: int = 3,
     ):
         """Initialize a Deepslate RealtimeModel.
 
@@ -155,6 +156,9 @@ class RealtimeModel(llm.RealtimeModel):
             system_prompt: System prompt for the model.
             temperature: Sampling temperature (0.0 to 2.0). Higher values produce more random output.
             generate_reply_timeout: Timeout in seconds for generate_reply and say (0 = no timeout).
+            max_retries: Reconnection attempts before the session reports a fatal error.
+                         Applies to the initial connect and to mid-session reconnects;
+                         0 fails on the first connection failure.
             usage_heartbeat_interval_s: Interval in seconds between connected-time
                                         usage reports while a session is active.
             vad_config: Voice activity detection tuning.
@@ -234,6 +238,7 @@ class RealtimeModel(llm.RealtimeModel):
             temperature=temperature,
             ws_url=ws_url,
             generate_reply_timeout=generate_reply_timeout,
+            max_retries=max_retries,
             experiments=experiments,
         )
 

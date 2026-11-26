@@ -42,6 +42,20 @@ class HandshakeRejectedError(Exception):
         self.model = model
 
 
+class ConcurrencyLimitError(aiohttp.WSServerHandshakeError):
+    """The organization's concurrent-session limit is reached.
+
+    Raised when Deepslate answers the WebSocket handshake with HTTP 429
+    because all concurrent sessions for the organization are in use. It is
+    an ``aiohttp.ClientError``, so it remains retriable under
+    ``max_retries``; once retries are exhausted it is delivered to
+    ``on_fatal_error``.
+    """
+
+    def __str__(self) -> str:
+        return self.message
+
+
 def _handshake_rejected_message(status: int, model: Optional[str]) -> str:
     prefix = f"Deepslate rejected the WebSocket handshake (HTTP {status})"
     if status == 401:
@@ -109,6 +123,8 @@ class BaseDeepslateClient:
         Raises:
             HandshakeRejectedError: the server answered the handshake with a
                 non-retriable 4xx status.
+            ConcurrencyLimitError: the server answered the handshake with
+                HTTP 429 (organization concurrency limit reached; retriable).
             aiohttp.ClientError: any other (retriable) connection failure.
         """
         url = self._build_ws_url()
@@ -119,6 +135,17 @@ class BaseDeepslateClient:
         except aiohttp.WSServerHandshakeError as e:
             if 400 <= e.status < 500 and e.status not in _RETRIABLE_4XX:
                 raise HandshakeRejectedError(e.status, self._opts.model) from e
+            if e.status == 429:
+                raise ConcurrencyLimitError(
+                    e.request_info,
+                    e.history,
+                    status=e.status,
+                    message=(
+                        "Deepslate concurrency limit reached: all concurrent sessions "
+                        "for this organization are in use (HTTP 429)"
+                    ),
+                    headers=e.headers,
+                ) from e
             raise
 
     async def run_with_retry(
