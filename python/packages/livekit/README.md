@@ -372,6 +372,7 @@ emits a non-recoverable `error` event carrying a `ConcurrencyLimitError`. Pass
 `max_retries=0` to fail fast:
 
 ```python
+from livekit.agents import AgentSession
 from deepslate.livekit import ConcurrencyLimitError, RealtimeModel
 
 session = AgentSession(llm=RealtimeModel(max_retries=0))
