@@ -45,11 +45,9 @@ class HandshakeRejectedError(Exception):
 class ConcurrencyLimitError(aiohttp.WSServerHandshakeError):
     """The organization's concurrent-session limit is reached.
 
-    Raised when Deepslate answers the WebSocket handshake with HTTP 429
-    because all concurrent sessions for the organization are in use. It is
-    an ``aiohttp.ClientError``, so it remains retriable under
-    ``max_retries``; once retries are exhausted it is delivered to
-    ``on_fatal_error``.
+    Deepslate answered the WebSocket handshake with HTTP 429 because all
+    concurrent sessions for the organization are in use. A new session can
+    start once one of them ends.
     """
 
     def __str__(self) -> str:

@@ -36,10 +36,9 @@ export class RetriableError extends Error {
 /**
  * The organization's concurrent-session limit is reached.
  *
- * Raised when Deepslate answers the WebSocket handshake with HTTP 429 because
- * all concurrent sessions for the organization are in use. It is a
- * RetriableError, so it is retried up to `maxRetries` times and then
- * delivered to `onFatalError`.
+ * Deepslate answered the WebSocket handshake with HTTP 429 because all
+ * concurrent sessions for the organization are in use. A new session can
+ * start once one of them ends.
  */
 export class ConcurrencyLimitError extends RetriableError {
   readonly status = 429;
