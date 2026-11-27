@@ -19,6 +19,7 @@ try:
 except importlib.metadata.PackageNotFoundError:
     __version__ = "unknown"
 
+from deepslate.core import ConcurrencyLimitError
 from deepslate.core.options import (
     DeepslateModel,
     DeepslateOptions,
@@ -35,6 +36,7 @@ from .realtime import DeepslateRealtimeSession, RealtimeModel
 
 __all__ = [
     "__version__",
+    "ConcurrencyLimitError",
     "DeepslateModel",
     "DeepslateOptions",
     "ElevenLabsLocation",

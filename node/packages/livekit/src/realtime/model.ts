@@ -64,6 +64,7 @@ export interface RealtimeModelOptions {
   ttsConfig?: TtsConfig;
   wsUrl?: string;
   experiments?: Experiments;
+  maxRetries?: number;
 }
 
 /** Internal state for an in-flight response generation. */
@@ -119,6 +120,7 @@ export class RealtimeModel extends llm.RealtimeModel {
       generateReplyTimeout: options.generateReplyTimeout,
       wsUrl: options.wsUrl,
       experiments: options.experiments,
+      maxRetries: options.maxRetries,
     });
     this.vad = options.vad;
     this.ttsConfig = options.ttsConfig;

@@ -19,7 +19,7 @@ try:
 except importlib.metadata.PackageNotFoundError:
     __version__ = "unknown"
 
-from .client import BaseDeepslateClient, HandshakeRejectedError
+from .client import BaseDeepslateClient, ConcurrencyLimitError, HandshakeRejectedError
 from .session import DeepslateSession
 from ._user_agent import build_user_agent
 from .options import (
@@ -52,6 +52,7 @@ from ._types import (
 __all__ = [
     "__version__",
     "BaseDeepslateClient",
+    "ConcurrencyLimitError",
     "HandshakeRejectedError",
     "DeepslateSession",
     "build_user_agent",

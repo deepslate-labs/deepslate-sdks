@@ -119,6 +119,7 @@ if __name__ == "__main__":
 | `system_prompt`          | `str`                 | `"You are a helpful assistant."` | System prompt for the model                             |
 | `temperature`            | `float`               | `0.3`                            | Sampling temperature (0.0–2.0)                          |
 | `generate_reply_timeout` | `float`               | `30.0`                           | Timeout in seconds for `generate_reply` (0 = no limit) |
+| `max_retries`            | `int`                 | `3`                              | Reconnection attempts before a fatal error (0 = fail on first failure) |
 | `tts_config`             | `ElevenLabsTtsConfig \| HostedTtsConfig` | `None`          | TTS configuration (enables server-side audio output)    |
 | `vad_config`             | `VadConfig`           | `None`                            | Voice activity detection tuning                         |
 | `experiments`            | `Mapping[str, Any]`   | `None`                            | Server-side experiments to enable                       |
@@ -360,6 +361,27 @@ Each item is a `ChatMessageDict` (importable from `deepslate.core`) with:
 | `content` | Ordered content blocks: `text` (with optional `tts_audio`), `input_audio`, `tool_call`, `tool_result`, `thoughts`, `instructions`        |
 | `turn_id` | The model turn this message belongs to, or `None`                                                                                        |
 | `truncated_at_response_turn_id` | Set if this message was cut off by a later interruption                                                                                  |
+
+---
+
+## Concurrency Limit
+
+When all concurrent sessions for your organization are in use, Deepslate answers
+the connection with HTTP 429. The SDK retries up to `max_retries` times, then
+emits a non-recoverable `error` event carrying a `ConcurrencyLimitError`. Pass
+`max_retries=0` to fail fast:
+
+```python
+from livekit.agents import AgentSession
+from deepslate.livekit import ConcurrencyLimitError, RealtimeModel
+
+session = AgentSession(llm=RealtimeModel(max_retries=0))
+
+@session.on("error")
+def on_error(ev):
+    if isinstance(ev.error.error, ConcurrencyLimitError):
+        ...  # e.g. transfer the SIP caller to a human
+```
 
 ---
 
